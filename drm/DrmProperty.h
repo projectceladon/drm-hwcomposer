@@ -16,10 +16,9 @@
 
 #ifndef ANDROID_DRM_PROPERTY_H_
 #define ANDROID_DRM_PROPERTY_H_
-
+#include <cstdint>
 #include <xf86drmMode.h>
 
-#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>

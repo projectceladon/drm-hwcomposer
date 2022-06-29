@@ -20,7 +20,7 @@ cc_library_static {
 
     srcs: ["utils/Worker.cpp"],
 
-    include_dirs: ["external/drm_hwcomposer"],
+    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
 
     cflags: [
         "-Wall",
@@ -48,7 +48,7 @@ cc_defaults {
         "libutils",
     ],
 
-    include_dirs: ["external/drm_hwcomposer"],
+    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
 
     static_libs: ["libdrmhwc_utils"],
 
@@ -61,6 +61,7 @@ cc_defaults {
         "-DHWC2_INCLUDE_STRINGIFICATION",
         "-DHWC2_USE_CPP11",
         "-std=c++17",
+        "-DUSE_IMAPPER4_METADATA_API",
     ],
 
     product_variables: {
