@@ -16,10 +16,10 @@
 
 #ifndef ANDROID_DRM_CRTC_H_
 #define ANDROID_DRM_CRTC_H_
-
+#include <cstdint>
 #include <xf86drmMode.h>
 
-#include <cstdint>
+
 
 #include "DrmDisplayPipeline.h"
 #include "DrmMode.h"
