@@ -16,10 +16,10 @@
 
 #ifndef ANDROID_DRM_ENCODER_H_
 #define ANDROID_DRM_ENCODER_H_
-
+#include <cstdint>
 #include <xf86drmMode.h>
 
-#include <cstdint>
+
 #include <set>
 #include <vector>
 
