@@ -147,7 +147,9 @@ auto DrmDevice::Init(const char *path) -> int {
     auto plane = DrmPlane::CreateInstance(*this, plane_res->planes[i]);
 
     if (plane) {
-      planes_.emplace_back(std::move(plane));
+      //planes_.emplace_back(std::move(plane));
+      if (plane->GetType() == DRM_PLANE_TYPE_PRIMARY)
+        planes_.emplace_back(std::move(plane));
     }
   }
 
