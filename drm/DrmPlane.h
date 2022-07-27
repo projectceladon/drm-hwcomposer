@@ -59,6 +59,14 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
     return plane_->plane_id;
   }
 
+  auto IsDataspaceSet() const {
+    return dataspace_set_;
+  }
+
+  auto NeedClearHdrMetadata() const{
+    return clear_hdr_metadata_;
+  }
+
  private:
   DrmPlane(DrmDevice &dev, DrmModePlaneUnique plane)
       : drm_(&dev), plane_(std::move(plane)){};
@@ -71,6 +79,8 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
   auto GetPlaneProperty(const char *prop_name, DrmProperty &property,
                         Presence presence = Presence::kMandatory) -> bool;
 
+  bool dataspace_set_ = false;
+  bool clear_hdr_metadata_ = false;
   uint32_t type_{};
 
   std::vector<uint32_t> formats_;

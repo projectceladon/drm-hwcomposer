@@ -275,10 +275,17 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
     return -EINVAL;
   }
 
+  if (color_encoding_enum_map_.count(layer.bi->color_space) == 0 &&
+      dataspace_set_) {
+    dataspace_set_ = false;
+    clear_hdr_metadata_ = true;
+  }
+
   if (color_encoding_enum_map_.count(layer.bi->color_space) != 0 &&
-      !color_encoding_propery_
+      color_encoding_propery_
            .AtomicSet(pset, color_encoding_enum_map_[layer.bi->color_space])) {
-    return -EINVAL;
+    dataspace_set_ = true;
+    clear_hdr_metadata_ = false;
   }
 
   if (color_range_enum_map_.count(layer.bi->sample_range) != 0 &&

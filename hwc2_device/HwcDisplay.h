@@ -100,6 +100,7 @@ class HwcDisplay {
   HWC2::Error GetDisplayVsyncPeriod(uint32_t *outVsyncPeriod);
 
   HWC2::Error GetDozeSupport(int32_t *support);
+  HWC2::Error GetPerFrameMetadataKeys(uint32_t *outNumKeys, int32_t *outKeys);
   HWC2::Error GetHdrCapabilities(uint32_t *num_types, int32_t *types,
                                  float *max_luminance,
                                  float *max_average_luminance,
@@ -223,6 +224,7 @@ class HwcDisplay {
   std::map<hwc2_layer_t, HwcLayer> layers_;
   HwcLayer client_layer_;
   int32_t color_mode_{};
+  std::vector<int32_t> current_color_mode_ = {HAL_COLOR_MODE_NATIVE, HAL_COLOR_MODE_BT2020, HAL_COLOR_MODE_BT2100_PQ, HAL_COLOR_MODE_BT2100_HLG, /*HAL_COLOR_MODE_DISPLAY_BT2020*/};
   std::array<float, MATRIX_SIZE> color_transform_matrix_{};
   android_color_transform_t color_transform_hint_;
 

@@ -104,6 +104,8 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
 
   auto unused_planes = new_frame_state.used_planes;
 
+  bool dataspace_set = false;
+  bool clear_hdr_metadata = false;
   if (args.composition) {
     new_frame_state.used_planes.clear();
 
@@ -122,6 +124,37 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
           0) {
         return -EINVAL;
       }
+      if (drm->IsHdrSupportedDevice()) {
+        dataspace_set |= plane->IsDataspaceSet();
+        clear_hdr_metadata |= plane->NeedClearHdrMetadata();
+      }
+    }
+  }
+
+  if (drm->IsHdrSupportedDevice()) {
+    hdr_md hdr_metadata =  connector->GetHdrMatedata();
+    if (dataspace_set && hdr_metadata.valid) {
+      struct drm_hdr_metadata final_hdr_metadata;
+      uint32_t id;
+      connector->PrepareHdrMetadata(&hdr_metadata, &final_hdr_metadata);
+      drmModeCreatePropertyBlob(drm->GetFd(), (void *)&final_hdr_metadata,
+                                sizeof(final_hdr_metadata), &id);
+      int ret = drmModeAtomicAddProperty(pset.get(), connector->GetId(),
+                               connector->GetHdrOpMetadataProp().id(), id) < 0;
+      if (ret)
+        ALOGE("Failed to add hdr property to plane");
+      hdr_mdata_set = true;
+    }
+
+    if (clear_hdr_metadata) {
+
+      int ret = drmModeAtomicAddProperty(pset.get(), connector->GetId(),
+                                     connector->GetHdrOpMetadataProp().id(),
+                                     (uint64_t)0);
+      if (ret)
+        ALOGE("Failed to reset hdr metadata to plane");
+
+      hdr_metadata.valid = false;
     }
   }
 
