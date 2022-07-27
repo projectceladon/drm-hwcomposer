@@ -259,11 +259,13 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
 }
 
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
+  *num_modes = current_color_mode_.size();
   if (!modes)
-    *num_modes = 1;
+    return HWC2::Error::None;
 
-  if (modes)
-    *modes = HAL_COLOR_MODE_NATIVE;
+  for (int i = 0; i < current_color_mode_.size(); i++) {
+    *(modes + i) = current_color_mode_[i];
+  }
 
   return HWC2::Error::None;
 }
@@ -381,12 +383,44 @@ HWC2::Error HwcDisplay::GetDozeSupport(int32_t *support) {
   return HWC2::Error::None;
 }
 
+HWC2::Error HwcDisplay::GetPerFrameMetadataKeys(uint32_t *outNumKeys, int32_t *outKeys) {
+  if (NULL == outNumKeys && NULL == outKeys) {
+    return HWC2::Error::BadParameter;
+  }
+
+  *outNumKeys = KEY_NUM_PER_FRAME_METADATA_KEYS;
+  if (NULL == outKeys)
+    return HWC2::Error::None;
+
+  for (int i = 0; i < KEY_NUM_PER_FRAME_METADATA_KEYS; i++) {
+    *(outKeys + i) = i;
+  }
+
+  return HWC2::Error::None;
+}
+
 HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
-                                           int32_t * /*types*/,
-                                           float * /*max_luminance*/,
-                                           float * /*max_average_luminance*/,
-                                           float * /*min_luminance*/) {
+                                           int32_t * types,
+                                           float * max_luminance,
+                                           float * max_average_luminance,
+                                           float * min_luminance) {
   *num_types = 0;
+  DrmConnector *conn = pipeline_->connector->Get();
+
+  auto blob = conn->GetEdidBlob();
+  if (blob) {
+    ALOGE("Failed to get edid property value.");
+    return HWC2::Error::Unsupported;
+  }
+
+  conn->ParseCTAFromExtensionBlock((uint8_t*)blob->data);
+
+  if (conn->GetHdrCapabilities(num_types, types, max_luminance,
+                                   max_average_luminance, min_luminance)) {
+    return HWC2::Error::None;
+  } else {
+    return HWC2::Error::Unsupported;
+  }
   return HWC2::Error::None;
 }
 
@@ -882,16 +916,26 @@ HWC2::Error HwcDisplay::SetDisplayBrightness(float /* brightness */) {
 HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
-  if (mode != HAL_COLOR_MODE_NATIVE) {
+if (NULL == outNumIntents && NULL == outIntents) {
+    ALOGE("Null pointer error, outNumIntents: %p, outIntents: %p",
+          outNumIntents, outIntents);
     return HWC2::Error::BadParameter;
   }
-
-  if (outIntents == nullptr) {
-    *outNumIntents = 1;
+  // Add the SDR render intents by default.
+  if (NULL == outIntents) {
+    *outNumIntents = 2;
     return HWC2::Error::None;
   }
-  *outNumIntents = 1;
-  outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
+
+  *(outIntents) = HAL_RENDER_INTENT_COLORIMETRIC;
+  *(outIntents + 1) = HAL_RENDER_INTENT_ENHANCE;
+  DrmConnector *conn = pipeline_->connector->Get();
+  if (mode > HAL_COLOR_MODE_DISPLAY_P3) {
+    if (conn->GetRenderIntents(outNumIntents, outIntents))
+      return HWC2::Error::None;
+    else
+      return HWC2::Error::BadParameter;
+  }
   return HWC2::Error::None;
 }
 
