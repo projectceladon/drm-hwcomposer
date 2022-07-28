@@ -39,6 +39,7 @@
 #include "drm/DrmPlane.h"
 #include "drm/DrmUnique.h"
 #include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 
@@ -79,6 +80,12 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   bool nonblock = true;
+  char status[PROPERTY_VALUE_MAX];
+  if (property_get("drm.nonblock_commit.on", status, NULL) > 0) {
+    if (status == "0") {
+      nonblock = false;
+    }
+  }
 
   if (args.active) {
     nonblock = false;
