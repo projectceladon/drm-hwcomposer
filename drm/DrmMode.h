@@ -35,6 +35,9 @@ class DrmMode {
 
   bool operator==(const drmModeModeInfo &m) const;
 
+  uint32_t id() const;
+  void set_id(uint32_t id);
+
   uint32_t clock() const;
 
   uint16_t h_display() const;
@@ -58,6 +61,8 @@ class DrmMode {
   auto CreateModeBlob(const DrmDevice &drm) -> DrmModeUserPropertyBlobUnique;
 
  private:
+  uint32_t id_ = 0;
+
   uint32_t clock_ = 0;
 
   uint16_t h_display_ = 0;

@@ -94,6 +94,9 @@ class DrmDevice {
     return nullptr;
   }
 
+  uint32_t next_mode_id();
+  void reset_mode_id();
+
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
 
@@ -104,6 +107,7 @@ class DrmDevice {
   static auto IsKMSDev(const char *path) -> bool;
 
   UniqueFd fd_;
+  uint32_t mode_id_ = 0;
 
   std::vector<std::unique_ptr<DrmConnector>> connectors_;
   std::vector<std::unique_ptr<DrmConnector>> writeback_connectors_;
@@ -119,6 +123,9 @@ class DrmDevice {
   std::unique_ptr<DrmFbImporter> drm_fb_importer_;
 
   ResourceManager *const res_man_;
+public:
+  bool preferred_mode_limit_;
+  bool planes_enabling_;
 };
 }  // namespace android
 
