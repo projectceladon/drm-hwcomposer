@@ -45,6 +45,7 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   local->gem_handles_[0] = first_gem_handle;
   int32_t err = 0;
 
+  uint32_t num_planes = 0;
   /* Framebuffer object creation require gem handle for every used plane */
   for (size_t i = 1; i < local->gem_handles_.size(); i++) {
     if (bo->prime_fds[i] > 0) {
@@ -57,6 +58,7 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
         }
       } else {
         local->gem_handles_.at(i) = local->gem_handles_[0];
+        num_planes++;
       }
     }
   }
@@ -77,6 +79,13 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
                         local->gem_handles_.data(), &bo->pitches[0],
                         &bo->offsets[0], &local->fb_id_, 0);
   } else {
+    if (bo->format == DRM_FORMAT_NV12_Y_TILED_INTEL) {
+      for (uint32_t i = num_planes; i < HWC_DRM_BO_MAX_PLANES; i++) {
+        bo->modifiers[i] = DRM_FORMAT_MOD_NONE;
+        local->gem_handles_[i] = 0;
+      }
+      bo->format = DRM_FORMAT_NV12;
+    }
     err = drmModeAddFB2WithModifiers(drm.GetFd(), bo->width, bo->height,
                                      bo->format, local->gem_handles_.data(),
                                      &bo->pitches[0], &bo->offsets[0],
@@ -108,6 +117,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
    * request via system properties)
    */
   struct drm_gem_close gem_close {};
+  bool first = true;
   for (size_t i = 0; i < gem_handles_.size(); i++) {
     /* Don't close invalid handle. Close handle only once in cases
      * where several YUV planes located in the single buffer. */
@@ -115,6 +125,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
         (i != 0 && gem_handles_[i] == gem_handles_[0])) {
       continue;
     }
+    first = false;
     gem_close.handle = gem_handles_[i];
     int32_t err = drmIoctl(drm_->GetFd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
     if (err != 0) {
