@@ -118,10 +118,14 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
   return int64_t(ts.tv_sec) * kNsInSec + int64_t(ts.tv_nsec);
 }
 
+#define DRM_MODE_LINK_STATUS_GOOD       0
+#define DRM_MODE_LINK_STATUS_BAD        1
+
 void ResourceManager::UpdateFrontendDisplays() {
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
+    static bool first_connected = true;
     conn->UpdateModes();
     bool connected = conn->IsConnected();
     bool attached = attached_pipelines_.count(conn) != 0;
@@ -131,12 +135,37 @@ void ResourceManager::UpdateFrontendDisplays() {
             conn->GetName().c_str());
 
       if (connected) {
+        if (!first_connected) {
+          uint64_t link_status = 0;
+          int ret = 0;
+          conn->UpdateLinkStatusProperty();
+          std::tie(ret, link_status) = conn->link_status_property().value();
+          if (ret) {
+	          ALOGE("Conn %u get link status value error %d", conn->GetId(), ret);
+            continue;
+          }
+          if (link_status != DRM_MODE_LINK_STATUS_GOOD) {
+	          ALOGD("Conn %u link status bad", conn->GetId());
+            auto &pipeline = attached_pipelines_[conn];
+            frontend_interface_->UnbindDisplay(pipeline.get());
+            frontend_interface_->BindDisplay(pipeline.get());
+            attached_pipelines_[conn] = std::move(pipeline);
+          } else {
+            ALOGD("Conn %u link status good. Do nothing", conn->GetId());
+            continue;
+          }
+        } else {
         auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
         if (pipeline) {
           frontend_interface_->BindDisplay(pipeline.get());
           attached_pipelines_[conn] = std::move(pipeline);
+            first_connected = false;
+          }
         }
       } else {
+        if (!first_connected) {
+         continue;
+        }
         auto &pipeline = attached_pipelines_[conn];
         frontend_interface_->UnbindDisplay(pipeline.get());
         attached_pipelines_.erase(conn);
