@@ -138,7 +138,7 @@ auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
   auto drm_fb_id_cached = drm_fb_id_handle_cache_.find(first_handle);
 
   if (drm_fb_id_cached != drm_fb_id_handle_cache_.end()) {
-    if (auto drm_fb_id_handle_shared = drm_fb_id_cached->second.lock()) {
+    if (auto drm_fb_id_handle_shared = drm_fb_id_cached->second) {
       return drm_fb_id_handle_shared;
     }
     drm_fb_id_handle_cache_.erase(drm_fb_id_cached);
