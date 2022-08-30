@@ -53,6 +53,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
                : nullptr;
   }
 
+  HwcDisplay *  GetDisplay(DrmDisplayPipeline *pipeline) override;
+
   auto &GetResMan() {
     return resource_manager_;
   }
