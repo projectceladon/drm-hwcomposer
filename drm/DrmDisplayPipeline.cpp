@@ -112,15 +112,17 @@ static auto TryCreatePipelineUsingEncoder(DrmDevice &dev, DrmConnector &conn,
   if (crtc != nullptr) {
     auto pipeline = TryCreatePipeline(dev, conn, enc, *crtc);
     if (pipeline) {
+      crtc->BindConnector(conn.GetId());
       return pipeline;
     }
   }
 
   /* Try to find a possible crtc which will work */
   for (const auto &crtc : dev.GetCrtcs()) {
-    if (enc.SupportsCrtc(*crtc)) {
+    if (enc.SupportsCrtc(*crtc) && crtc->CanBind(conn.GetId())) {
       auto pipeline = TryCreatePipeline(dev, conn, enc, *crtc);
       if (pipeline) {
+        crtc->BindConnector(conn.GetId());
         return pipeline;
       }
     }
