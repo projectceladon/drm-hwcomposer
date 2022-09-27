@@ -72,6 +72,10 @@ void ResourceManager::Init() {
         break;
 
       auto dev = DrmDevice::CreateInstance(path.str(), this);
+
+      if ( (idx == 1) && (dev->GetName() == "i915"))
+	break;
+
       if (dev) {
         drms_.emplace_back(std::move(dev));
       }
