@@ -249,6 +249,28 @@ std::string DrmDevice::GetName() const {
   return name;
 }
 
+bool DrmDevice::IsHdrSupportedDevice() {
+  if (!hdr_device_checked_) {
+    hdr_device_checked_ = true;
+    auto *ver = drmGetVersion(GetFd());
+    if (ver == nullptr) {
+      ALOGW("Failed to get drm version for fd=%d", GetFd());
+      is_hdr_supported_ = false;;
+    } else {
+      std::string name(ver->name);
+      ALOGD("drm device name is : %s\n", name.c_str());
+      if (name == "i915") {
+        is_hdr_supported_ = true;
+      } else {
+        is_hdr_supported_ = false;
+      }
+    }
+    drmFreeVersion(ver);
+  }
+
+  return is_hdr_supported_;
+}
+
 auto DrmDevice::IsKMSDev(const char *path) -> bool {
   auto fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
   if (!fd) {
