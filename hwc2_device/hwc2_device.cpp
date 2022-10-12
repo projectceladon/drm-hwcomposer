@@ -197,6 +197,11 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
       return ToHook<HWC2_PFN_GET_DOZE_SUPPORT>(
           DisplayHook<decltype(&HwcDisplay::GetDozeSupport),
                       &HwcDisplay::GetDozeSupport, int32_t *>);
+    case HWC2::FunctionDescriptor::GetPerFrameMetadataKeys:
+      return ToHook<HWC2_PFN_GET_PER_FRAME_METADATA_KEYS>(
+          DisplayHook<decltype(&HwcDisplay::GetPerFrameMetadataKeys),
+                      &HwcDisplay::GetPerFrameMetadataKeys, uint32_t *,
+                      int32_t *>);
     case HWC2::FunctionDescriptor::GetHdrCapabilities:
       return ToHook<HWC2_PFN_GET_HDR_CAPABILITIES>(
           DisplayHook<decltype(&HwcDisplay::GetHdrCapabilities),
@@ -363,6 +368,11 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
       return ToHook<HWC2_PFN_SET_LAYER_Z_ORDER>(
           LayerHook<decltype(&HwcLayer::SetLayerZOrder),
                     &HwcLayer::SetLayerZOrder, uint32_t>);
+    case HWC2::FunctionDescriptor::SetLayerPerFrameMetadata:
+      return ToHook<HWC2_PFN_SET_LAYER_PER_FRAME_METADATA>(
+          LayerHook<decltype(&HwcLayer::SetLayerPerFrameMetadata),
+                    &HwcLayer::SetLayerPerFrameMetadata, uint32_t,
+                    const int32_t *, const float *>);
     case HWC2::FunctionDescriptor::Invalid:
     default:
       return nullptr;

@@ -104,12 +104,18 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
 
   auto unused_planes = new_frame_state.used_planes;
 
+  bool has_hdr_layer = false;
+
   if (args.composition) {
     new_frame_state.used_planes.clear();
 
     for (auto &joining : args.composition->plan) {
       DrmPlane *plane = joining.plane->Get();
       LayerData &layer = joining.layer;
+
+      if (layer.bi->color_space >= BufferColorSpace::kItuRec2020) {
+        has_hdr_layer = true;
+      }
 
       new_frame_state.used_framebuffers.emplace_back(layer.fb);
       new_frame_state.used_planes.emplace_back(joining.plane);
@@ -121,6 +127,39 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       if (plane->AtomicSetState(*pset, layer, joining.z_pos, crtc->GetId()) !=
           0) {
         return -EINVAL;
+      }
+    }
+  }
+
+  if (drm->IsHdrSupportedDevice()) {
+    hdr_md& hdr_metadata =  connector->GetHdrMatedata();
+    if (has_hdr_layer && hdr_metadata.valid) {
+      struct hdr_output_metadata final_hdr_metadata;
+      uint32_t id;
+      connector->PrepareHdrMetadata(&hdr_metadata, &final_hdr_metadata);
+      drmModeCreatePropertyBlob(drm->GetFd(), (void *)&final_hdr_metadata,
+                                sizeof(final_hdr_metadata), &id);
+      int ret = drmModeAtomicAddProperty(pset.get(), connector->GetId(),
+                               connector->GetHdrOpMetadataProp().id(), id) < 0;
+      if (ret)
+        ALOGE("Failed to add hdr property to plane");
+
+      hdr_mdata_set_ = true;
+    }
+
+    if (!has_hdr_layer && hdr_metadata.valid) {
+      int ret = drmModeAtomicAddProperty(pset.get(), connector->GetId(),
+                                     connector->GetHdrOpMetadataProp().id(),
+                                     (uint64_t)0);
+      if (ret)
+        ALOGE("Failed to reset hdr metadata to plane, ret:%d", ret);
+
+      // Do the hdr meta info clean up twise considering the first time
+      // clean up may not taking effect.
+      if (hdr_mdata_set_) {
+        hdr_mdata_set_ = false;
+      } else {
+        hdr_metadata.valid = false;
       }
     }
   }

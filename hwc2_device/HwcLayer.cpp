@@ -166,6 +166,72 @@ HWC2::Error HwcLayer::SetLayerZOrder(uint32_t order) {
   return HWC2::Error::None;
 }
 
+HWC2::Error HwcLayer::SetLayerPerFrameMetadata(uint32_t numElements,
+                                         const int32_t *keys,
+                                         const float *metadata) {
+  if (0 == numElements || NULL == keys || NULL == metadata) {
+      ALOGE("Bad parameters!");
+      return HWC2::Error::BadParameter;
+    }
+
+  //We store hdr metadata once sf trying to set it, otherwise it may lost due
+  //to client mode composition which would drop them if some layers are sdr.
+  //Theoretically this could be refactor inside hwclayer class if we have
+  //more class intercommunication funcs to pass them to connector later in
+  //Commitframe and make sure we copy them from hwclayer correctely.
+  hdr_md& hdr_metadata = parent_->GetPipe().connector->Get()->GetHdrMatedata();
+  hdr_metadata.valid = true;
+
+#define STATIC_METADATA(x) hdr_metadata.static_metadata.x
+
+  for (uint32_t i = 0; i < numElements; i++) {
+      int32_t key = *(keys + i);
+      float keyvalue = *(metadata + i);
+      switch (key) {
+       case KEY_DISPLAY_RED_PRIMARY_X:
+         STATIC_METADATA(primaries.r.x) = keyvalue;
+         break;
+       case KEY_DISPLAY_RED_PRIMARY_Y:
+         STATIC_METADATA(primaries.r.y) = keyvalue;
+         break;
+       case KEY_DISPLAY_GREEN_PRIMARY_X:
+         STATIC_METADATA(primaries.g.x) = keyvalue;
+         break;
+       case KEY_DISPLAY_GREEN_PRIMARY_Y:
+         STATIC_METADATA(primaries.g.y) = keyvalue;
+         break;
+       case KEY_DISPLAY_BLUE_PRIMARY_X:
+         STATIC_METADATA(primaries.b.x) = keyvalue;
+         break;
+       case KEY_DISPLAY_BLUE_PRIMARY_Y:
+         STATIC_METADATA(primaries.b.y) = keyvalue;
+         break;
+       case KEY_WHITE_POINT_X:
+         STATIC_METADATA(primaries.white_point.x) = keyvalue;
+         break;
+       case KEY_WHITE_POINT_Y:
+         STATIC_METADATA(primaries.white_point.y) = keyvalue;
+         break;
+       case KEY_MAX_LUMINANCE:
+         STATIC_METADATA(max_luminance) = keyvalue;
+         break;
+       case KEY_MIN_LUMINANCE:
+         STATIC_METADATA(min_luminance) = keyvalue;
+         break;
+       case KEY_MAX_CONTENT_LIGHT_LEVEL:
+         STATIC_METADATA(max_cll) = keyvalue;
+         break;
+       case KEY_MAX_FRAME_AVERAGE_LIGHT_LEVEL:
+         STATIC_METADATA(max_fall) = keyvalue;
+         break;
+       default:
+         ALOGE("Unkonwn HDR metda key: %u, value: %f", key, keyvalue);
+         break;
+      }
+    }
+    return HWC2::Error::None;
+}
+
 void HwcLayer::ImportFb() {
   if (!IsLayerUsableAsDevice() || !buffer_handle_updated_) {
     return;
