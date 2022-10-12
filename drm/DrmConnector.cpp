@@ -24,6 +24,7 @@
 #include <cerrno>
 #include <cstdint>
 #include <sstream>
+#include <math.h>
 
 #include "DrmDevice.h"
 #include "utils/log.h"
@@ -73,9 +74,12 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
       new DrmConnector(std::move(conn), &dev, index));
 
   if (!GetConnectorProperty(dev, *c, "DPMS", &c->dpms_property_) ||
-      !GetConnectorProperty(dev, *c, "CRTC_ID", &c->crtc_id_property_)) {
-    return {};
+      !GetConnectorProperty(dev, *c, "CRTC_ID", &c->crtc_id_property_) ||
+      (dev.IsHdrSupportedDevice() && !GetConnectorProperty(dev, *c, "HDR_OUTPUT_METADATA", &c->hdr_op_metadata_prop_))) {
+      return {};
   }
+
+  c->hdr_metadata_.valid = false;
 
   c->UpdateEdidProperty();
 
@@ -147,6 +151,11 @@ bool DrmConnector::IsWriteback() const {
 
 bool DrmConnector::IsValid() const {
   return IsInternal() || IsExternal() || IsWriteback();
+}
+
+bool DrmConnector::IsHdrSupportedDevice()
+{
+  return drm_->IsHdrSupportedDevice();
 }
 
 std::string DrmConnector::GetName() const {
@@ -309,6 +318,266 @@ void DrmConnector::UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes) 
 
 void DrmConnector::SetActiveMode(DrmMode &mode) {
   active_mode_ = mode;
+}
+
+uint16_t DrmConnector::ColorPrimary(short val) {
+  short temp = val & 0x3FF;
+  short count = 1;
+  float result = 0;
+  uint16_t output;
+
+  /* Primary values in EDID are ecoded in 10 bit format, where every bit
+   * represents 2 pow negative bit position, ex 0.500 = 1/2 = 2 ^ -1 = (1 << 9)
+   */
+  while (temp) {
+    result += ((!!(temp & (1 << 9))) * pow(2, -count));
+    count++;
+    temp <<= 1;
+  }
+
+  /* Primaries are to represented in uint16 format, in power of 0.00002,
+   *     * max allowed value is 50,000 */
+  output = result * 50000;
+  if (output > 50000)
+    output = 50000;
+
+  return output;
+}
+
+void DrmConnector::GetHDRStaticMetadata(uint8_t *b, uint8_t length) {
+
+  if (length < 2) {
+    ALOGE("Invalid metadata input to static parser\n");
+    return;
+  }
+
+  display_hdrMd_ = (struct cta_edid_hdr_metadata_static *)malloc(
+      sizeof(struct cta_edid_hdr_metadata_static));
+  if (!display_hdrMd_) {
+    ALOGE("OOM while parsing static metadata\n");
+    return;
+  }
+  memset(display_hdrMd_, 0, sizeof(struct cta_edid_hdr_metadata_static));
+
+  display_hdrMd_->eotf = b[0] & 0x3F;
+  display_hdrMd_->metadata_type = b[1];
+
+  if (length > 2 && length < 6) {
+    display_hdrMd_->desired_max_ll = b[2];
+    display_hdrMd_->desired_max_fall = b[3];
+    display_hdrMd_->desired_min_ll = b[4];
+
+    if (!display_hdrMd_->desired_max_ll)
+      display_hdrMd_->desired_max_ll = 0xFF;
+  }
+  return;
+}
+
+#define HIGH_X(val) (val >> 6)
+#define HIGH_Y(val) ((val >> 4) & 0x3)
+#define LOW_X(val) ((val >> 2) & 0x3)
+#define LOW_Y(val) ((val >> 4) & 0x3)
+
+
+void DrmConnector::GetColorPrimaries( uint8_t *b, struct cta_display_color_primaries *p) {
+  uint8_t rxrygxgy_0_1;
+  uint8_t bxbywxwy_0_1;
+  uint8_t count = 0x19; /* base of chromaticity block values */
+  uint16_t val;
+
+  if (!b || !p)
+    return;
+
+  rxrygxgy_0_1 = b[count++];
+  bxbywxwy_0_1 = b[count++];
+
+  val = (b[count++] << 2) | HIGH_X(rxrygxgy_0_1);
+  p->display_primary_r_x = ColorPrimary(val);
+
+  val = (b[count++] << 2) | HIGH_Y(rxrygxgy_0_1);
+  p->display_primary_r_y = ColorPrimary(val);
+
+  val = (b[count++] << 2) | LOW_X(rxrygxgy_0_1);
+  p->display_primary_g_x = ColorPrimary(val);
+
+  val = (b[count++] << 2) | LOW_Y(rxrygxgy_0_1);
+  p->display_primary_g_y = ColorPrimary(val);
+
+  val = (b[count++] << 2) | HIGH_X(bxbywxwy_0_1);
+  p->display_primary_b_x = ColorPrimary(val);
+
+  val = (b[count++] << 2) | HIGH_Y(bxbywxwy_0_1);
+  p->display_primary_b_y = ColorPrimary(val);
+
+  val = (b[count++] << 2) | LOW_X(bxbywxwy_0_1);
+  p->white_point_x = ColorPrimary(val);
+
+  val = (b[count++] << 2) | LOW_X(bxbywxwy_0_1);
+  p->white_point_y = ColorPrimary(val);
+}
+
+void DrmConnector::ParseCTAFromExtensionBlock(uint8_t *edid) {
+  int current_block;
+  uint8_t *cta_ext_blk;
+  uint8_t dblen;
+  uint8_t d;
+  uint8_t *cta_db_start;
+  uint8_t *cta_db_end;
+  uint8_t *dbptr;
+  uint8_t tag;
+
+  int num_blocks = edid[126];
+  if (!num_blocks) {
+    return;
+  }
+
+  for (current_block = 1; current_block <= num_blocks; current_block++) {
+    cta_ext_blk = edid + 128 * current_block;
+    if (cta_ext_blk[0] != CTA_EXTENSION_TAG)
+      continue;
+    d = cta_ext_blk[2];
+    cta_db_start = cta_ext_blk + 4;
+    cta_db_end = cta_ext_blk + d - 1;
+    for (dbptr = cta_db_start; dbptr < cta_db_end; dbptr++) {
+      tag = dbptr[0] >> 0x05;
+      dblen = dbptr[0] & 0x1F;
+
+      // Check if the extension has an extended block
+      if (tag == CTA_EXTENDED_TAG_CODE) {
+        switch (dbptr[1]) {
+          case CTA_COLORIMETRY_CODE:
+            ALOGE(" Colorimetry Data block\n");
+            break;
+          case CTA_HDR_STATIC_METADATA:
+            ALOGE(" HDR STATICMETADATA block\n");
+            DrmConnector::GetHDRStaticMetadata(dbptr + 2, dblen - 1);
+            break;
+          default:
+            ALOGE(" Unknown tag/Parsing option\n");
+        }
+        DrmConnector::GetColorPrimaries(dbptr + 2, &primaries_);
+      }
+    }
+  }
+}
+
+bool DrmConnector::GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
+                                    float *outMaxLuminance,
+                                    float *outMaxAverageLuminance,
+                                    float *outMinLuminance) {
+  if (NULL == outNumTypes) {
+    ALOGE("outNumTypes couldn't be NULL!");
+    return false;
+  }
+
+  if (NULL == outTypes) {
+    ALOGE("outTypes couldn't be NULL!");
+    //TODO: clarify SF's logic here
+    //kindly skip this check now and return nothing if it's NULL
+    //return false;
+  }
+
+  if (NULL == outMaxLuminance) {
+    ALOGE("outMaxLuminance couldn't be NULL!");
+    return false;
+  }
+
+  if (NULL == outMaxAverageLuminance) {
+    ALOGE("outMaxAverageLuminance couldn't be NULL!");
+    return false;
+  }
+
+  if (NULL == outMinLuminance) {
+    ALOGE("outMinLuminance couldn't be NULL!");
+    return false;
+  }
+
+  if (display_hdrMd_) {
+    // HDR meta block bit 3 of byte 3: STPTE ST 2084
+    if (display_hdrMd_->eotf & 0x04) {
+      if(outTypes)
+        *(outTypes + *outNumTypes) = (uint32_t)EOTF_ST2084;
+      (*outNumTypes)+=1;
+    }
+    // HDR meta block bit 4 of byte 3: HLG
+    if (display_hdrMd_->eotf & 0x08) {
+      if(outTypes)
+        *(outTypes + *outNumTypes) = (uint32_t)EOTF_HLG;
+      (*outNumTypes)+=1;
+    }
+    double outmaxluminance, outmaxaverageluminance, outminluminance;
+    // Luminance value = 50 * POW(2, coded value / 32)
+    // Desired Content Min Luminance = Desired Content Max Luminance * POW(2,
+    // coded value/255) / 100
+    outmaxluminance = pow(2.0, display_hdrMd_->desired_max_ll / 32.0) * 50.0;
+    *outMaxLuminance = float(outmaxluminance);
+    outmaxaverageluminance =
+        pow(2.0, display_hdrMd_->desired_max_fall / 32.0) * 50.0;
+    *outMaxAverageLuminance = float(outmaxaverageluminance);
+    outminluminance = display_hdrMd_->desired_max_ll *
+                      pow(2.0, display_hdrMd_->desired_min_ll / 255.0) / 100;
+    *outMinLuminance = float(outminluminance);
+
+    int ret = GetConnectorProperty(*drm_, *this, "HDR_OUTPUT_METADATA", &hdr_op_metadata_prop_);
+    if (ret) {
+      ALOGE("Could not get HDR_OUTPUT_METADATA property\n");
+      //return ret;
+    }
+  }
+
+  return true;
+}
+
+bool DrmConnector::GetRenderIntents(uint32_t *outNumIntents, int32_t *outIntents) {
+  // If HDR is supported, adds HDR render intents accordingly.
+  if (display_hdrMd_ && display_hdrMd_->eotf & 0x0C) {
+    *(outIntents + *outNumIntents) = HAL_RENDER_INTENT_TONE_MAP_COLORIMETRIC;
+    *(outNumIntents)+=1;
+    *(outIntents + *outNumIntents) = HAL_RENDER_INTENT_TONE_MAP_ENHANCE;
+    *(outNumIntents)+=1;
+  }
+   return true;
+}
+
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+#define MIN_IF_NT_ZERO(c, d) (c ? MIN(c, d) : d)
+void DrmConnector::PrepareHdrMetadata(hdr_md *layer_hdr_metadata,
+                                    struct  hdr_output_metadata *final_hdr_metadata) {
+
+  struct hdr_metadata_static *l_md = &layer_hdr_metadata->static_metadata;
+  struct hdr_metadata_infoframe *out_static_md =
+      &final_hdr_metadata->hdmi_metadata_type1;
+
+  out_static_md->max_cll = l_md->max_cll;
+  out_static_md->max_fall = l_md->max_fall;
+  out_static_md->max_display_mastering_luminance = l_md->max_luminance;
+  out_static_md->min_display_mastering_luminance = l_md->min_luminance;
+  out_static_md->display_primaries[0].x =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.r.x),
+                     primaries_.display_primary_r_x);
+  out_static_md->display_primaries[0].y =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.r.y),
+                     primaries_.display_primary_r_y);
+  out_static_md->display_primaries[1].x =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.g.x),
+                     primaries_.display_primary_g_x);
+  out_static_md->display_primaries[1].y =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.g.y),
+                     primaries_.display_primary_g_y);
+  out_static_md->display_primaries[2].x =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.g.x),
+                     primaries_.display_primary_b_x);
+  out_static_md->display_primaries[2].y =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.g.y),
+                     primaries_.display_primary_b_y);
+  out_static_md->white_point.x =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.white_point.x),
+                     primaries_.white_point_x);
+  out_static_md->white_point.y =
+      MIN_IF_NT_ZERO(ColorPrimary(l_md->primaries.white_point.y),
+                     primaries_.white_point_y);
+  out_static_md->eotf = CTA_EOTF_HDR_ST2084;
+  out_static_md->metadata_type = 1;
 }
 
 const DrmProperty &DrmConnector::link_status_property() const {
