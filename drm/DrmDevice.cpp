@@ -154,6 +154,12 @@ auto DrmDevice::Init(const char *path) -> int {
     return -ENOENT;
   }
 
+  constexpr char PLANES_MAX_NUM_STRING[] = "99";
+  planes_num_ = atoi(PLANES_MAX_NUM_STRING);
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.planes.num", property, PLANES_MAX_NUM_STRING);
+  planes_num_ = atoi(property) <= 0 ? atoi(PLANES_MAX_NUM_STRING) : atoi(property);
+  ALOGD("The property 'vendor.hwcomposer.planes.num' value is %s", property);
   for (uint32_t i = 0; i < plane_res->count_planes; ++i) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto plane = DrmPlane::CreateInstance(*this, plane_res->planes[i]);
