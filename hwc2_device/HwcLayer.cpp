@@ -166,6 +166,10 @@ HWC2::Error HwcLayer::SetLayerZOrder(uint32_t order) {
   return HWC2::Error::None;
 }
 
+bool HwcLayer::IsLayerUsableAsDevice() const {
+  return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
+}
+
 void HwcLayer::ImportFb() {
   if (!IsLayerUsableAsDevice() || !buffer_handle_updated_) {
     return;

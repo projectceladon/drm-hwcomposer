@@ -108,6 +108,40 @@ filegroup {
     ],
 }
 
+filegroup {
+    name: "drm_hwcomposer_common_test",
+    srcs: [
+        "bufferinfo/BufferInfoGetter.cpp",
+        "bufferinfo/BufferInfoMapperMetadata.cpp",
+
+        "compositor/DrmKmsPlan.cpp",
+
+        "drm/DrmAtomicStateManager.cpp",
+        "drm/DrmConnector.cpp",
+        "drm/DrmCrtc.cpp",
+        "drm/DrmDevice.cpp",
+        "drm/DrmDisplayPipeline.cpp",
+        "drm/DrmEncoder.cpp",
+        "tests/linux/DrmFbImporterLinux.cpp",
+        "drm/DrmMode.cpp",
+        "tests/linux/DrmPlaneLinux.cpp",
+        "drm/DrmProperty.cpp",
+        "tests/linux/ResourceManagerLinux.cpp",
+        "drm/UEventListener.cpp",
+        "drm/VSyncWorker.cpp",
+
+        "backend/Backend.cpp",
+        "backend/BackendClient.cpp",
+        "backend/BackendManager.cpp",
+
+        "hwc2_device/DrmHwcTwo.cpp",
+        "hwc2_device/HwcDisplay.cpp",
+        "hwc2_device/HwcDisplayConfigs.cpp",
+        "tests/linux/HwcLayerLinux.cpp",
+        "hwc2_device/hwc2_device.cpp",
+    ],
+}
+
 // Kept only for compatibility with older Android version. Please do not use!
 cc_library_static {
     name: "drm_hwcomposer",

@@ -93,6 +93,16 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   return local;
 }
 
+auto DrmFbIdHandle::CreateInstance(DrmDevice &drm, int fb)
+    -> std::shared_ptr<DrmFbIdHandle> {
+  ATRACE_NAME("Import dmabufs and register FB");
+
+  // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): priv. constructor usage
+  std::shared_ptr<DrmFbIdHandle> local(new DrmFbIdHandle(drm));
+  local->fb_id_ = fb;
+  return local;
+}
+
 DrmFbIdHandle::~DrmFbIdHandle() {
   ATRACE_NAME("Close FB and dmabufs");
 

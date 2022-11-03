@@ -19,7 +19,7 @@
 #include "HwcDisplayConfigs.h"
 
 #include <cmath>
-
+#include <string.h>
 #include "drm/DrmConnector.h"
 #include "utils/log.h"
 
@@ -39,12 +39,11 @@ void HwcDisplayConfigs::FillHeadless() {
 
   last_config_id++;
   preferred_config_id = active_config_id = last_config_id;
-  auto headless_drm_mode_info = (drmModeModeInfo){
-      .hdisplay = kHeadlessModeDisplayWidthPx,
-      .vdisplay = kHeadlessModeDisplayHeightPx,
-      .vrefresh = kHeadlessModeDisplayVRefresh,
-      .name = "HEADLESS-MODE",
-  };
+  drmModeModeInfo headless_drm_mode_info;
+  headless_drm_mode_info.hdisplay = kHeadlessModeDisplayWidthPx;
+  headless_drm_mode_info.vdisplay = kHeadlessModeDisplayHeightPx;
+  headless_drm_mode_info.vrefresh = kHeadlessModeDisplayVRefresh;
+  strcpy(headless_drm_mode_info.name, "HEADLESS-MODE");
   hwc_configs[active_config_id] = (HwcDisplayConfig){
       .id = active_config_id,
       .group_id = 1,

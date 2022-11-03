@@ -406,6 +406,7 @@ static struct hw_module_methods_t hwc2_module_methods = {
 hw_module_t HAL_MODULE_INFO_SYM = {
     .tag = HARDWARE_MODULE_TAG,
     .module_api_version = HARDWARE_MODULE_API_VERSION(2, 0),
+    .hal_api_version = 0,
     .id = HWC_HARDWARE_MODULE_ID,
     .name = "DrmHwcTwo module",
     .author = "The Android Open Source Project",

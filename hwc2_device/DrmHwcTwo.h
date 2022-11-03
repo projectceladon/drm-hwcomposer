@@ -16,7 +16,14 @@
 
 #ifndef ANDROID_DRM_HWC_TWO_H_
 #define ANDROID_DRM_HWC_TWO_H_
-
+#ifndef ANDROID
+/* Missing in glibc, pull from BIONIC */
+#if defined(__cplusplus)
+#define __BIONIC_CAST(_k,_t,_v) (_k<_t>(_v))
+#else
+#define __BIONIC_CAST(_k,_t,_v) ((_t) (_v))
+#endif
+#endif
 #include <hardware/hwcomposer2.h>
 
 #include "drm/ResourceManager.h"

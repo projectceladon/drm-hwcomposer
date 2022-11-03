@@ -16,7 +16,14 @@
 
 #ifndef ANDROID_HWC2_DEVICE_HWC_DISPLAY_H
 #define ANDROID_HWC2_DEVICE_HWC_DISPLAY_H
-
+#ifndef ANDROID
+/* Missing in glibc, pull from BIONIC */
+#if defined(__cplusplus)
+#define __BIONIC_CAST(_k,_t,_v) (_k<_t>(_v))
+#else
+#define __BIONIC_CAST(_k,_t,_v) ((_t) (_v))
+#endif
+#endif
 #include <hardware/hwcomposer2.h>
 
 #include <optional>
@@ -182,6 +189,7 @@ class HwcDisplay {
 
   void Deinit();
 
+  auto GetHandle() -> hwc2_display_t {return handle_;}
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,
