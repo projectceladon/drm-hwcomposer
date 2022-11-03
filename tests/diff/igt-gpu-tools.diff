@@ -1,0 +1,70 @@
+diff --git a/Android.bp b/Android.bp
+index cb0fda9c..ca0226d5 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -44,8 +44,8 @@ cc_defaults {
+         "-DHAVE_LIBGEN_H",
+         "-DHAVE_MEMFD_CREATE",
+     ],
+-    static_libs: ["libelf", "libkmod", "libion", "liblog"],
+-    shared_libs: ["libdrm"],
++    static_libs: ["libelf", "libkmod", "libion", ],
++    shared_libs: ["libdrm", "liblog"],
+     compile_multilib: "both",
+     multilib: {
+         lib32: {
+@@ -89,6 +89,8 @@ cc_library_static {
+         "lib/stubs/drm",
+         "prebuilt-intermediates",
+     ],
++    vendor: true,
++    visibility: ["//vendor:__subpackages__",],
+ }
+
+ cc_defaults {
+@@ -102,6 +104,7 @@ cc_test {
+     defaults: ["igt-gpu-tools-test-defaults"],
+     srcs: ["benchmarks/gem_blt.c"],
+     gtest: false,
++    vendor: true,
+ }
+
+ cc_test {
+@@ -109,6 +112,7 @@ cc_test {
+     defaults: ["igt-gpu-tools-test-defaults"],
+     srcs: ["tests/kms_flip.c"],
+     gtest: false,
++    vendor: true,
+ }
+
+ cc_test {
+@@ -116,6 +120,7 @@ cc_test {
+     defaults: ["igt-gpu-tools-test-defaults"],
+     srcs: ["tests/kms_atomic.c"],
+     gtest: false,
++    vendor: true,
+ }
+
+ cc_test {
+@@ -123,6 +128,7 @@ cc_test {
+     defaults: ["igt-gpu-tools-test-defaults"],
+     srcs: ["tests/ion_fb.c"],
+     gtest: false,
++    vendor: true,
+ }
+
+ cc_test {
+@@ -130,6 +136,7 @@ cc_test {
+     defaults: ["igt-gpu-tools-test-defaults"],
+     srcs: ["tests/kms_vblank.c"],
+     gtest: false,
++    vendor: true,
+ }
+
+ python_test_host {
+@@ -155,4 +162,5 @@ cc_test {
+     name: "kms_throughput",
+     defaults: ["igt-gpu-tools-test-defaults"],
+     srcs: ["benchmarks/kms_throughput.c"],
++    vendor: true,
+ }

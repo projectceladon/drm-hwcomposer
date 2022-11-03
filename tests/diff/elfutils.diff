@@ -1,0 +1,12 @@
+diff --git a/Android.bp b/Android.bp
+index 2ca70cc9..1e71fe57 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -96,6 +96,7 @@ cc_library {
+         "//device/google/contexthub/util/nanoapp_postprocess",
+         "//external/igt-gpu-tools",
+         "//external/mesa3d",
++        "//vendor:__subpackages__",
+     ],
+ }
+
