@@ -49,13 +49,14 @@ void waitBlank(int fd) {
 }
 
 int main(int argc, const char** argv) {
-  ALOGI("usage: %s [planes num]", argv[0]);
-  if (argc >= 3) {
+  ALOGI("usage: %s [planes num] [scaling num]", argv[0]);
+  if (argc != 3) {
     return 0;
   }
   int planes_num = MAX_PLANE_NUM;
-  if (argc == 2)
-    planes_num = std::min(atoi(argv[1]), MAX_PLANE_NUM);
+  int scaling_num = MAX_SCALING_NUM;
+  planes_num = std::min(atoi(argv[1]), MAX_PLANE_NUM);
+  scaling_num = std::min(atoi(argv[2]), MAX_SCALING_NUM);
   property_set("vendor.hwcomposer.planes.enabling", "1");
   auto ctx = std::make_unique<android::Drmhwc2DeviceTest>();
   if (!ctx) {
@@ -81,6 +82,7 @@ int main(int argc, const char** argv) {
     hwc2_layer_t layer_id = 0;
     for (uint8_t i = 0; i < planes_num; i++) {
       hwc_display->CreateLayer(&layer_id);
+      init_fb(display_id, i, width, height, i < scaling_num);
       create_fb(hwc_display->GetPipe().device->GetFd(), display_id, i);
       android::HwcLayer * layer = hwc_display->get_layer(layer_id);
       LayerInfo* layerinfo = get_layer_info(display_id, layer_id);
@@ -90,8 +92,8 @@ int main(int argc, const char** argv) {
       layer->SetValidatedType(HWC2::Composition::Device);
       layer->AcceptTypeChange();
       hwc_rect_t display_frame = {layerinfo->x, layerinfo->y, layerinfo->w + layerinfo->x, layerinfo->h + layerinfo->y};
-      if (i == 0 || i == 1) {//scaling
-        display_frame = {layerinfo->x, layerinfo->y, 1920 - layerinfo->x , 1080 - layerinfo->y};
+      if (layerinfo->scaling) {//scaling
+        display_frame = {layerinfo->x, layerinfo->y, width - layerinfo->x , height - layerinfo->y};
       }
       layer->SetLayerDisplayFrame(display_frame);
       hwc_frect_t source_crop = {0.0, 0.0,
