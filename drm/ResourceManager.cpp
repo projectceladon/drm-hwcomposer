@@ -141,7 +141,6 @@ void ResourceManager::UpdateFrontendDisplays() {
         }
       } else {
         auto &pipeline = attached_pipelines_[conn];
-        pipeline->AtomicDisablePipeline();
         frontend_interface_->UnbindDisplay(pipeline.get());
         attached_pipelines_.erase(conn);
       }
