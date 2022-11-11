@@ -82,8 +82,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
 }
 
 bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
-  /* FIXME: set all layers as CLIENT rendering type due to flickering issue */
-  return true || !HardwareSupportsLayerType(layer->GetSfType()) ||
+  return !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
