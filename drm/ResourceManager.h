@@ -28,11 +28,12 @@ namespace android {
 class HwcDisplay;
 class PipelineToFrontendBindingInterface {
  public:
-  virtual ~PipelineToFrontendBindingInterface() = default;
-  virtual bool BindDisplay(DrmDisplayPipeline *);
-  virtual bool UnbindDisplay(DrmDisplayPipeline *);
-  virtual HwcDisplay * GetDisplay(DrmDisplayPipeline *pipeline);
-  virtual void FinalizeDisplayBinding();
+  PipelineToFrontendBindingInterface() {}
+  virtual ~PipelineToFrontendBindingInterface() {}
+  virtual bool BindDisplay(DrmDisplayPipeline *){return true;}
+  virtual bool UnbindDisplay(DrmDisplayPipeline *){return true;}
+  virtual HwcDisplay * GetDisplay(DrmDisplayPipeline *){return nullptr;}
+  virtual void FinalizeDisplayBinding(){return;}
 };
 
 class ResourceManager {

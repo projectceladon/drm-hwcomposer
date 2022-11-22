@@ -9,17 +9,23 @@
 
 #include <cinttypes>
 #include <cstdio>
-
+#ifdef ALOGE
+#undef ALOGE
+#undef ALOGW
+#undef ALOGI
+#undef ALOGD
+#undef ALOGV
+#endif
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALOGE(args...) printf("ERR: " args)
+#define ALOGE(args...) printf("ERR: " args);printf("\n")
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALOGW(args...) printf("WARN: " args)
+#define ALOGW(args...) printf("WARN: " args);printf("\n")
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALOGI(args...) printf("INFO: " args)
+#define ALOGI(args...) printf("INFO: " args);printf("\n")
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALOGD(args...) printf("DBG:" args)
+#define ALOGD(args...) printf("DBG:" args);printf("\n")
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ALOGV(args...) printf("VERBOSE: " args)
+#define ALOGV(args...) printf("VERBOSE: " args);printf("\n")
 
 #endif
 

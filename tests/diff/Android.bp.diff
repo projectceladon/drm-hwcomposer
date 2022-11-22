@@ -1,0 +1,39 @@
+diff --git a/tests/Android.bp b/tests/Android.bp
+index 40c5b11..3592a8f 100644
+--- a/tests/Android.bp
++++ b/tests/Android.bp
+@@ -44,3 +44,34 @@ cc_test {
+         "vendor/intel/external/drm-hwcomposer",
+     ],
+ }
++
++cc_test {
++    name: "hwc-drm-planes-test",
++    defaults: ["hwcomposer.drm_defaults"],
++    vendor: true,
++    static_libs: [
++        "igt-gpu-tools",
++    ],
++    srcs: [
++        ":drm_hwcomposer_common_test",
++        "linux/igt_assist.c",
++        "linux/test_main.cpp",
++    ],
++    include_dirs: [
++        "external/igt-gpu-tools/lib",
++        "external/igt-gpu-tools/include/drm-uapi",
++        "external/igt-gpu-tools/prebuilt-intermediates",
++        "vendor/intel/external/drm-hwcomposer/",
++        "vendor/intel/external/drm-hwcomposer/hwc2_device",
++        "vendor/intel/external/drm-hwcomposer/drm",
++        "vendor/intel/external/drm-hwcomposer/tests/linux",
++    ],
++    cflags: [
++        "-Wall",
++        "-Wno-unused-parameter",
++        "-Wno-unused-variable",
++        "-Wno-unused-function",
++        "-Wno-unused-private-field",
++        "-UANDROID",
++    ],
++}

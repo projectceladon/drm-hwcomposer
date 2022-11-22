@@ -22,7 +22,6 @@
 #include "DrmFbImporter.h"
 
 #include <hardware/gralloc.h>
-#include <utils/Trace.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
@@ -37,7 +36,6 @@ namespace android {
 auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
                                    DrmDevice &drm)
     -> std::shared_ptr<DrmFbIdHandle> {
-  ATRACE_NAME("Import dmabufs and register FB");
 
   // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): priv. constructor usage
   std::shared_ptr<DrmFbIdHandle> local(new DrmFbIdHandle(drm));
@@ -95,7 +93,6 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
 
 auto DrmFbIdHandle::CreateInstance(DrmDevice &drm, int fb)
     -> std::shared_ptr<DrmFbIdHandle> {
-  ATRACE_NAME("Import dmabufs and register FB");
 
   // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): priv. constructor usage
   std::shared_ptr<DrmFbIdHandle> local(new DrmFbIdHandle(drm));
@@ -104,35 +101,6 @@ auto DrmFbIdHandle::CreateInstance(DrmDevice &drm, int fb)
 }
 
 DrmFbIdHandle::~DrmFbIdHandle() {
-  ATRACE_NAME("Close FB and dmabufs");
-
-  /* Destroy framebuffer object */
-  if (drmModeRmFB(drm_->GetFd(), fb_id_) != 0) {
-    ALOGE("Failed to rm fb");
-  }
-
-  /* Close GEM handles.
-   *
-   * WARNING: TODO(nobody):
-   * From Linux side libweston relies on libgbm to get KMS handle and never
-   * closes it (handle is closed by libgbm on buffer destruction)
-   * Probably we should offer similar approach to users (at least on user
-   * request via system properties)
-   */
-  struct drm_gem_close gem_close {};
-  for (size_t i = 0; i < gem_handles_.size(); i++) {
-    /* Don't close invalid handle. Close handle only once in cases
-     * where several YUV planes located in the single buffer. */
-    if (gem_handles_[i] == 0 ||
-        (i != 0 && gem_handles_[i] == gem_handles_[0])) {
-      continue;
-    }
-    gem_close.handle = gem_handles_[i];
-    int32_t err = drmIoctl(drm_->GetFd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
-    if (err != 0) {
-      ALOGE("Failed to close gem handle %d, errno: %d", gem_handles_[i], errno);
-    }
-  }
 }
 
 auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)

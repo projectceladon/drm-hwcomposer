@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-
+#include <stdlib.h>
 // NOLINTNEXTLINE(readability-identifier-naming)
 constexpr int PROPERTY_VALUE_MAX = 92;
 
@@ -24,6 +24,11 @@ auto inline property_get(const char *name, char *value,
   return static_cast<int>(strlen(value));
 }
 
+auto inline property_set(const char *name, const char *value) -> int {
+  // NOLINTNEXTLINE (concurrency-mt-unsafe)
+  setenv(name, value, 1);
+  return static_cast<int>(strlen(value));
+}
 #endif
 
 #endif

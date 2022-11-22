@@ -19,6 +19,14 @@
 
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
+#ifndef ANDROID
+/* Missing in glibc, pull from BIONIC */
+#if defined(__cplusplus)
+#define __BIONIC_CAST(_k,_t,_v) (_k<_t>(_v))
+#else
+#define __BIONIC_CAST(_k,_t,_v) ((_t) (_v))
+#endif
+#endif
 #include <hardware/hwcomposer2.h>
 
 #include <atomic>

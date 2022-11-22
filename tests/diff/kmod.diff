@@ -1,0 +1,21 @@
+diff --git a/Android.bp b/Android.bp
+index fae140d..2193b5c 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -67,6 +67,7 @@ cc_library_static {
+     defaults: ["libkmod_cflags_common"],
+     export_include_dirs: ["libkmod"],
+     host_supported: true,
++    vendor_available: true,
+     name: "libkmod",
+     srcs: [
+         "libkmod/libkmod.c",
+@@ -84,7 +85,7 @@ cc_library_static {
+         "shared/hash.c",
+         "shared/strbuf.c",
+     ],
+-    visibility: ["//external/igt-gpu-tools"],
++    visibility: ["//external/igt-gpu-tools", "//vendor:__subpackages__",],
+ }
+
+ cc_binary_host {

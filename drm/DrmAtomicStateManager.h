@@ -112,10 +112,10 @@ class DrmAtomicStateManager {
 
   auto NewFrameState() -> KmsState {
     auto *prev_frame_state = &active_frame_state_;
-    return (KmsState){
-        .used_planes = prev_frame_state->used_planes,
-        .crtc_active_state = prev_frame_state->crtc_active_state,
-    };
+    KmsState state;
+    state.used_planes = prev_frame_state->used_planes;
+    state.crtc_active_state = prev_frame_state->crtc_active_state;
+    return state;
   }
 
   DrmDisplayPipeline *const pipe_;

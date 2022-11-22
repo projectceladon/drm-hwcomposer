@@ -17,9 +17,9 @@
 #define LOG_TAG "hwc-drm-connector"
 
 #include "DrmConnector.h"
-
+#include <string.h>
 #include <xf86drmMode.h>
-#include <cutils/properties.h>
+#include <utils/properties.h>
 #include <array>
 #include <cerrno>
 #include <cstdint>

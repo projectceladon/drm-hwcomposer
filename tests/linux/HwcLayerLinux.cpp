@@ -21,7 +21,7 @@
 #include "HwcDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
-
+#include "igt_assist.h"
 namespace android {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -30,6 +30,7 @@ HWC2::Error HwcLayer::SetCursorPosition(int32_t /*x*/, int32_t /*y*/) {
 }
 
 HWC2::Error HwcLayer::SetLayerBlendMode(int32_t mode) {
+
   switch (static_cast<HWC2::BlendMode>(mode)) {
     case HWC2::BlendMode::None:
       blend_mode_ = BufferBlendMode::kNone;
@@ -167,42 +168,18 @@ HWC2::Error HwcLayer::SetLayerZOrder(uint32_t order) {
 }
 
 bool HwcLayer::IsLayerUsableAsDevice() const {
-  return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
+  return true;
 }
 
 void HwcLayer::ImportFb() {
-  if (!IsLayerUsableAsDevice() || !buffer_handle_updated_) {
-    return;
-  }
-  buffer_handle_updated_ = false;
-
   layer_data_.fb = {};
 
-  auto unique_id = BufferInfoGetter::GetInstance()->GetUniqueId(buffer_handle_);
-  if (unique_id && SwChainGetBufferFromCache(*unique_id)) {
-    return;
-  }
-
-  layer_data_.bi = BufferInfoGetter::GetInstance()->GetBoInfo(buffer_handle_);
-  if (!layer_data_.bi) {
-    ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
-    bi_get_failed_ = true;
-    return;
-  }
-
-  layer_data_
-      .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
-      &layer_data_.bi.value());
-
+  layer_data_.fb = DrmFbIdHandle::CreateInstance(*(parent_->GetPipe().device),
+    get_fb(parent_->GetHandle(),z_order_));
   if (!layer_data_.fb) {
-    ALOGV("Unable to create framebuffer object for buffer 0x%p",
-          buffer_handle_);
+    ALOGV("Unable to create framebuffer object for layer %d",z_order_);
     fb_import_failed_ = true;
     return;
-  }
-
-  if (unique_id) {
-    SwChainAddCurrentBuffer(*unique_id);
   }
 }
 
