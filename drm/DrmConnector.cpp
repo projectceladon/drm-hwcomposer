@@ -276,6 +276,9 @@ int DrmConnector::UpdateModes() {
           new_modes.back().v_refresh());
     }
   }
+
+  UpdateMultiRefreshRateModes(new_modes);
+
   modes_.swap(new_modes);
   if (!preferred_mode_found && !modes_.empty()) {
     preferred_mode_id_ = modes_[0].id();
@@ -286,6 +289,22 @@ int DrmConnector::UpdateModes() {
   }
 
   return 0;
+}
+
+void DrmConnector::UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes) {
+  if (new_modes.size() == 1 && connector_->count_modes > 0) {
+      DrmMode mode = new_modes[0];
+      drm_->ResetModeId();
+      new_modes.clear();
+      for(int i = 0; i < connector_->count_modes; ++i) {
+          drmModeModeInfo info = connector_->modes[i];
+          if (info.hdisplay == mode.h_display() && info.vdisplay == mode.v_display()) {
+            DrmMode mode(&info);
+            mode.SetId(drm_->GetNextModeId());
+            new_modes.push_back(mode);
+          }
+      }
+  }
 }
 
 void DrmConnector::SetActiveMode(DrmMode &mode) {
