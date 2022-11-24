@@ -79,6 +79,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   std::string GetName() const;
 
   int UpdateModes();
+  void UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes);
 
   auto &GetModes() const {
     return modes_;
