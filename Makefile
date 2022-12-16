@@ -18,7 +18,7 @@ $(warning and reboot your PC)
 $(error Aborting...)
 endef
 
-.PHONY : help prepare shell ci ci_cleanup local_presubmit local_cleanup
+.PHONY : help prepare shell ci_fast ci ci_cleanup build_deploy bd local_presubmit local_cleanup
 .DEFAULT_GOAL := help
 
 help: ## Show this help
@@ -41,10 +41,17 @@ shell: $(PREPARE)
 shell: ## Start shell into a container
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash
 
+ci_fast: $(PREPARE)
+ci_fast: ## Run meson build for arm64 in docker container
+	@echo "Run meson cross-build for Android:"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless all"
+
 ci: $(PREPARE)
 ci: ## Run presubmit within the docker container
 	@echo "Run native build:"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -f .ci/Makefile -j$(NPROCS)"
+	@echo "Run meson cross-build for Android:"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless all"
 	@echo "Run style check:"
 	$(if $(GIT_IS_SYMLINK), \
 		./.ci/.gitlab-ci-checkcommit.sh, \
@@ -53,6 +60,29 @@ ci: ## Run presubmit within the docker container
 
 ci_cleanup: ## Cleanup after 'make ci'
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make local_cleanup"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/build"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/install"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/out_src"
+
+build_deploy: $(PREPARE)
+build_deploy: ## Build for Andoid and deploy onto the target device (require active adb device connected)
+	$(if $(filter $(shell adb shell getprop ro.bionic.arch),arm64),,$(error arm64 only is supported at the moment))
+	adb root && adb remount vendor
+	mkdir -p .out/arm64
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless all"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "cp -r ~/aospless/install/* ~/drm_hwcomposer/.out/arm64"
+	adb push .out/arm64/vendor/lib64/hw/hwcomposer.drm.so /vendor/lib64/hw/hwcomposer.drm.so
+	adb shell stop
+	adb shell stop vendor.hwcomposer-2-1 && adb shell start vendor.hwcomposer-2-1 || true
+	adb shell stop vendor.hwcomposer-2-2 && adb shell start vendor.hwcomposer-2-2 || true
+	adb shell stop vendor.hwcomposer-2-3 && adb shell start vendor.hwcomposer-2-3 || true
+	adb shell stop vendor.hwcomposer-2-4 && adb shell start vendor.hwcomposer-2-4 || true
+	bash -c '[[ "$$HWCLOG" -eq "1" ]] && adb logcat -c || true'
+	adb shell start
+	bash -c '[[ "$$HWCLOG" -eq "1" ]] && adb logcat | grep -i hwc || true'
+
+bd: build_deploy
+bd: ## Alias for build_deploy
 
 local_presubmit: ## Run local presubmit script (requires latest Ubuntu + additional packages). Consider 'make ci' instead
 	@echo "Run native build:"
