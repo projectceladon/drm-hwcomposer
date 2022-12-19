@@ -37,6 +37,7 @@ class DrmHwcTwo;
 
 inline constexpr uint32_t kPrimaryDisplay = 0;
 
+// NOLINTNEXTLINE
 class HwcDisplay {
  public:
   HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);

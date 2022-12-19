@@ -58,3 +58,5 @@ CheckOptions:
     value:           "LOG_TAG|ATRACE_TAG"
   - key:             readability-magic-numbers.IgnoredFloatingPointValues
     value:           '1000.0'
+  - key:             readability-function-cognitive-complexity.IgnoreMacros
+    value:           1

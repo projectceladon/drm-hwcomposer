@@ -44,7 +44,7 @@ struct AtomicCommitArgs {
   SharedFd out_fence;
 
   /* helpers */
-  auto HasInputs() -> bool {
+  auto HasInputs() const -> bool {
     return display_mode || active || composition;
   }
 };

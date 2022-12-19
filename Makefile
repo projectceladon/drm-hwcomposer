@@ -59,7 +59,7 @@ ci: ## Run presubmit within the docker container
 	@echo "\n\e[32m --- SUCCESS ---\n"
 
 ci_cleanup: ## Cleanup after 'make ci'
-	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make local_cleanup"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -f .ci/Makefile clean	"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/build"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/install"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/out_src"
@@ -83,13 +83,3 @@ build_deploy: ## Build for Andoid and deploy onto the target device (require act
 
 bd: build_deploy
 bd: ## Alias for build_deploy
-
-local_presubmit: ## Run local presubmit script (requires latest Ubuntu + additional packages). Consider 'make ci' instead
-	@echo "Run native build:"
-	make -f .ci/Makefile -j12
-	@echo "Run style check:"
-	./.ci/.gitlab-ci-checkcommit.sh
-	@echo "\n\e[32m --- SUCCESS ---\n"
-
-local_cleanup: ## Cleanup after 'make local_presubmit'
-	make -f .ci/Makefile clean

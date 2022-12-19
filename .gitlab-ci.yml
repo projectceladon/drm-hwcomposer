@@ -24,6 +24,8 @@ build:
   script:
     - mkdir -p install/arm64
     - cd ..
+    - rm -f aospless_drm_hwcomposer_arm64.tar.xz
+    - rm -rf aospless/*
     - wget https://gitlab.freedesktop.org/drm-hwcomposer/drm-hwcomposer/uploads/28ef9379b1a0ec1ee19a17825b0f3f3f/aospless_drm_hwcomposer_arm64.tar.xz
     - tar xf aospless_drm_hwcomposer_arm64.tar.xz
     - rm -r aospless/src
@@ -39,6 +41,12 @@ build:
 tidy:
   stage: tidy
   script:
+    - cd ..
+    - rm -f aospless_drm_hwcomposer_arm64.tar.xz
+    - rm -rf aospless/*
+    - wget https://gitlab.freedesktop.org/drm-hwcomposer/drm-hwcomposer/uploads/28ef9379b1a0ec1ee19a17825b0f3f3f/aospless_drm_hwcomposer_arm64.tar.xz
+    - tar xf aospless_drm_hwcomposer_arm64.tar.xz
+    - cd -
     - make -f .ci/Makefile
 
 checkstyle:
