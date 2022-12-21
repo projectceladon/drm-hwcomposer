@@ -18,23 +18,22 @@
 
 #include <memory>
 #include <unordered_set>
+#include <map>
 
 #include "include/IComposerHal.h"
-
-class ExynosDevice;
-class ExynosDisplay;
-class ExynosLayer;
-
-struct exynos_hwc2_device_t;
-typedef struct exynos_hwc2_device_t ExynosHWCCtx;
+#define HWC2_INCLUDE_STRINGIFICATION
+#define HWC2_USE_CPP11
+#include <hardware/hwcomposer2.h>
+#undef HWC2_INCLUDE_STRINGIFICATION
+#undef HWC2_USE_CPP11
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
-// Forward aidl call to Exynos HWC
+// Forward aidl call to HWC
 class HalImpl : public IComposerHal {
   public:
-    HalImpl(std::unique_ptr<ExynosDevice> device);
-    virtual ~HalImpl() = default;
+    HalImpl(hwc2_device_t* device);
+    virtual ~HalImpl();
 
     void getCapabilities(std::vector<Capability>* caps) override;
     void dumpDebugInfo(std::string* output) override;
@@ -155,16 +154,111 @@ class HalImpl : public IComposerHal {
     EventCallback* getEventCallback() { return mEventCallback; }
 
 private:
-    void initCaps();
-    int32_t getHalDisplay(int64_t display, ExynosDisplay*& halDisplay);
-    int32_t getHalLayer(int64_t display, int64_t layer, ExynosLayer*& halLayer);
+    template <typename T>
+    bool initOptionalDispatch(hwc2_function_descriptor_t desc, T* outPfn); 
 
-    std::unique_ptr<ExynosDevice> mDevice;
+    template <typename T>
+    bool initDispatch(hwc2_function_descriptor_t desc, T* outPfn);
+
+    bool initDispatch();
+    void initCaps();
+
+    struct {
+        HWC2_PFN_ACCEPT_DISPLAY_CHANGES acceptDisplayChanges;
+        HWC2_PFN_CREATE_LAYER createLayer;
+        HWC2_PFN_CREATE_VIRTUAL_DISPLAY createVirtualDisplay;
+        HWC2_PFN_DESTROY_LAYER destroyLayer;
+        HWC2_PFN_DESTROY_VIRTUAL_DISPLAY destroyVirtualDisplay;
+        HWC2_PFN_DUMP dump;
+        HWC2_PFN_GET_ACTIVE_CONFIG getActiveConfig;
+        HWC2_PFN_GET_CHANGED_COMPOSITION_TYPES getChangedCompositionTypes;
+        HWC2_PFN_GET_CLIENT_TARGET_SUPPORT getClientTargetSupport;
+        HWC2_PFN_GET_COLOR_MODES getColorModes;
+        HWC2_PFN_GET_DISPLAY_ATTRIBUTE getDisplayAttribute;
+        HWC2_PFN_GET_DISPLAY_CONFIGS getDisplayConfigs;
+        HWC2_PFN_GET_DISPLAY_NAME getDisplayName;
+        HWC2_PFN_GET_DISPLAY_REQUESTS getDisplayRequests;
+        HWC2_PFN_GET_DISPLAY_TYPE getDisplayType;
+        HWC2_PFN_GET_DOZE_SUPPORT getDozeSupport;
+        HWC2_PFN_GET_HDR_CAPABILITIES getHdrCapabilities;
+        HWC2_PFN_GET_MAX_VIRTUAL_DISPLAY_COUNT getMaxVirtualDisplayCount;
+        HWC2_PFN_GET_RELEASE_FENCES getReleaseFences;
+        HWC2_PFN_PRESENT_DISPLAY presentDisplay;
+        HWC2_PFN_REGISTER_CALLBACK registerCallback;
+        HWC2_PFN_SET_ACTIVE_CONFIG setActiveConfig;
+        HWC2_PFN_SET_CLIENT_TARGET setClientTarget;
+        HWC2_PFN_SET_COLOR_MODE setColorMode;
+        HWC2_PFN_SET_COLOR_TRANSFORM setColorTransform;
+        HWC2_PFN_SET_CURSOR_POSITION setCursorPosition;
+        HWC2_PFN_SET_LAYER_BLEND_MODE setLayerBlendMode;
+        HWC2_PFN_SET_LAYER_BUFFER setLayerBuffer;
+        HWC2_PFN_SET_LAYER_COLOR setLayerColor;
+        HWC2_PFN_SET_LAYER_COMPOSITION_TYPE setLayerCompositionType;
+        HWC2_PFN_SET_LAYER_DATASPACE setLayerDataspace;
+        HWC2_PFN_SET_LAYER_DISPLAY_FRAME setLayerDisplayFrame;
+        HWC2_PFN_SET_LAYER_PLANE_ALPHA setLayerPlaneAlpha;
+        HWC2_PFN_SET_LAYER_SIDEBAND_STREAM setLayerSidebandStream;
+        HWC2_PFN_SET_LAYER_SOURCE_CROP setLayerSourceCrop;
+        HWC2_PFN_SET_LAYER_SURFACE_DAMAGE setLayerSurfaceDamage;
+        HWC2_PFN_SET_LAYER_TRANSFORM setLayerTransform;
+        HWC2_PFN_SET_LAYER_VISIBLE_REGION setLayerVisibleRegion;
+        HWC2_PFN_SET_LAYER_Z_ORDER setLayerZOrder;
+        HWC2_PFN_SET_OUTPUT_BUFFER setOutputBuffer;
+        HWC2_PFN_SET_POWER_MODE setPowerMode;
+        HWC2_PFN_SET_VSYNC_ENABLED setVsyncEnabled;
+        HWC2_PFN_VALIDATE_DISPLAY validateDisplay;
+
+        // 2.2
+        ///
+        HWC2_PFN_SET_LAYER_FLOAT_COLOR setLayerFloatColor;
+
+        HWC2_PFN_SET_LAYER_PER_FRAME_METADATA setLayerPerFrameMetadata;
+        HWC2_PFN_GET_PER_FRAME_METADATA_KEYS getPerFrameMetadataKeys;
+        HWC2_PFN_SET_READBACK_BUFFER setReadbackBuffer;
+        HWC2_PFN_GET_READBACK_BUFFER_ATTRIBUTES getReadbackBufferAttributes;
+        HWC2_PFN_GET_READBACK_BUFFER_FENCE getReadbackBufferFence;
+        HWC2_PFN_GET_RENDER_INTENTS getRenderIntents;
+        //
+        HWC2_PFN_SET_COLOR_MODE_WITH_RENDER_INTENT setColorModeWithRenderIntent;
+        HWC2_PFN_GET_DATASPACE_SATURATION_MATRIX getDataspaceSaturationMatrix;
+
+        // 2.3
+        HWC2_PFN_GET_DISPLAY_IDENTIFICATION_DATA getDisplayIdentificationData;
+        HWC2_PFN_SET_LAYER_COLOR_TRANSFORM setLayerColorTransform;
+        HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLING_ATTRIBUTES getDisplayedContentSamplingAttributes;
+        HWC2_PFN_SET_DISPLAYED_CONTENT_SAMPLING_ENABLED setDisplayedContentSamplingEnabled;
+        HWC2_PFN_GET_DISPLAYED_CONTENT_SAMPLE getDisplayedContentSample;
+        HWC2_PFN_GET_DISPLAY_CAPABILITIES getDisplayCapabilities;
+        HWC2_PFN_SET_LAYER_PER_FRAME_METADATA_BLOBS setLayerPerFrameMetadataBlobs;
+        HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT getDisplayBrightnessSupport;
+        HWC2_PFN_SET_DISPLAY_BRIGHTNESS setDisplayBrightness;
+
+        // 2.4
+        HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE getDisplayConnectionType;
+        HWC2_PFN_GET_DISPLAY_VSYNC_PERIOD getDisplayVsyncPeriod;
+        HWC2_PFN_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS setActiveConfigWithConstraints;
+        HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE setAutoLowLatencyMode;
+        HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES getSupportedContentTypes;
+        HWC2_PFN_SET_CONTENT_TYPE setContentType;
+        HWC2_PFN_GET_CLIENT_TARGET_PROPERTY getClientTargetProperty;
+        HWC2_PFN_SET_LAYER_GENERIC_METADATA setLayerGenericMetadata;
+        HWC2_PFN_GET_LAYER_GENERIC_METADATA_KEY getLayerGenericMetadataKey;
+    } mDispatch = {};
+
+    hwc2_device_t* mDevice;
+
     EventCallback* mEventCallback;
-#ifdef USES_HWC_SERVICES
-    std::unique_ptr<ExynosHWCCtx> mHwcCtx;
-#endif
     std::unordered_set<Capability> mCaps;
+    
+    std::map<int64_t, std::unordered_set<int64_t>> mClientCompositionLayers;
+
+    constexpr static std::array<float, 16> mkIdentity = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+    };
+
 };
 
 } // namespace aidl::android::hardware::graphics::composer3::impl

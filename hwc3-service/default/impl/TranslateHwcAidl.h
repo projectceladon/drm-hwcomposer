@@ -19,8 +19,6 @@
 #include <android-base/logging.h>
 // hwc2 types
 #include <hardware/hwcomposer2.h>
-// new hwc3 types used by exynosdisplay
-#include "ExynosHwc3Types.h"
 // aidl types
 #include "include/IComposerHal.h"
 
@@ -62,32 +60,6 @@ template<>
 inline void translate(const hwc_client_target_property& in, ClientTargetProperty& out) {
     translate(in.pixelFormat, out.pixelFormat);
     translate(in.dataspace, out.dataspace);
-}
-
-template<>
-inline void translate(const HwcMountOrientation& in, common::Transform& out) {
-    switch (in) {
-    case HwcMountOrientation::ROT_0:
-        out = common::Transform::NONE;
-        break;
-
-    case HwcMountOrientation::ROT_90:
-        out = common::Transform::ROT_90;
-        break;
-
-    case HwcMountOrientation::ROT_180:
-        out = common::Transform::ROT_180;
-        break;
-
-    case HwcMountOrientation::ROT_270:
-        out = common::Transform::ROT_270;
-        break;
-
-    default:
-        LOG(WARNING) << "unrecoganized display orientation: " << static_cast<uint32_t>(in);
-        out = common::Transform::NONE;
-        break;
-    }
 }
 
 } // namespace h2a
