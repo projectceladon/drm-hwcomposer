@@ -22,17 +22,10 @@
 #include "DrmAtomicStateManager.h"
 
 #include <drm/drm_mode.h>
-#include <pthread.h>
-#include <sched.h>
 #include <sync/sync.h>
 #include <utils/Trace.h>
 
-#include <array>
 #include <cassert>
-#include <cstdlib>
-#include <ctime>
-#include <sstream>
-#include <vector>
 
 #include "drm/DrmCrtc.h"
 #include "drm/DrmDevice.h"
@@ -41,6 +34,17 @@
 #include "utils/log.h"
 
 namespace android {
+
+auto DrmAtomicStateManager::CreateInstance(DrmDisplayPipeline *pipe)
+    -> std::shared_ptr<DrmAtomicStateManager> {
+  auto dasm = std::shared_ptr<DrmAtomicStateManager>(
+      new DrmAtomicStateManager());
+
+  dasm->pipe_ = pipe;
+  std::thread(&DrmAtomicStateManager::ThreadFn, dasm.get(), dasm).detach();
+
+  return dasm;
+}
 
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme
 auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
@@ -167,10 +171,13 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   if (nonblock) {
-    last_present_fence_ = UniqueFd::Dup(out_fence);
-    staged_frame_state_ = std::move(new_frame_state);
-    frames_staged_++;
-    ptt_->Notify();
+    {
+      const std::unique_lock lock(mutex_);
+      last_present_fence_ = UniqueFd::Dup(out_fence);
+      staged_frame_state_ = std::move(new_frame_state);
+      frames_staged_++;
+    }
+    cv_.notify_all();
   } else {
     active_frame_state_ = std::move(new_frame_state);
   }
@@ -180,42 +187,29 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   return 0;
 }
 
-PresentTrackerThread::PresentTrackerThread(DrmAtomicStateManager *st_man)
-    : st_man_(st_man),
-      mutex_(&st_man_->pipe_->device->GetResMan().GetMainLock()) {
-  pt_ = std::thread(&PresentTrackerThread::PresentTrackerThreadFn, this);
-}
-
-PresentTrackerThread::~PresentTrackerThread() {
-  ALOGI("PresentTrackerThread successfully destroyed");
-}
-
-void PresentTrackerThread::PresentTrackerThreadFn() {
-  /* object should be destroyed on thread exit */
-  auto self = std::unique_ptr<PresentTrackerThread>(this);
-
+void DrmAtomicStateManager::ThreadFn(
+    const std::shared_ptr<DrmAtomicStateManager> &dasm) {
   int tracking_at_the_moment = -1;
+  auto &main_mutex = pipe_->device->GetResMan().GetMainLock();
 
   for (;;) {
     UniqueFd present_fence;
 
     {
-      std::unique_lock lk(*mutex_);
-      cv_.wait(lk, [&] {
-        return st_man_ == nullptr ||
-               st_man_->frames_staged_ > tracking_at_the_moment;
-      });
+      std::unique_lock lk(mutex_);
+      cv_.wait(lk);
 
-      if (st_man_ == nullptr) {
+      if (exit_thread_ || dasm.use_count() == 1)
         break;
-      }
 
-      tracking_at_the_moment = st_man_->frames_staged_;
-
-      present_fence = UniqueFd::Dup(st_man_->last_present_fence_.Get());
-      if (!present_fence) {
+      if (frames_staged_ <= tracking_at_the_moment)
         continue;
-      }
+
+      tracking_at_the_moment = frames_staged_;
+
+      present_fence = UniqueFd::Dup(last_present_fence_.Get());
+      if (!present_fence)
+        continue;
     }
 
     {
@@ -230,17 +224,18 @@ void PresentTrackerThread::PresentTrackerThreadFn() {
     }
 
     {
-      const std::unique_lock lk(*mutex_);
-      if (st_man_ == nullptr) {
+      const std::unique_lock mlk(main_mutex);
+      const std::unique_lock lk(mutex_);
+      if (exit_thread_)
         break;
-      }
 
       /* If resources is already cleaned-up by main thread, skip */
-      if (tracking_at_the_moment > st_man_->frames_tracked_) {
-        st_man_->CleanupPriorFrameResources();
-      }
+      if (tracking_at_the_moment > frames_tracked_)
+        CleanupPriorFrameResources();
     }
   }
+
+  ALOGI("DrmAtomicStateManager thread exit");
 }
 
 void DrmAtomicStateManager::CleanupPriorFrameResources() {

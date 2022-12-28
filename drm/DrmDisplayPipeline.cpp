@@ -98,7 +98,7 @@ static auto TryCreatePipeline(DrmDevice &dev, DrmConnector &connector,
     return {};
   }
 
-  pipe->atomic_state_manager = std::make_unique<DrmAtomicStateManager>(
+  pipe->atomic_state_manager = DrmAtomicStateManager::CreateInstance(
       pipe.get());
 
   return pipe;
@@ -187,6 +187,11 @@ auto DrmDisplayPipeline::GetUsablePlanes()
   }
 
   return planes;
+}
+
+DrmDisplayPipeline::~DrmDisplayPipeline() {
+  if (atomic_state_manager)
+    atomic_state_manager->StopThread();
 }
 
 }  // namespace android

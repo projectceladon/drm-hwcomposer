@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <optional>
+#include <sstream>
 
 #include "HwcDisplayConfigs.h"
 #include "compositor/LayerData.h"
