@@ -155,8 +155,7 @@ HWC2::Error HwcDisplay::Init() {
   auto vsw_callbacks = (VSyncWorkerCallbacks){
       .out_event =
           [this](int64_t timestamp) {
-            const std::lock_guard<std::mutex> lock(
-                hwc2_->GetResMan().GetMainLock());
+            const std::unique_lock lock(hwc2_->GetResMan().GetMainLock());
             if (vsync_event_en_) {
               uint32_t period_ns{};
               GetDisplayVsyncPeriod(&period_ns);

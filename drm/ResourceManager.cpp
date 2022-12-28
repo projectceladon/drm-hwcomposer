@@ -82,7 +82,7 @@ void ResourceManager::Init() {
   }
 
   uevent_listener_->RegisterHotplugHandler([this] {
-    const std::lock_guard<std::mutex> lock(GetMainLock());
+    const std::unique_lock lock(GetMainLock());
     UpdateFrontendDisplays();
   });
 

@@ -63,7 +63,7 @@ template <typename T, typename HookType, HookType func, typename... Args>
 static T DeviceHook(hwc2_device_t *dev, Args... args) {
   ALOGV("Device hook: %s", GetFuncName(__PRETTY_FUNCTION__).c_str());
   DrmHwcTwo *hwc = ToDrmHwcTwo(dev);
-  const std::lock_guard<std::mutex> lock(hwc->GetResMan().GetMainLock());
+  const std::unique_lock lock(hwc->GetResMan().GetMainLock());
   return static_cast<T>(((*hwc).*func)(std::forward<Args>(args)...));
 }
 
@@ -73,7 +73,7 @@ static int32_t DisplayHook(hwc2_device_t *dev, hwc2_display_t display_handle,
   ALOGV("Display #%" PRIu64 " hook: %s", display_handle,
         GetFuncName(__PRETTY_FUNCTION__).c_str());
   DrmHwcTwo *hwc = ToDrmHwcTwo(dev);
-  const std::lock_guard<std::mutex> lock(hwc->GetResMan().GetMainLock());
+  const std::unique_lock lock(hwc->GetResMan().GetMainLock());
   auto *display = hwc->GetDisplay(display_handle);
   if (display == nullptr)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);
@@ -87,7 +87,7 @@ static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
   ALOGV("Display #%" PRIu64 " Layer: #%" PRIu64 " hook: %s", display_handle,
         layer_handle, GetFuncName(__PRETTY_FUNCTION__).c_str());
   DrmHwcTwo *hwc = ToDrmHwcTwo(dev);
-  const std::lock_guard<std::mutex> lock(hwc->GetResMan().GetMainLock());
+  const std::unique_lock lock(hwc->GetResMan().GetMainLock());
   auto *display = hwc->GetDisplay(display_handle);
   if (display == nullptr)
     return static_cast<int32_t>(HWC2::Error::BadDisplay);

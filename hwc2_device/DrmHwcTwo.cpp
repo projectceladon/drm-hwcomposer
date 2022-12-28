@@ -173,10 +173,7 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
         /* Headless display may still be here. Remove it! */
         if (displays_.count(kPrimaryDisplay) != 0) {
           displays_[kPrimaryDisplay]->Deinit();
-          auto &mutex = GetResMan().GetMainLock();
-          mutex.unlock();
           displays_.erase(kPrimaryDisplay);
-          mutex.lock();
         }
       }
       break;
@@ -207,24 +204,15 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
 }
 
 void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
-                                         bool connected) {
-  auto &mutex = GetResMan().GetMainLock();
-  if (mutex.try_lock()) {
-    ALOGE("FIXME!!!: Main mutex must be locked in %s", __func__);
-    mutex.unlock();
-    return;
-  }
-
+                                         bool connected) const {
   auto hc = hotplug_callback_;
   if (hc.first != nullptr && hc.second != nullptr) {
-    /* For some reason CLIENT will call HWC2 API in hotplug callback handler,
-     * which will cause deadlock . Unlock main mutex to prevent this.
+    /* For some reason HWC Service will call HWC2 API in hotplug callback
+     * handler. This is the reason we're using recursive mutex.
      */
-    mutex.unlock();
     hc.first(hc.second, displayid,
              connected == DRM_MODE_CONNECTED ? HWC2_CONNECTION_CONNECTED
                                              : HWC2_CONNECTION_DISCONNECTED);
-    mutex.lock();
   }
 }
 

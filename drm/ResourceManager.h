@@ -69,7 +69,7 @@ class ResourceManager {
 
   std::shared_ptr<UEventListener> uevent_listener_;
 
-  std::mutex main_lock_;
+  std::recursive_mutex main_lock_;
 
   std::map<DrmConnector *, std::unique_ptr<DrmDisplayPipeline>>
       attached_pipelines_;

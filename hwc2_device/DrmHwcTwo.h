@@ -71,7 +71,7 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
                                                  int64_t timestamp) const;
 
  private:
-  void SendHotplugEventToClient(hwc2_display_t displayid, bool connected);
+  void SendHotplugEventToClient(hwc2_display_t displayid, bool connected) const;
 
   ResourceManager resource_manager_;
   std::map<hwc2_display_t, std::unique_ptr<HwcDisplay>> displays_;
