@@ -25,28 +25,48 @@
 #include <cstring>
 #include <ctime>
 
+#include "drm/ResourceManager.h"
 #include "utils/log.h"
 
 namespace android {
 
-VSyncWorker::VSyncWorker() : Worker("vsync", HAL_PRIORITY_URGENT_DISPLAY){};
+auto VSyncWorker::CreateInstance(DrmDisplayPipeline *pipe,
+                                 VSyncWorkerCallbacks &callbacks)
+    -> std::shared_ptr<VSyncWorker> {
+  auto vsw = std::shared_ptr<VSyncWorker>(new VSyncWorker());
 
-auto VSyncWorker::Init(DrmDisplayPipeline *pipe,
-                       std::function<void(uint64_t /*timestamp*/)> callback)
-    -> int {
-  pipe_ = pipe;
-  callback_ = std::move(callback);
+  vsw->callbacks_ = callbacks;
 
-  return InitWorker();
+  if (pipe != nullptr) {
+    vsw->high_crtc_ = pipe->crtc->Get()->GetIndexInResArray()
+                      << DRM_VBLANK_HIGH_CRTC_SHIFT;
+    vsw->drm_fd_ = UniqueFd::Dup(pipe->device->GetFd());
+  }
+
+  std::thread(&VSyncWorker::ThreadFn, vsw.get(), vsw).detach();
+
+  return vsw;
 }
 
 void VSyncWorker::VSyncControl(bool enabled) {
-  Lock();
-  enabled_ = enabled;
-  last_timestamp_ = -1;
-  Unlock();
+  {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    enabled_ = enabled;
+    last_timestamp_ = -1;
+  }
 
-  Signal();
+  cv_.notify_all();
+}
+
+void VSyncWorker::StopThread() {
+  {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    thread_exit_ = true;
+    enabled_ = false;
+    callbacks_ = {};
+  }
+
+  cv_.notify_all();
 }
 
 /*
@@ -73,82 +93,86 @@ int64_t VSyncWorker::GetPhasedVSync(int64_t frame_ns, int64_t current) const {
 static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
 
 int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
+  auto time_now = ResourceManager::GetTimeMonotonicNs();
+
+  // Default to 60Hz refresh rate
+  constexpr uint32_t kDefaultVSPeriodNs = 16666666;
+  auto period_ns = kDefaultVSPeriodNs;
+  if (callbacks_.get_vperiod_ns && callbacks_.get_vperiod_ns() != 0)
+    period_ns = callbacks_.get_vperiod_ns();
+
+  auto phased_timestamp = GetPhasedVSync(period_ns, time_now);
   struct timespec vsync {};
-  int ret = clock_gettime(CLOCK_MONOTONIC, &vsync);
-  if (ret)
-    return ret;
-
-  float refresh = 60.0F;  // Default to 60Hz refresh rate
-  if (pipe_ != nullptr &&
-      pipe_->connector->Get()->GetActiveMode().GetVRefresh() != 0.0F) {
-    refresh = pipe_->connector->Get()->GetActiveMode().GetVRefresh();
-  }
-
-  auto phased_timestamp = GetPhasedVSync(kOneSecondNs /
-                                             static_cast<int>(refresh),
-                                         vsync.tv_sec * kOneSecondNs +
-                                             vsync.tv_nsec);
-  vsync.tv_sec = phased_timestamp / kOneSecondNs;
+  vsync.tv_sec = int(phased_timestamp / kOneSecondNs);
   vsync.tv_nsec = int(phased_timestamp - (vsync.tv_sec * kOneSecondNs));
+
+  int ret = 0;
   do {
     ret = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &vsync, nullptr);
   } while (ret == EINTR);
-  if (ret)
+  if (ret != 0)
     return ret;
 
-  *timestamp = (int64_t)vsync.tv_sec * kOneSecondNs + (int64_t)vsync.tv_nsec;
+  *timestamp = phased_timestamp;
   return 0;
 }
 
-void VSyncWorker::Routine() {
+void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
   int ret = 0;
 
-  Lock();
-  if (!enabled_) {
-    ret = WaitForSignalOrExitLocked();
-    if (ret == -EINTR) {
-      Unlock();
-      return;
+  for (;;) {
+    {
+      std::unique_lock<std::mutex> lock(vsw->mutex_);
+      if (thread_exit_)
+        break;
+
+      if (!enabled_)
+        vsw->cv_.wait(lock);
+
+      if (!enabled_)
+        continue;
     }
+
+    ret = -EAGAIN;
+    int64_t timestamp = 0;
+    drmVBlank vblank{};
+
+    if (drm_fd_) {
+      vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE |
+                                               (high_crtc_ &
+                                                DRM_VBLANK_HIGH_CRTC_MASK));
+      vblank.request.sequence = 1;
+
+      ret = drmWaitVBlank(drm_fd_.Get(), &vblank);
+      if (ret == -EINTR)
+        continue;
+    }
+
+    if (ret != 0) {
+      ret = SyntheticWaitVBlank(&timestamp);
+      if (ret != 0)
+        continue;
+    } else {
+      constexpr int kUsToNsMul = 1000;
+      timestamp = (int64_t)vblank.reply.tval_sec * kOneSecondNs +
+                  (int64_t)vblank.reply.tval_usec * kUsToNsMul;
+    }
+
+    decltype(callbacks_.out_event) callback;
+
+    {
+      const std::lock_guard<std::mutex> lock(mutex_);
+      if (!enabled_)
+        continue;
+      callback = callbacks_.out_event;
+    }
+
+    if (callback)
+      callback(timestamp);
+
+    last_timestamp_ = timestamp;
   }
 
-  auto *pipe = pipe_;
-  Unlock();
-
-  ret = -EAGAIN;
-  int64_t timestamp = 0;
-  drmVBlank vblank{};
-
-  if (pipe != nullptr) {
-    auto high_crtc = (pipe->crtc->Get()->GetIndexInResArray()
-                      << DRM_VBLANK_HIGH_CRTC_SHIFT);
-
-    vblank.request.type = (drmVBlankSeqType)(DRM_VBLANK_RELATIVE |
-                                             (high_crtc &
-                                              DRM_VBLANK_HIGH_CRTC_MASK));
-    vblank.request.sequence = 1;
-
-    ret = drmWaitVBlank(pipe->device->GetFd(), &vblank);
-    if (ret == -EINTR)
-      return;
-  }
-
-  if (ret) {
-    ret = SyntheticWaitVBlank(&timestamp);
-    if (ret)
-      return;
-  } else {
-    timestamp = (int64_t)vblank.reply.tval_sec * kOneSecondNs +
-                (int64_t)vblank.reply.tval_usec * 1000;
-  }
-
-  if (!enabled_)
-    return;
-
-  if (callback_) {
-    callback_(timestamp);
-  }
-
-  last_timestamp_ = timestamp;
+  ALOGI("VSyncWorker thread exit");
 }
 }  // namespace android

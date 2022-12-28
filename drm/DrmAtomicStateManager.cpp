@@ -175,12 +175,6 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     active_frame_state_ = std::move(new_frame_state);
   }
 
-  if (args.display_mode) {
-    /* TODO(nobody): we still need this for synthetic vsync, remove after
-     * vsync reworked */
-    connector->SetActiveMode(*args.display_mode);
-  }
-
   args.out_fence = UniqueFd(out_fence);
 
   return 0;

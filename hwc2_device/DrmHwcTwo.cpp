@@ -61,16 +61,9 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
   const int kTimeForSFToDisposeDisplayUs = 200000;
   usleep(kTimeForSFToDisposeDisplayUs);
   mutex.lock();
-  std::vector<std::unique_ptr<HwcDisplay>> for_disposal;
   for (auto handle : displays_for_removal_list_) {
-    for_disposal.emplace_back(
-        std::unique_ptr<HwcDisplay>(displays_[handle].release()));
     displays_.erase(handle);
   }
-  /* Destroy HwcDisplays while unlocked to avoid vsyncworker deadlocks */
-  mutex.unlock();
-  for_disposal.clear();
-  mutex.lock();
 }
 
 bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {

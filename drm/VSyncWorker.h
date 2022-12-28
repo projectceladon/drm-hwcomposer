@@ -16,41 +16,51 @@
 
 #pragma once
 
-#include <hardware/hardware.h>
-#include <hardware/hwcomposer.h>
-#include <hardware/hwcomposer2.h>
-
-#include <atomic>
-#include <cstdint>
+#include <condition_variable>
 #include <functional>
 #include <map>
+#include <mutex>
+#include <thread>
 
 #include "DrmDevice.h"
-#include "utils/Worker.h"
 
 namespace android {
 
-class VSyncWorker : public Worker {
- public:
-  VSyncWorker();
-  ~VSyncWorker() override = default;
+struct VSyncWorkerCallbacks {
+  std::function<void(uint64_t /*timestamp*/)> out_event;
+  std::function<uint32_t()> get_vperiod_ns;
+};
 
-  auto Init(DrmDisplayPipeline *pipe,
-            std::function<void(uint64_t /*timestamp*/)> callback) -> int;
+class VSyncWorker {
+ public:
+  ~VSyncWorker() = default;
+
+  auto static CreateInstance(DrmDisplayPipeline *pipe,
+                             VSyncWorkerCallbacks &callbacks)
+      -> std::shared_ptr<VSyncWorker>;
 
   void VSyncControl(bool enabled);
-
- protected:
-  void Routine() override;
+  void StopThread();
 
  private:
+  VSyncWorker() = default;
+
+  void ThreadFn(const std::shared_ptr<VSyncWorker> &vsw);
+
   int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const;
   int SyntheticWaitVBlank(int64_t *timestamp);
 
-  std::function<void(uint64_t /*timestamp*/)> callback_;
+  VSyncWorkerCallbacks callbacks_;
 
-  DrmDisplayPipeline *pipe_ = nullptr;
-  std::atomic_bool enabled_ = false;
+  UniqueFd drm_fd_;
+  uint32_t high_crtc_ = 0;
+
+  bool enabled_ = false;
+  bool thread_exit_ = false;
   int64_t last_timestamp_ = -1;
+
+  std::condition_variable cv_;
+  std::thread vswt_;
+  std::mutex mutex_;
 };
 }  // namespace android

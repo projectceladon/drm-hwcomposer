@@ -137,9 +137,13 @@ void HwcDisplay::Deinit() {
     GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 #endif
 
-    vsync_worker_.Init(nullptr, [](int64_t) {});
     current_plan_.reset();
     backend_.reset();
+  }
+
+  if (vsync_worker_) {
+    vsync_worker_->StopThread();
+    vsync_worker_ = {};
   }
 
   SetClientTarget(nullptr, -1, 0, {});
@@ -148,30 +152,42 @@ void HwcDisplay::Deinit() {
 HWC2::Error HwcDisplay::Init() {
   ChosePreferredConfig();
 
-  int ret = vsync_worker_.Init(pipeline_, [this](int64_t timestamp) {
-    const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
-    if (vsync_event_en_) {
-      uint32_t period_ns{};
-      GetDisplayVsyncPeriod(&period_ns);
-      hwc2_->SendVsyncEventToClient(handle_, timestamp, period_ns);
-    }
-    if (vsync_flattening_en_) {
-      ProcessFlatenningVsyncInternal();
-    }
-    if (vsync_tracking_en_) {
-      last_vsync_ts_ = timestamp;
-    }
-    if (!vsync_event_en_ && !vsync_flattening_en_ && !vsync_tracking_en_) {
-      vsync_worker_.VSyncControl(false);
-    }
-  });
-  if (ret && ret != -EALREADY) {
-    ALOGE("Failed to create event worker for d=%d %d\n", int(handle_), ret);
+  auto vsw_callbacks = (VSyncWorkerCallbacks){
+      .out_event =
+          [this](int64_t timestamp) {
+            const std::lock_guard<std::mutex> lock(
+                hwc2_->GetResMan().GetMainLock());
+            if (vsync_event_en_) {
+              uint32_t period_ns{};
+              GetDisplayVsyncPeriod(&period_ns);
+              hwc2_->SendVsyncEventToClient(handle_, timestamp, period_ns);
+            }
+            if (vsync_flattening_en_) {
+              ProcessFlatenningVsyncInternal();
+            }
+            if (vsync_tracking_en_) {
+              last_vsync_ts_ = timestamp;
+            }
+            if (!vsync_event_en_ && !vsync_flattening_en_ &&
+                !vsync_tracking_en_) {
+              vsync_worker_->VSyncControl(false);
+            }
+          },
+      .get_vperiod_ns = [this]() -> uint32_t {
+        uint32_t outVsyncPeriod = 0;
+        GetDisplayVsyncPeriod(&outVsyncPeriod);
+        return outVsyncPeriod;
+      },
+  };
+
+  vsync_worker_ = VSyncWorker::CreateInstance(pipeline_, vsw_callbacks);
+  if (!vsync_worker_) {
+    ALOGE("Failed to create event worker for d=%d\n", int(handle_));
     return HWC2::Error::BadDisplay;
   }
 
   if (!IsInHeadlessMode()) {
-    ret = BackendManager::GetInstance().SetBackendForDisplay(this);
+    auto ret = BackendManager::GetInstance().SetBackendForDisplay(this);
     if (ret) {
       ALOGE("Failed to set backend for d=%d %d\n", int(handle_), ret);
       return HWC2::Error::BadDisplay;
@@ -450,8 +466,8 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     return HWC2::Error::None;
   }
 
-  auto PrevModeVsyncPeriodNs = static_cast<int>(
-      1E9 / GetPipe().connector->Get()->GetActiveMode().GetVRefresh());
+  uint32_t prev_vperiod_ns = 0;
+  GetDisplayVsyncPeriod(&prev_vperiod_ns);
 
   auto mode_update_commited_ = false;
   if (staged_mode_ &&
@@ -542,8 +558,9 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     staged_mode_.reset();
     vsync_tracking_en_ = false;
     if (last_vsync_ts_ != 0) {
-      hwc2_->SendVsyncPeriodTimingChangedEventToClient(
-          handle_, last_vsync_ts_ + PrevModeVsyncPeriodNs);
+      hwc2_->SendVsyncPeriodTimingChangedEventToClient(handle_,
+                                                       last_vsync_ts_ +
+                                                           prev_vperiod_ns);
     }
   }
 
@@ -725,7 +742,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
 HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
   vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
   if (vsync_event_en_) {
-    vsync_worker_.VSyncControl(true);
+    vsync_worker_->VSyncControl(true);
   }
   return HWC2::Error::None;
 }
@@ -820,7 +837,7 @@ HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
 
   last_vsync_ts_ = 0;
   vsync_tracking_en_ = true;
-  vsync_worker_.VSyncControl(true);
+  vsync_worker_->VSyncControl(true);
 
   return HWC2::Error::None;
 }
@@ -961,7 +978,7 @@ bool HwcDisplay::ProcessClientFlatteningState(bool skip) {
   }
 
   vsync_flattening_en_ = true;
-  vsync_worker_.VSyncControl(true);
+  vsync_worker_->VSyncControl(true);
   flattenning_state_ = ClientFlattenningState::VsyncCountdownMax;
   return false;
 }
