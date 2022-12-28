@@ -36,13 +36,7 @@ namespace android {
 ResourceManager::ResourceManager(
     PipelineToFrontendBindingInterface *p2f_bind_interface)
     : frontend_interface_(p2f_bind_interface) {
-  if (uevent_listener_.Init() != 0) {
-    ALOGE("Can't initialize event listener");
-  }
-}
-
-ResourceManager::~ResourceManager() {
-  uevent_listener_.Exit();
+  uevent_listener_ = UEventListener::CreateInstance();
 }
 
 void ResourceManager::Init() {
@@ -87,7 +81,7 @@ void ResourceManager::Init() {
     return;
   }
 
-  uevent_listener_.RegisterHotplugHandler([this] {
+  uevent_listener_->RegisterHotplugHandler([this] {
     const std::lock_guard<std::mutex> lock(GetMainLock());
     UpdateFrontendDisplays();
   });
@@ -103,7 +97,7 @@ void ResourceManager::DeInit() {
     return;
   }
 
-  uevent_listener_.RegisterHotplugHandler([] {});
+  uevent_listener_->RegisterHotplugHandler({});
 
   DetachAllFrontendDisplays();
   drms_.clear();

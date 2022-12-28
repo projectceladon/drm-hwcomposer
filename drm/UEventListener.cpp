@@ -18,31 +18,31 @@
 
 #include "UEventListener.h"
 
-#include <cerrno>
+#include <thread>
 
 #include "utils/log.h"
 
-/* Originally defined in system/core/libsystem/include/system/graphics.h as
- * #define HAL_PRIORITY_URGENT_DISPLAY (-8)*/
-constexpr int kHalPriorityUrgentDisplay = -8;
-
 namespace android {
 
-UEventListener::UEventListener()
-    : Worker("uevent-listener", kHalPriorityUrgentDisplay){};
+auto UEventListener::CreateInstance() -> std::shared_ptr<UEventListener> {
+  auto uel = std::shared_ptr<UEventListener>(new UEventListener());
 
-int UEventListener::Init() {
-  uevent_ = UEvent::CreateInstance();
-  if (!uevent_) {
-    return -ENODEV;
-  }
+  uel->uevent_ = UEvent::CreateInstance();
+  if (!uel->uevent_)
+    return {};
 
-  return InitWorker();
+  std::thread(&UEventListener::ThreadFn, uel.get(), uel).detach();
+
+  return uel;
 }
 
-void UEventListener::Routine() {
+void UEventListener::ThreadFn(const std::shared_ptr<UEventListener> &uel) {
+  // TODO(nobody): Rework code to allow stopping the thread (low priority)
   while (true) {
-    auto uevent_str = uevent_->ReadNext();
+    if (uel.use_count() == 1)
+      break;
+
+    auto uevent_str = uel->uevent_->ReadNext();
 
     if (!hotplug_handler_ || !uevent_str)
       continue;
@@ -58,5 +58,7 @@ void UEventListener::Routine() {
       hotplug_handler_();
     }
   }
+
+  ALOGI("UEvent thread exit");
 }
 }  // namespace android

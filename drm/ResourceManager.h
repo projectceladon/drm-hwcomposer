@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstring>
+#include <mutex>
 
 #include "DrmDevice.h"
 #include "DrmDisplayPipeline.h"
@@ -41,7 +42,7 @@ class ResourceManager {
   ResourceManager &operator=(const ResourceManager &) = delete;
   ResourceManager(const ResourceManager &&) = delete;
   ResourceManager &&operator=(const ResourceManager &&) = delete;
-  ~ResourceManager();
+  ~ResourceManager() = default;
 
   void Init();
 
@@ -66,7 +67,7 @@ class ResourceManager {
 
   bool scale_with_gpu_{};
 
-  UEventListener uevent_listener_;
+  std::shared_ptr<UEventListener> uevent_listener_;
 
   std::mutex main_lock_;
 
