@@ -19,20 +19,6 @@ cc_library_shared {
     ],
 }
 
-cc_test {
-    name: "hwc-drm-tests",
-
-    srcs: ["worker_test.cpp"],
-
-    vendor: true,
-    header_libs: [
-        "drm_hwcomposer_headers",
-        "libhardware_headers",
-    ],
-    static_libs: ["libdrmhwc_utils"],
-    shared_libs: ["hwcomposer.drm"],
-}
-
 // Tool for listening and dumping uevents
 cc_test {
     name: "hwc-drm-uevent-print",

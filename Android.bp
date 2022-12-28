@@ -19,25 +19,6 @@ cc_library_headers {
 }
 
 // =====================
-// libdrmhwc_utils.a
-// =====================
-cc_library_static {
-    name: "libdrmhwc_utils",
-
-    srcs: ["utils/Worker.cpp"],
-
-    header_libs: ["drm_hwcomposer_headers"],
-
-    cflags: [
-        "-Wall",
-        "-Werror",
-    ],
-
-    vendor: true,
-
-}
-
-// =====================
 // hwcomposer.drm.so
 // =====================
 cc_defaults {
@@ -54,7 +35,6 @@ cc_defaults {
         "libutils",
     ],
 
-    static_libs: ["libdrmhwc_utils"],
     header_libs: ["drm_hwcomposer_headers"],
 
     cflags: [
