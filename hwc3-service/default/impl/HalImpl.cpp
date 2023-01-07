@@ -17,6 +17,7 @@
 #include "HalImpl.h"
 
 #include <aidl/android/hardware/graphics/composer3/IComposerCallback.h>
+#include <aidl/android/hardware/graphics/composer3/IComposerClient.h>
 #include <android-base/logging.h>
 #include "TranslateHwcAidl.h"
 #include "Util.h"
@@ -378,10 +379,14 @@ int32_t HalImpl::getColorModes(int64_t display, std::vector<ColorMode>* outModes
 
 int32_t HalImpl::getDataspaceSaturationMatrix([[maybe_unused]] common::Dataspace dataspace,
                                               std::vector<float>* matrix) {
-    if (!mDispatch.getDataspaceSaturationMatrix) {
-        return HWC2_ERROR_UNSUPPORTED;
-    }
-    auto error = mDispatch.getDataspaceSaturationMatrix(mDevice, static_cast<int32_t>(dataspace),matrix->data());
+    // if (!mDispatch.getDataspaceSaturationMatrix) {
+    //     return HWC2_ERROR_UNSUPPORTED;
+    // }
+    // auto error = mDispatch.getDataspaceSaturationMatrix(mDevice, static_cast<int32_t>(dataspace),matrix->data());
+    if(dataspace == common::Dataspace::UNKNOWN)
+       return HWC2_ERROR_BAD_PARAMETER;
+
+    auto error = HWC2_ERROR_UNSUPPORTED;
     if (error != HWC2_ERROR_NONE) {
         std::vector<float> unitMatrix = {
                 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
@@ -531,7 +536,8 @@ int32_t HalImpl::getDisplayedContentSamplingAttributes(
 
 int32_t HalImpl::getDisplayPhysicalOrientation([[maybe_unused]] int64_t display,
                                                [[maybe_unused]] common::Transform* orientation) {
-
+    if(static_cast<int>(display) == -1)
+        return HWC2_ERROR_BAD_DISPLAY;
     return HWC2_ERROR_NONE;
 }
 
@@ -728,19 +734,30 @@ int32_t HalImpl::setActiveConfigWithConstraints(
 
 int32_t HalImpl::setBootDisplayConfig([[maybe_unused]] int64_t display, 
                                       [[maybe_unused]] int32_t config) {
-        return HWC2_ERROR_UNSUPPORTED;
+    if(static_cast<int>(display) == -1)
+        return HWC2_ERROR_BAD_DISPLAY;
+    if(config == IComposerClient::INVALID_CONFIGURATION)
+        return HWC2_ERROR_BAD_CONFIG;
+    return HWC2_ERROR_NONE;
 }
 
 int32_t HalImpl::clearBootDisplayConfig([[maybe_unused]] int64_t display) {
-        return HWC2_ERROR_UNSUPPORTED;
+    if(static_cast<int>(display) == -1)
+        return HWC2_ERROR_BAD_DISPLAY;
+    return HWC2_ERROR_NONE;
 }
 
 int32_t HalImpl::getPreferredBootDisplayConfig([[maybe_unused]] int64_t display,
                                                [[maybe_unused]] int32_t* config) {
-        //return HWC2_ERROR_UNSUPPORTED;
+    if(static_cast<int>(display) == -1)
+        return HWC2_ERROR_BAD_DISPLAY;
+    std::vector<int32_t> configs;
+    getDisplayConfigs(display, &configs);
+    if(!configs.empty())
+        *config = configs[0];
+    else
         *config = 1;
-        return HWC2_ERROR_NONE;
-        
+    return HWC2_ERROR_NONE;
 }
 
 int32_t HalImpl::setAutoLowLatencyMode(int64_t display, bool on) {
@@ -1034,6 +1051,9 @@ int32_t HalImpl::setLayerVisibleRegion(int64_t display, int64_t layer,
 int32_t HalImpl::setLayerBrightness([[maybe_unused]] int64_t display, 
                                     [[maybe_unused]] int64_t layer, 
                                     [[maybe_unused]] float brightness) {
+    if (std::isnan(brightness) || brightness > 1.0f || brightness < 0.0f ) {
+        return HWC2_ERROR_BAD_PARAMETER;
+    }
     return HWC2_ERROR_NONE;
 }
 
