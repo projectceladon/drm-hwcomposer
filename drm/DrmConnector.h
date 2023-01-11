@@ -27,6 +27,8 @@
 #include "DrmMode.h"
 #include "DrmProperty.h"
 #include "DrmUnique.h"
+#include "utils/hdr_metadata_defs.h"
+#include "utils/drm_hdr_defs.h"
 
 namespace android {
 
@@ -101,9 +103,20 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return edid_property_;
   }
 
+  auto &GetHdrOpMetadataProp() const {
+    return hdr_op_metadata_prop_;
+  }
+
+  auto &GetHdrMatedata() {
+    return hdr_metadata_;
+  }
+
+
   auto IsConnected() const {
     return connector_->connection == DRM_MODE_CONNECTED;
   }
+
+  bool IsHdrSupportedDevice();
 
   auto GetMmWidth() const {
     return connector_->mmWidth;
@@ -112,6 +125,21 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   auto GetMmHeight() const {
     return connector_->mmHeight;
   };
+
+  void GetHDRStaticMetadata(uint8_t *b, uint8_t length);
+  uint16_t ColorPrimary(short val);
+  void GetcolorPrimaries(uint8_t *b, struct drm_display_color_primaries *primaries);
+  void ParseCTAFromExtensionBlock(uint8_t *edid);
+  bool GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
+                                    float *outMaxLuminance,
+                                    float *outMaxAverageLuminance,
+                                    float *outMinLuminance);
+  bool GetRenderIntents( uint32_t *outNumIntents, int32_t *outIntents);
+
+  void PrepareHdrMetadata(hdr_md *layer_hdr_metadata,
+                          struct drm_hdr_metadata *final_hdr_metadata);
+  /* Display's color primaries */
+  struct drm_display_color_primaries primaries;
 
  private:
   DrmConnector(DrmModeConnectorUnique connector, DrmDevice *drm, uint32_t index)
@@ -133,6 +161,14 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty writeback_pixel_formats_;
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;
+
+  //hdr_output_metadata property
+  DrmProperty hdr_op_metadata_prop_;
+
+  /* Display's static HDR metadata */
+  struct drm_edid_hdr_metadata_static *display_hdrMd_;
+
+  hdr_md hdr_metadata_;
 };
 }  // namespace android
 
