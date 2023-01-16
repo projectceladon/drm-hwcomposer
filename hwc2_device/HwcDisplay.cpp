@@ -452,7 +452,7 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
     }
 
     layers[num_layers - 1] = l.first;
-    fences[num_layers - 1] = UniqueFd::Dup(present_fence_.Get()).Release();
+    fences[num_layers - 1] = DupFd(present_fence_);
   }
   *num_elements = num_layers;
 
@@ -592,8 +592,8 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
   if (ret != HWC2::Error::None)
     return ret;
 
-  this->present_fence_ = UniqueFd::Dup(a_args.out_fence.Get());
-  *out_present_fence = a_args.out_fence.Release();
+  this->present_fence_ = a_args.out_fence;
+  *out_present_fence = DupFd(a_args.out_fence);
 
   ++frame_no_;
   return HWC2::Error::None;

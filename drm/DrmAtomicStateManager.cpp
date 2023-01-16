@@ -141,7 +141,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   uint32_t flags = DRM_MODE_ATOMIC_ALLOW_MODESET;
 
   if (args.test_only) {
-    return drmModeAtomicCommit(drm->GetFd(), pset.get(),
+    return drmModeAtomicCommit(*drm->GetFd(), pset.get(),
                                flags | DRM_MODE_ATOMIC_TEST_ONLY, drm);
   }
 
@@ -150,10 +150,10 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     ATRACE_NAME("WaitPriorFramePresented");
 
     constexpr int kTimeoutMs = 500;
-    const int err = sync_wait(last_present_fence_.Get(), kTimeoutMs);
+    const int err = sync_wait(*last_present_fence_, kTimeoutMs);
     if (err != 0) {
-      ALOGE("sync_wait(fd=%i) returned: %i (errno: %i)",
-            last_present_fence_.Get(), err, errno);
+      ALOGE("sync_wait(fd=%i) returned: %i (errno: %i)", *last_present_fence_,
+            err, errno);
     }
 
     CleanupPriorFrameResources();
@@ -163,17 +163,19 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
-  auto err = drmModeAtomicCommit(drm->GetFd(), pset.get(), flags, drm);
+  auto err = drmModeAtomicCommit(*drm->GetFd(), pset.get(), flags, drm);
 
   if (err != 0) {
     ALOGE("Failed to commit pset ret=%d\n", err);
     return err;
   }
 
+  args.out_fence = MakeSharedFd(out_fence);
+
   if (nonblock) {
     {
       const std::unique_lock lock(mutex_);
-      last_present_fence_ = UniqueFd::Dup(out_fence);
+      last_present_fence_ = args.out_fence;
       staged_frame_state_ = std::move(new_frame_state);
       frames_staged_++;
     }
@@ -181,8 +183,6 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   } else {
     active_frame_state_ = std::move(new_frame_state);
   }
-
-  args.out_fence = UniqueFd(out_fence);
 
   return 0;
 }
@@ -193,7 +193,7 @@ void DrmAtomicStateManager::ThreadFn(
   auto &main_mutex = pipe_->device->GetResMan().GetMainLock();
 
   for (;;) {
-    UniqueFd present_fence;
+    SharedFd present_fence;
 
     {
       std::unique_lock lk(mutex_);
@@ -207,7 +207,7 @@ void DrmAtomicStateManager::ThreadFn(
 
       tracking_at_the_moment = frames_staged_;
 
-      present_fence = UniqueFd::Dup(last_present_fence_.Get());
+      present_fence = last_present_fence_;
       if (!present_fence)
         continue;
     }
@@ -216,10 +216,10 @@ void DrmAtomicStateManager::ThreadFn(
       // NOLINTNEXTLINE(misc-const-correctness)
       ATRACE_NAME("AsyncWaitForBuffersSwap");
       constexpr int kTimeoutMs = 500;
-      auto err = sync_wait(present_fence.Get(), kTimeoutMs);
+      auto err = sync_wait(*present_fence, kTimeoutMs);
       if (err != 0) {
-        ALOGE("sync_wait(fd=%i) returned: %i (errno: %i)", present_fence.Get(),
-              err, errno);
+        ALOGE("sync_wait(fd=%i) returned: %i (errno: %i)", *present_fence, err,
+              errno);
       }
     }
 
@@ -272,7 +272,7 @@ auto DrmAtomicStateManager::ExecuteAtomicCommit(AtomicCommitArgs &args) -> int {
 }  // namespace android
 
 auto DrmAtomicStateManager::ActivateDisplayUsingDPMS() -> int {
-  return drmModeConnectorSetProperty(pipe_->device->GetFd(),
+  return drmModeConnectorSetProperty(*pipe_->device->GetFd(),
                                      pipe_->connector->Get()->GetId(),
                                      pipe_->connector->Get()
                                          ->GetDpmsProperty()

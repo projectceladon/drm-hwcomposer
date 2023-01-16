@@ -37,7 +37,7 @@ struct AtomicCommitArgs {
   std::shared_ptr<DrmKmsPlan> composition;
 
   /* out */
-  UniqueFd out_fence;
+  SharedFd out_fence;
 
   /* helpers */
   auto HasInputs() -> bool {
@@ -95,7 +95,7 @@ class DrmAtomicStateManager {
   void CleanupPriorFrameResources();
 
   KmsState staged_frame_state_;
-  UniqueFd last_present_fence_;
+  SharedFd last_present_fence_;
   int frames_staged_{};
   int frames_tracked_{};
 

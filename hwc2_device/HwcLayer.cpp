@@ -53,7 +53,7 @@ HWC2::Error HwcLayer::SetLayerBlendMode(int32_t mode) {
  */
 HWC2::Error HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
                                      int32_t acquire_fence) {
-  acquire_fence_ = UniqueFd(acquire_fence);
+  acquire_fence_ = MakeUniqueFd(acquire_fence);
   buffer_handle_ = buffer;
   buffer_handle_updated_ = true;
 

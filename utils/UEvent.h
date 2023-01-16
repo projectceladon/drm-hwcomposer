@@ -24,7 +24,7 @@
 #include <optional>
 #include <string>
 
-#include "UniqueFd.h"
+#include "fd.h"
 #include "log.h"
 
 namespace android {
@@ -32,7 +32,7 @@ namespace android {
 class UEvent {
  public:
   static auto CreateInstance() -> std::unique_ptr<UEvent> {
-    auto fd = UniqueFd(
+    auto fd = MakeUniqueFd(
         socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT));
 
     if (!fd) {
@@ -46,7 +46,7 @@ class UEvent {
     addr.nl_groups = UINT32_MAX;
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
-    const int ret = bind(fd.Get(), (struct sockaddr *)&addr, sizeof(addr));
+    const int ret = bind(*fd, (struct sockaddr *)&addr, sizeof(addr));
     if (ret != 0) {
       ALOGE("Failed to bind uevent socket: errno=%i", errno);
       return {};
@@ -59,7 +59,7 @@ class UEvent {
     constexpr int kUEventBufferSize = 1024;
     char buffer[kUEventBufferSize];
     ssize_t ret = 0;
-    ret = read(fd_.Get(), &buffer, sizeof(buffer));
+    ret = read(*fd_, &buffer, sizeof(buffer));
     if (ret == 0)
       return {};
 

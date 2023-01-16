@@ -52,7 +52,7 @@ class VSyncWorker {
 
   VSyncWorkerCallbacks callbacks_;
 
-  UniqueFd drm_fd_;
+  SharedFd drm_fd_;
   uint32_t high_crtc_ = 0;
 
   bool enabled_ = false;

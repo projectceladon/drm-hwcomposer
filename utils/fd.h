@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2015 - 2023 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,23 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-drm-encoder"
+#pragma once
 
-#include "DrmEncoder.h"
+#include <fcntl.h>
+#include <unistd.h>
 
-#include <xf86drmMode.h>
-
-#include <cstdint>
-
-#include "DrmDevice.h"
-#include "utils/log.h"
+#include <memory>
+#include <utility>
 
 namespace android {
 
-auto DrmEncoder::CreateInstance(DrmDevice &dev, uint32_t encoder_id,
-                                uint32_t index) -> std::unique_ptr<DrmEncoder> {
-  auto e = MakeDrmModeEncoderUnique(*dev.GetFd(), encoder_id);
-  if (!e) {
-    ALOGE("Failed to get encoder %d", encoder_id);
-    return {};
-  }
+using UniqueFd = std::unique_ptr<int, void (*)(const int *)>;
+using SharedFd = std::shared_ptr<int>;
 
-  return std::unique_ptr<DrmEncoder>(new DrmEncoder(std::move(e), index));
-}
+auto MakeUniqueFd(int fd) -> UniqueFd;
+
+auto MakeSharedFd(int fd) -> SharedFd;
+
+auto DupFd(SharedFd const &fd) -> int;
 
 }  // namespace android

@@ -14,6 +14,7 @@ src_common = files(
     'backend/BackendManager.cpp',
     'backend/Backend.cpp',
     'backend/BackendClient.cpp',
+    'utils/fd.cpp',
 )
 
 deps = [

@@ -31,7 +31,7 @@ namespace android {
 
 auto DrmPlane::CreateInstance(DrmDevice &dev, uint32_t plane_id)
     -> std::unique_ptr<DrmPlane> {
-  auto p = MakeDrmModePlaneUnique(dev.GetFd(), plane_id);
+  auto p = MakeDrmModePlaneUnique(*dev.GetFd(), plane_id);
   if (!p) {
     ALOGE("Failed to get plane %d", plane_id);
     return {};
@@ -261,7 +261,7 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
   }
 
   if (layer.acquire_fence &&
-      !in_fence_fd_property_.AtomicSet(pset, layer.acquire_fence.Get())) {
+      !in_fence_fd_property_.AtomicSet(pset, *layer.acquire_fence)) {
     return -EINVAL;
   }
 

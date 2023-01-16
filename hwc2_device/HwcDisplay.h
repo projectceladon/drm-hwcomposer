@@ -200,7 +200,7 @@ class HwcDisplay {
 
   DrmHwcTwo *const hwc2_;
 
-  UniqueFd present_fence_;
+  SharedFd present_fence_;
 
   std::optional<DrmMode> staged_mode_;
   int64_t staged_mode_change_time_{};

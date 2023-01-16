@@ -55,46 +55,46 @@ DrmDevice::DrmDevice(ResourceManager *res_man) : res_man_(res_man) {
 
 auto DrmDevice::Init(const char *path) -> int {
   /* TODO: Use drmOpenControl here instead */
-  fd_ = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
+  fd_ = MakeSharedFd(open(path, O_RDWR | O_CLOEXEC));
   if (!fd_) {
     // NOLINTNEXTLINE(concurrency-mt-unsafe): Fixme
     ALOGE("Failed to open dri %s: %s", path, strerror(errno));
     return -ENODEV;
   }
 
-  int ret = drmSetClientCap(GetFd(), DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+  int ret = drmSetClientCap(*GetFd(), DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
   if (ret != 0) {
     ALOGE("Failed to set universal plane cap %d", ret);
     return ret;
   }
 
-  ret = drmSetClientCap(GetFd(), DRM_CLIENT_CAP_ATOMIC, 1);
+  ret = drmSetClientCap(*GetFd(), DRM_CLIENT_CAP_ATOMIC, 1);
   if (ret != 0) {
     ALOGE("Failed to set atomic cap %d", ret);
     return ret;
   }
 
 #ifdef DRM_CLIENT_CAP_WRITEBACK_CONNECTORS
-  ret = drmSetClientCap(GetFd(), DRM_CLIENT_CAP_WRITEBACK_CONNECTORS, 1);
+  ret = drmSetClientCap(*GetFd(), DRM_CLIENT_CAP_WRITEBACK_CONNECTORS, 1);
   if (ret != 0) {
     ALOGI("Failed to set writeback cap %d", ret);
   }
 #endif
 
   uint64_t cap_value = 0;
-  if (drmGetCap(GetFd(), DRM_CAP_ADDFB2_MODIFIERS, &cap_value) != 0) {
+  if (drmGetCap(*GetFd(), DRM_CAP_ADDFB2_MODIFIERS, &cap_value) != 0) {
     ALOGW("drmGetCap failed. Fallback to no modifier support.");
     cap_value = 0;
   }
   HasAddFb2ModifiersSupport_ = cap_value != 0;
 
-  drmSetMaster(GetFd());
-  if (drmIsMaster(GetFd()) == 0) {
+  drmSetMaster(*GetFd());
+  if (drmIsMaster(*GetFd()) == 0) {
     ALOGE("DRM/KMS master access required");
     return -EACCES;
   }
 
-  auto res = MakeDrmModeResUnique(GetFd());
+  auto res = MakeDrmModeResUnique(*GetFd());
   if (!res) {
     ALOGE("Failed to get DrmDevice resources");
     return -ENODEV;
@@ -136,7 +136,7 @@ auto DrmDevice::Init(const char *path) -> int {
     }
   }
 
-  auto plane_res = MakeDrmModePlaneResUnique(GetFd());
+  auto plane_res = MakeDrmModePlaneResUnique(*GetFd());
   if (!plane_res) {
     ALOGE("Failed to get plane resources");
     return -ENOENT;
@@ -161,7 +161,7 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
   create_blob.data = (__u64)data;
 
-  auto ret = drmIoctl(GetFd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
+  auto ret = drmIoctl(*GetFd(), DRM_IOCTL_MODE_CREATEPROPBLOB, &create_blob);
   if (ret != 0) {
     ALOGE("Failed to create mode property blob %d", ret);
     return {};
@@ -171,7 +171,7 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
       new uint32_t(create_blob.blob_id), [this](const uint32_t *it) {
         struct drm_mode_destroy_blob destroy_blob {};
         destroy_blob.blob_id = (__u32)*it;
-        auto err = drmIoctl(GetFd(), DRM_IOCTL_MODE_DESTROYPROPBLOB,
+        auto err = drmIoctl(*GetFd(), DRM_IOCTL_MODE_DESTROYPROPBLOB,
                             &destroy_blob);
         if (err != 0) {
           ALOGE("Failed to destroy mode property blob %" PRIu32 "/%d", *it,
@@ -186,7 +186,7 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
                            const char *prop_name, DrmProperty *property) const {
   drmModeObjectPropertiesPtr props = nullptr;
 
-  props = drmModeObjectGetProperties(GetFd(), obj_id, obj_type);
+  props = drmModeObjectGetProperties(*GetFd(), obj_id, obj_type);
   if (props == nullptr) {
     ALOGE("Failed to get properties for %d/%x", obj_id, obj_type);
     return -ENODEV;
@@ -195,7 +195,7 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
   bool found = false;
   for (int i = 0; !found && (size_t)i < props->count_props; ++i) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    drmModePropertyPtr p = drmModeGetProperty(GetFd(), props->props[i]);
+    drmModePropertyPtr p = drmModeGetProperty(*GetFd(), props->props[i]);
     if (strcmp(p->name, prop_name) == 0) {
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       property->Init(obj_id, p, props->prop_values[i]);
@@ -209,9 +209,9 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
 }
 
 std::string DrmDevice::GetName() const {
-  auto *ver = drmGetVersion(GetFd());
+  auto *ver = drmGetVersion(*GetFd());
   if (ver == nullptr) {
-    ALOGW("Failed to get drm version for fd=%d", GetFd());
+    ALOGW("Failed to get drm version for fd=%d", *GetFd());
     return "generic";
   }
 
@@ -221,12 +221,12 @@ std::string DrmDevice::GetName() const {
 }
 
 auto DrmDevice::IsKMSDev(const char *path) -> bool {
-  auto fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
+  auto fd = MakeUniqueFd(open(path, O_RDWR | O_CLOEXEC));
   if (!fd) {
     return false;
   }
 
-  auto res = MakeDrmModeResUnique(fd.Get());
+  auto res = MakeDrmModeResUnique(*fd);
   if (!res) {
     return false;
   }

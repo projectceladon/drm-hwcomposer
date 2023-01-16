@@ -40,7 +40,7 @@ auto VSyncWorker::CreateInstance(DrmDisplayPipeline *pipe,
   if (pipe != nullptr) {
     vsw->high_crtc_ = pipe->crtc->Get()->GetIndexInResArray()
                       << DRM_VBLANK_HIGH_CRTC_SHIFT;
-    vsw->drm_fd_ = UniqueFd::Dup(pipe->device->GetFd());
+    vsw->drm_fd_ = pipe->device->GetFd();
   }
 
   std::thread(&VSyncWorker::ThreadFn, vsw.get(), vsw).detach();
@@ -143,7 +143,7 @@ void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
                                                 DRM_VBLANK_HIGH_CRTC_MASK));
       vblank.request.sequence = 1;
 
-      ret = drmWaitVBlank(drm_fd_.Get(), &vblank);
+      ret = drmWaitVBlank(*drm_fd_, &vblank);
       if (ret == -EINTR)
         continue;
     }

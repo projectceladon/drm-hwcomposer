@@ -27,7 +27,6 @@ TIDY_FILES_OVERRIDE := \
     hwc2_device/DrmHwcTwo.h:COARSE                      \
     hwc2_device/HwcDisplay.cpp:COARSE                   \
     hwc2_device/HwcDisplay.h:COARSE                     \
-    utils/UniqueFd.h:FINE                               \
     utils/log.h:FINE                                    \
     utils/properties.h:FINE                             \
 
