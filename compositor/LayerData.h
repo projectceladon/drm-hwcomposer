@@ -63,15 +63,6 @@ struct PresentInfo {
 };
 
 struct LayerData {
-  auto Clone() {
-    LayerData clonned;
-    clonned.bi = bi;
-    clonned.fb = fb;
-    clonned.pi = pi;
-    clonned.acquire_fence = std::move(acquire_fence);
-    return clonned;
-  }
-
   std::optional<BufferInfo> bi;
   std::shared_ptr<DrmFbIdHandle> fb;
   PresentInfo pi;

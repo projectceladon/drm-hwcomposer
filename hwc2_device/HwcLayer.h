@@ -86,8 +86,6 @@ class HwcLayer {
   uint32_t z_order_ = 0;
   LayerData layer_data_;
 
-  SharedFd acquire_fence_;
-
   /* The following buffer data can have 2 sources:
    * 1 - Mapper@4 metadata API
    * 2 - HWC@2 API
@@ -107,7 +105,7 @@ class HwcLayer {
 
   /* Layer state */
  public:
-  void PopulateLayerData(bool test);
+  void PopulateLayerData();
 
   bool IsLayerUsableAsDevice() const {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;

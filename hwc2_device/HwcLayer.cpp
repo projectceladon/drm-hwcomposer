@@ -53,7 +53,7 @@ HWC2::Error HwcLayer::SetLayerBlendMode(int32_t mode) {
  */
 HWC2::Error HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
                                      int32_t acquire_fence) {
-  acquire_fence_ = MakeUniqueFd(acquire_fence);
+  layer_data_.acquire_fence = MakeSharedFd(acquire_fence);
   buffer_handle_ = buffer;
   buffer_handle_updated_ = true;
 
@@ -202,7 +202,7 @@ void HwcLayer::ImportFb() {
   }
 }
 
-void HwcLayer::PopulateLayerData(bool test) {
+void HwcLayer::PopulateLayerData() {
   ImportFb();
 
   if (!layer_data_.bi) {
@@ -218,10 +218,6 @@ void HwcLayer::PopulateLayerData(bool test) {
   }
   if (sample_range_ != BufferSampleRange::kUndefined) {
     layer_data_.bi->sample_range = sample_range_;
-  }
-
-  if (!test) {
-    layer_data_.acquire_fence = std::move(acquire_fence_);
   }
 }
 
