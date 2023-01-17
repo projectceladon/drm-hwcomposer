@@ -59,6 +59,7 @@ filegroup {
         "bufferinfo/BufferInfoMapperMetadata.cpp",
 
         "compositor/DrmKmsPlan.cpp",
+        "compositor/FlatteningController.cpp",
 
         "drm/DrmAtomicStateManager.cpp",
         "drm/DrmConnector.cpp",

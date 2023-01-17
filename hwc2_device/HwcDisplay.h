@@ -23,6 +23,7 @@
 #include <sstream>
 
 #include "HwcDisplayConfigs.h"
+#include "compositor/FlatteningController.h"
 #include "compositor/LayerData.h"
 #include "drm/DrmAtomicStateManager.h"
 #include "drm/ResourceManager.h"
@@ -165,10 +166,6 @@ class HwcDisplay {
     return total_stats_;
   }
 
-  /* returns true if composition should be sent to client */
-  bool ProcessClientFlatteningState(bool skip);
-  void ProcessFlatenningVsyncInternal();
-
   /* Headless mode required to keep SurfaceFlinger alive when all display are
    * disconnected, Without headless mode Android will continuously crash.
    * Only single internal (primary) display is required to be in HEADLESS mode
@@ -181,17 +178,11 @@ class HwcDisplay {
 
   void Deinit();
 
+  auto GetFlatCon() {
+    return flatcon_;
+  }
+
  private:
-  enum ClientFlattenningState : int32_t {
-    Disabled = -3,
-    NotRequired = -2,
-    Flattened = -1,
-    ClientRefreshRequested = 0,
-    VsyncCountdownMax = 60, /* 1 sec @ 60FPS */
-  };
-
-  std::atomic_int flattenning_state_{ClientFlattenningState::NotRequired};
-
   HwcDisplayConfigs configs_;
 
   DrmHwcTwo *const hwc2_;
@@ -205,10 +196,10 @@ class HwcDisplay {
   DrmDisplayPipeline *pipeline_{};
 
   std::unique_ptr<Backend> backend_;
+  std::shared_ptr<FlatteningController> flatcon_;
 
   std::shared_ptr<VSyncWorker> vsync_worker_;
   bool vsync_event_en_{};
-  bool vsync_flattening_en_{};
   bool vsync_tracking_en_{};
   int64_t last_vsync_ts_{};
 

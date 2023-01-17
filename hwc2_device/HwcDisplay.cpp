@@ -50,32 +50,12 @@ std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
 }
 
 std::string HwcDisplay::Dump() {
-  std::string flattening_state_str;
-  switch (flattenning_state_) {
-    case ClientFlattenningState::Disabled:
-      flattening_state_str = "Disabled";
-      break;
-    case ClientFlattenningState::NotRequired:
-      flattening_state_str = "Not needed";
-      break;
-    case ClientFlattenningState::Flattened:
-      flattening_state_str = "Active";
-      break;
-    case ClientFlattenningState::ClientRefreshRequested:
-      flattening_state_str = "Refresh requested";
-      break;
-    default:
-      flattening_state_str = std::to_string(flattenning_state_) +
-                             " VSync remains";
-  }
-
   auto connector_name = IsInHeadlessMode()
                             ? std::string("NULL-DISPLAY")
                             : GetPipe().connector->Get()->GetName();
 
   std::stringstream ss;
   ss << "- Display on: " << connector_name << "\n"
-     << "  Flattening state: " << flattening_state_str << "\n"
      << "Statistics since system boot:\n"
      << DumpDelta(total_stats_) << "\n\n"
      << "Statistics since last dumpsys request:\n"
@@ -140,6 +120,10 @@ void HwcDisplay::Deinit() {
 
     current_plan_.reset();
     backend_.reset();
+    if (flatcon_) {
+      flatcon_->StopThread();
+      flatcon_.reset();
+    }
   }
 
   if (vsync_worker_) {
@@ -162,14 +146,10 @@ HWC2::Error HwcDisplay::Init() {
               GetDisplayVsyncPeriod(&period_ns);
               hwc2_->SendVsyncEventToClient(handle_, timestamp, period_ns);
             }
-            if (vsync_flattening_en_) {
-              ProcessFlatenningVsyncInternal();
-            }
             if (vsync_tracking_en_) {
               last_vsync_ts_ = timestamp;
             }
-            if (!vsync_event_en_ && !vsync_flattening_en_ &&
-                !vsync_tracking_en_) {
+            if (!vsync_event_en_ && !vsync_tracking_en_) {
               vsync_worker_->VSyncControl(false);
             }
           },
@@ -192,6 +172,13 @@ HWC2::Error HwcDisplay::Init() {
       ALOGE("Failed to set backend for d=%d %d\n", int(handle_), ret);
       return HWC2::Error::BadDisplay;
     }
+    auto flatcbk = (struct FlatConCallbacks){.trigger = [this]() {
+      if (hwc2_->refresh_callback_.first != nullptr &&
+          hwc2_->refresh_callback_.second != nullptr)
+        hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second,
+                                       handle_);
+    }};
+    flatcon_ = FlatteningController::CreateInstance(flatcbk);
   }
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
@@ -1020,39 +1007,6 @@ const Backend *HwcDisplay::backend() const {
 
 void HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
   backend_ = std::move(backend);
-}
-
-/* returns true if composition should be sent to client */
-bool HwcDisplay::ProcessClientFlatteningState(bool skip) {
-  const int flattenning_state = flattenning_state_;
-  if (flattenning_state == ClientFlattenningState::Disabled) {
-    return false;
-  }
-
-  if (skip) {
-    flattenning_state_ = ClientFlattenningState::NotRequired;
-    return false;
-  }
-
-  if (flattenning_state == ClientFlattenningState::ClientRefreshRequested) {
-    flattenning_state_ = ClientFlattenningState::Flattened;
-    return true;
-  }
-
-  vsync_flattening_en_ = true;
-  vsync_worker_->VSyncControl(true);
-  flattenning_state_ = ClientFlattenningState::VsyncCountdownMax;
-  return false;
-}
-
-void HwcDisplay::ProcessFlatenningVsyncInternal() {
-  if (flattenning_state_ > ClientFlattenningState::ClientRefreshRequested &&
-      --flattenning_state_ == ClientFlattenningState::ClientRefreshRequested &&
-      hwc2_->refresh_callback_.first != nullptr &&
-      hwc2_->refresh_callback_.second != nullptr) {
-    hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
-    vsync_flattening_en_ = false;
-  }
 }
 
 }  // namespace android
