@@ -58,6 +58,10 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
     return out_fence_ptr_property_;
   }
 
+  auto &GetCtmProperty() const {
+    return ctm_property_;
+  }
+
  private:
   DrmCrtc(DrmModeCrtcUnique crtc, uint32_t index)
       : crtc_(std::move(crtc)), index_in_res_array_(index){};
@@ -65,6 +69,8 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmModeCrtcUnique crtc_;
 
   const uint32_t index_in_res_array_;
+
+  DrmProperty ctm_property_;
 
   DrmProperty active_property_;
   DrmProperty mode_property_;

@@ -35,6 +35,7 @@ struct AtomicCommitArgs {
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
+  std::shared_ptr<drm_color_ctm> color_matrix;
 
   /* out */
   SharedFd out_fence;
@@ -75,6 +76,7 @@ class DrmAtomicStateManager {
     std::vector<std::shared_ptr<DrmFbIdHandle>> used_framebuffers;
 
     DrmModeUserPropertyBlobUnique mode_blob;
+    DrmModeUserPropertyBlobUnique ctm_blob;
 
     int release_fence_pt_index{};
 

@@ -159,9 +159,7 @@ class HwcDisplay {
     return *pipeline_;
   }
 
-  android_color_transform_t &color_transform_hint() {
-    return color_transform_hint_;
-  }
+  bool CtmByGpu();
 
   Stats &total_stats() {
     return total_stats_;
@@ -194,8 +192,6 @@ class HwcDisplay {
 
   std::atomic_int flattenning_state_{ClientFlattenningState::NotRequired};
 
-  constexpr static size_t MATRIX_SIZE = 16;
-
   HwcDisplayConfigs configs_;
 
   DrmHwcTwo *const hwc2_;
@@ -224,8 +220,10 @@ class HwcDisplay {
   std::map<hwc2_layer_t, HwcLayer> layers_;
   HwcLayer client_layer_;
   int32_t color_mode_{};
-  std::array<float, MATRIX_SIZE> color_transform_matrix_{};
-  android_color_transform_t color_transform_hint_;
+  static constexpr int kCtmRows = 3;
+  static constexpr int kCtmCols = 3;
+  std::shared_ptr<drm_color_ctm> color_matrix_;
+  android_color_transform_t color_transform_hint_{};
 
   std::shared_ptr<DrmKmsPlan> current_plan_;
 
@@ -233,6 +231,8 @@ class HwcDisplay {
   Stats total_stats_;
   Stats prev_stats_;
   std::string DumpDelta(HwcDisplay::Stats delta);
+
+  void SetColorMarixToIdentity();
 
   HWC2::Error Init();
 

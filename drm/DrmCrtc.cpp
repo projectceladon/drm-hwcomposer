@@ -61,6 +61,11 @@ auto DrmCrtc::CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
     return {};
   }
 
+  ret = GetCrtcProperty(dev, *c, "CTM", &c->ctm_property_);
+  if (ret != 0) {
+    ALOGV("Missing optional CTM property");
+  }
+
   return c;
 }
 

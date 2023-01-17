@@ -26,6 +26,11 @@
 
 namespace android {
 
+enum class CtmHandling {
+  kDrmOrGpu,    /* Handled by DRM is possible, otherwise by GPU */
+  kDrmOrIgnore, /* Handled by DRM is possible, otherwise displayed as is */
+};
+
 class PipelineToFrontendBindingInterface {
  public:
   virtual ~PipelineToFrontendBindingInterface() = default;
@@ -52,6 +57,10 @@ class ResourceManager {
     return scale_with_gpu_;
   }
 
+  auto &GetCtmHandling() const {
+    return ctm_handling_;
+  }
+
   auto &GetMainLock() {
     return main_lock_;
   }
@@ -65,7 +74,9 @@ class ResourceManager {
 
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
+  // Android properties:
   bool scale_with_gpu_{};
+  CtmHandling ctm_handling_{};
 
   std::shared_ptr<UEventListener> uevent_listener_;
 

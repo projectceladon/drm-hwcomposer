@@ -87,17 +87,18 @@ std::string HwcDisplay::Dump() {
 
 HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                        DrmHwcTwo *hwc2)
-    : hwc2_(hwc2),
-      handle_(handle),
-      type_(type),
-      client_layer_(this),
-      color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
-  // clang-format off
-  color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
-                             0.0, 1.0, 0.0, 0.0,
-                             0.0, 0.0, 1.0, 0.0,
-                             0.0, 0.0, 0.0, 1.0};
-  // clang-format on
+    : hwc2_(hwc2), handle_(handle), type_(type), client_layer_(this){};
+
+void HwcDisplay::SetColorMarixToIdentity() {
+  color_matrix_ = std::make_shared<drm_color_ctm>();
+  for (int i = 0; i < kCtmCols; i++) {
+    for (int j = 0; j < kCtmRows; j++) {
+      constexpr uint64_t kOne = 1L << 32; /* 1.0 in s31.32 format */
+      color_matrix_->matrix[i * kCtmRows + j] = (i == j) ? kOne : 0;
+    }
+  }
+
+  color_transform_hint_ = HAL_COLOR_TRANSFORM_IDENTITY;
 }
 
 HwcDisplay::~HwcDisplay() = default;
@@ -194,6 +195,8 @@ HWC2::Error HwcDisplay::Init() {
   }
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
+
+  SetColorMarixToIdentity();
 
   return HWC2::Error::None;
 }
@@ -465,6 +468,8 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     return HWC2::Error::None;
   }
 
+  a_args.color_matrix = color_matrix_;
+
   uint32_t prev_vperiod_ns = 0;
   GetDisplayVsyncPeriod(&prev_vperiod_ns);
 
@@ -595,6 +600,9 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
   this->present_fence_ = a_args.out_fence;
   *out_present_fence = DupFd(a_args.out_fence);
 
+  // Reset the color matrix so we don't apply it over and over again.
+  color_matrix_ = {};
+
   ++frame_no_;
   return HWC2::Error::None;
 }
@@ -673,6 +681,8 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
   return HWC2::Error::None;
 }
 
+#include <xf86drmMode.h>
+
 HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
   if (hint < HAL_COLOR_TRANSFORM_IDENTITY ||
       hint > HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA)
@@ -682,10 +692,44 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
     return HWC2::Error::BadParameter;
 
   color_transform_hint_ = static_cast<android_color_transform_t>(hint);
-  if (color_transform_hint_ == HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX)
-    std::copy(matrix, matrix + MATRIX_SIZE, color_transform_matrix_.begin());
+
+  if (!GetPipe().crtc->Get()->GetCtmProperty())
+    return HWC2::Error::None;
+
+  switch (color_transform_hint_) {
+    case HAL_COLOR_TRANSFORM_IDENTITY:
+      SetColorMarixToIdentity();
+      break;
+    case HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX:
+      color_matrix_ = std::make_shared<drm_color_ctm>();
+      /* DRM expects a 3x3 matrix, but the HAL provides a 4x4 matrix. */
+      for (int i = 0; i < kCtmCols; i++) {
+        for (int j = 0; j < kCtmRows; j++) {
+          constexpr int kInCtmRows = 4;
+          /* HAL matrix type is float, but DRM expects a s31.32 fix point */
+          auto value = uint64_t(matrix[i * kInCtmRows + j] * float(1L << 32));
+          color_matrix_->matrix[i * kCtmRows + j] = value;
+        }
+      }
+      break;
+    default:
+      return HWC2::Error::Unsupported;
+  }
 
   return HWC2::Error::None;
+}
+
+bool HwcDisplay::CtmByGpu() {
+  if (color_transform_hint_ == HAL_COLOR_TRANSFORM_IDENTITY)
+    return false;
+
+  if (GetPipe().crtc->Get()->GetCtmProperty())
+    return false;
+
+  if (GetHwc2()->GetResMan().GetCtmHandling() == CtmHandling::kDrmOrIgnore)
+    return false;
+
+  return true;
 }
 
 HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
@@ -892,12 +936,31 @@ HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
 }
 
 HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
-                                               uint32_t * /*outCapabilities*/) {
+                                               uint32_t *outCapabilities) {
   if (outNumCapabilities == nullptr) {
     return HWC2::Error::BadParameter;
   }
 
-  *outNumCapabilities = 0;
+  bool skip_ctm = false;
+
+  // Skip client CTM if user requested DRM_OR_IGNORE
+  if (GetHwc2()->GetResMan().GetCtmHandling() == CtmHandling::kDrmOrIgnore)
+    skip_ctm = true;
+
+  // Skip client CTM if DRM can handle it
+  if (!skip_ctm && !IsInHeadlessMode() &&
+      GetPipe().crtc->Get()->GetCtmProperty())
+    skip_ctm = true;
+
+  if (!skip_ctm) {
+    *outNumCapabilities = 0;
+    return HWC2::Error::None;
+  }
+
+  *outNumCapabilities = 1;
+  if (outCapabilities) {
+    outCapabilities[0] = HWC2_DISPLAY_CAPABILITY_SKIP_CLIENT_COLOR_TRANSFORM;
+  }
 
   return HWC2::Error::None;
 }

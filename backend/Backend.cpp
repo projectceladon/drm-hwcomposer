@@ -83,8 +83,7 @@ std::tuple<int, size_t> Backend::GetClientLayers(
 
 bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
   return !HardwareSupportsLayerType(layer->GetSfType()) ||
-         !layer->IsLayerUsableAsDevice() ||
-         display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
+         !layer->IsLayerUsableAsDevice() || display->CtmByGpu() ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
           display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
 }

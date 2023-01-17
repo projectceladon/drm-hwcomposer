@@ -107,6 +107,20 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     }
   }
 
+  if (args.color_matrix && crtc->GetCtmProperty()) {
+    auto blob = drm->RegisterUserPropertyBlob(args.color_matrix.get(),
+                                              sizeof(drm_color_ctm));
+    new_frame_state.ctm_blob = std::move(blob);
+
+    if (!new_frame_state.ctm_blob) {
+      ALOGE("Failed to create CTM blob");
+      return -EINVAL;
+    }
+
+    if (!crtc->GetCtmProperty().AtomicSet(*pset, *new_frame_state.ctm_blob))
+      return -EINVAL;
+  }
+
   auto unused_planes = new_frame_state.used_planes;
 
   if (args.composition) {
