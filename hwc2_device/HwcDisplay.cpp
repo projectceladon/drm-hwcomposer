@@ -73,7 +73,7 @@ void HwcDisplay::SetColorMarixToIdentity() {
   color_matrix_ = std::make_shared<drm_color_ctm>();
   for (int i = 0; i < kCtmCols; i++) {
     for (int j = 0; j < kCtmRows; j++) {
-      constexpr uint64_t kOne = 1L << 32; /* 1.0 in s31.32 format */
+      constexpr uint64_t kOne = (1ULL << 32); /* 1.0 in s31.32 format */
       color_matrix_->matrix[i * kCtmRows + j] = (i == j) ? kOne : 0;
     }
   }
@@ -694,7 +694,7 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
         for (int j = 0; j < kCtmRows; j++) {
           constexpr int kInCtmRows = 4;
           /* HAL matrix type is float, but DRM expects a s31.32 fix point */
-          auto value = uint64_t(matrix[i * kInCtmRows + j] * float(1L << 32));
+          auto value = uint64_t(matrix[i * kInCtmRows + j] * float(1ULL << 32));
           color_matrix_->matrix[i * kCtmRows + j] = value;
         }
       }
