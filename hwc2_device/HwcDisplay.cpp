@@ -680,6 +680,9 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
 
   color_transform_hint_ = static_cast<android_color_transform_t>(hint);
 
+  if (IsInHeadlessMode())
+    return HWC2::Error::None;
+
   if (!GetPipe().crtc->Get()->GetCtmProperty())
     return HWC2::Error::None;
 
