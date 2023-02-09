@@ -77,7 +77,10 @@ class HwcLayer {
   HWC2::Error SetLayerTransform(int32_t transform);
   HWC2::Error SetLayerVisibleRegion(hwc_region_t visible);
   HWC2::Error SetLayerZOrder(uint32_t order);
-
+#ifdef STANDALONE_HWCOMPOSER
+  int fb_id_ = 0;
+  HWC2::Error SetLayerFBid(int32_t fb_id);
+#endif
  private:
   // sf_type_ stores the initial type given to us by surfaceflinger,
   // validated_type_ stores the type after running ValidateDisplay
@@ -112,6 +115,10 @@ class HwcLayer {
   void PopulateLayerData(bool test);
 
   bool IsLayerUsableAsDevice() const {
+#ifdef STANDALONE_HWCOMPOSER
+    if(fb_id_)
+      return true;
+#endif
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
 

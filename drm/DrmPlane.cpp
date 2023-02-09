@@ -175,6 +175,9 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
     ALOGV("Blending is not supported on plane %d", GetId());
     return false;
   }
+#ifdef STANDALONE_HWCOMPOSER
+  return true;
+#endif
 
   uint32_t format = layer->bi->format;
   if (!IsFormatSupported(format)) {

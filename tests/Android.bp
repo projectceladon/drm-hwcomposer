@@ -44,3 +44,29 @@ cc_test {
         "vendor/intel/external/drm-hwcomposer",
     ],
 }
+
+cc_test {
+    name: "standalone-display-test",
+    defaults: ["hwcomposer.drm_defaults"],
+    vendor: true,
+    shared_libs: [
+        "libdrmhwc.standalone",
+    ],
+    srcs: [
+        "standalone_display_test.cpp",
+    ],
+    include_dirs: [
+        "vendor/intel/external/drm-hwcomposer/",
+        "vendor/intel/external/drm-hwcomposer/hwc2_device",
+        "vendor/intel/external/drm-hwcomposer/drm",
+    ],
+    cflags: [
+        "-Wall",
+        "-Wno-unused-parameter",
+        "-Wno-unused-variable",
+        "-Wno-unused-function",
+        "-Wno-unused-private-field",
+        "-UANDROID",
+        "-DSTANDALONE_HWCOMPOSER",
+    ],
+}

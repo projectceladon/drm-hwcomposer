@@ -93,9 +93,26 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   return local;
 }
 
+#ifdef STANDALONE_HWCOMPOSER
+auto DrmFbIdHandle::CreateInstance(DrmDevice &drm, int fb, bool standalone)
+
+    -> std::shared_ptr<DrmFbIdHandle> {
+  ATRACE_NAME("Import dmabufs and register FB");
+
+  // NOLINTNEXTLINE(cppcoreguidelines-owning-memory): priv. constructor usage
+  std::shared_ptr<DrmFbIdHandle> local(new DrmFbIdHandle(drm));
+  local->fb_id_ = fb;
+  local->standalone_ = standalone;
+  return local;
+}
+#endif
 DrmFbIdHandle::~DrmFbIdHandle() {
   ATRACE_NAME("Close FB and dmabufs");
 
+#ifdef STANDALONE_HWCOMPOSER
+  if(standalone_)
+    return;
+#endif
   /* Destroy framebuffer object */
   if (drmModeRmFB(drm_->GetFd(), fb_id_) != 0) {
     ALOGE("Failed to rm fb");

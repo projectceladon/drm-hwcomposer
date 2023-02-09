@@ -134,6 +134,18 @@ cc_library_shared {
     ],
 }
 
+cc_library_shared {
+    name: "libdrmhwc.standalone",
+    defaults: ["hwcomposer.drm_defaults"],
+    srcs: [
+        ":drm_hwcomposer_common",
+        "bufferinfo/legacy/BufferInfoMinigbm.cpp",
+    ],
+    cflags: [
+        "-DSTANDALONE_HWCOMPOSER",
+    ],
+}
+
 // Used by hwcomposer.drm_imagination
 filegroup {
     name: "drm_hwcomposer_platformimagination",

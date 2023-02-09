@@ -166,7 +166,27 @@ HWC2::Error HwcLayer::SetLayerZOrder(uint32_t order) {
   return HWC2::Error::None;
 }
 
+#ifdef STANDALONE_HWCOMPOSER
+HWC2::Error HwcLayer::SetLayerFBid(int32_t fb_id) {
+  fb_id_ = fb_id;
+  return HWC2::Error::None;
+}
+#endif
+
 void HwcLayer::ImportFb() {
+#ifdef STANDALONE_HWCOMPOSER
+  if (fb_id_) {
+    layer_data_.fb = {};
+    layer_data_.fb = DrmFbIdHandle::CreateInstance(*(parent_->GetPipe().device),
+                                                   fb_id_, true);
+    if (!layer_data_.fb) {
+      ALOGV("Unable to create framebuffer object for layer %d", z_order_);
+      fb_import_failed_ = true;
+      return;
+    }
+  } else {
+#endif
+
   if (!IsLayerUsableAsDevice() || !buffer_handle_updated_) {
     return;
   }
@@ -200,6 +220,9 @@ void HwcLayer::ImportFb() {
   if (unique_id) {
     SwChainAddCurrentBuffer(*unique_id);
   }
+#ifdef STANDALONE_HWCOMPOSER
+  }
+#endif
 }
 
 void HwcLayer::PopulateLayerData(bool test) {
