@@ -134,7 +134,7 @@ cc_library_shared {
     ],
 }
 
-cc_library_shared {
+cc_library_static {
     name: "libdrmhwc.standalone",
     defaults: ["hwcomposer.drm_defaults"],
     srcs: [

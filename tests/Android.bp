@@ -49,7 +49,7 @@ cc_test {
     name: "standalone-display-test",
     defaults: ["hwcomposer.drm_defaults"],
     vendor: true,
-    shared_libs: [
+    static_libs: [
         "libdrmhwc.standalone",
     ],
     srcs: [
@@ -75,7 +75,7 @@ cc_test {
     name: "standalone-display-stress-test",
     defaults: ["hwcomposer.drm_defaults"],
     vendor: true,
-    shared_libs: [
+    static_libs: [
         "libdrmhwc.standalone",
     ],
     srcs: [
