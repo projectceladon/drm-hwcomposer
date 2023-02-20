@@ -38,7 +38,10 @@ class DrmFbIdHandle {
  public:
   static auto CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
                              DrmDevice &drm) -> std::shared_ptr<DrmFbIdHandle>;
-
+#ifdef STANDALONE_HWCOMPOSER
+  bool standalone_;
+  static auto CreateInstance(DrmDevice &drm, int fb, bool standalone) -> std::shared_ptr<DrmFbIdHandle>;
+#endif
   ~DrmFbIdHandle();
   DrmFbIdHandle(DrmFbIdHandle &&) = delete;
   DrmFbIdHandle(const DrmFbIdHandle &) = delete;
