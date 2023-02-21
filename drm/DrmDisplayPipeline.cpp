@@ -176,9 +176,12 @@ auto DrmDisplayPipeline::GetUsablePlanes()
   static bool use_overlay_planes = ReadUseOverlayProperty();
 
   if (use_overlay_planes) {
+    int32_t planes_num = device->planes_num_ - 1;
     for (const auto &plane : device->GetPlanes()) {
       if (plane->IsCrtcSupported(*crtc->Get())) {
         if (plane->GetType() == DRM_PLANE_TYPE_OVERLAY) {
+          if (planes_num-- <= 0)
+            break;
           auto op = plane->BindPipeline(this, true);
           if (op) {
             planes.emplace_back(op);
