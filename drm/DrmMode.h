@@ -55,9 +55,14 @@ class DrmMode {
 
   std::string name() const;
 
+  uint32_t id() const;
+  
+  void SetId(uint32_t id);
+
   auto CreateModeBlob(const DrmDevice &drm) -> DrmModeUserPropertyBlobUnique;
 
  private:
+  uint32_t id_ = 0;
   uint32_t clock_ = 0;
 
   uint16_t h_display_ = 0;
