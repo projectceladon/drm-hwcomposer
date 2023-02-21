@@ -100,6 +100,18 @@ auto DrmDevice::Init(const char *path) -> int {
     return -ENODEV;
   }
 
+  char property[PROPERTY_VALUE_MAX];
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.preferred.mode.limit", property, "1");
+  preferred_mode_limit_ = atoi(property) != 0 ? true : false;
+  ALOGD("The property 'vendor.hwcomposer.preferred.mode.limit' value is %d", preferred_mode_limit_);
+
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.planes.enabling", property, "0");
+  planes_enabling_ = atoi(property) != 0 ? true : false;
+  ALOGD("The property 'vendor.hwcomposer.planes.enabling' value is %d, %s",
+    planes_enabling_, planes_enabling_ ? "support all planes":"only support primary plane");
+
   min_resolution_ = std::pair<uint32_t, uint32_t>(res->min_width,
                                                   res->min_height);
   max_resolution_ = std::pair<uint32_t, uint32_t>(res->max_width,
@@ -146,10 +158,11 @@ auto DrmDevice::Init(const char *path) -> int {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto plane = DrmPlane::CreateInstance(*this, plane_res->planes[i]);
 
-    if (plane) {
-      //planes_.emplace_back(std::move(plane));
+    if (!planes_enabling_) {
       if (plane->GetType() == DRM_PLANE_TYPE_PRIMARY)
         planes_.emplace_back(std::move(plane));
+    } else {
+      planes_.emplace_back(std::move(plane));
     }
   }
 
@@ -182,6 +195,14 @@ auto DrmDevice::RegisterUserPropertyBlob(void *data, size_t length) const
         // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
         delete it;
       });
+}
+
+uint32_t DrmDevice::GetNextModeId() {
+  return ++mode_id_;
+}
+
+void DrmDevice::ResetModeId() {
+  mode_id_ = 0;
 }
 
 int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,

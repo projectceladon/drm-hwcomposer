@@ -113,6 +113,14 @@ std::string DrmMode::name() const {
   return name_ + "@" + std::to_string(v_refresh());
 }
 
+uint32_t DrmMode::id() const {
+  return id_;
+}
+
+void DrmMode::SetId(uint32_t id) {
+  id_ = id;
+}
+
 auto DrmMode::CreateModeBlob(const DrmDevice &drm)
     -> DrmModeUserPropertyBlobUnique {
   struct drm_mode_modeinfo drm_mode = {

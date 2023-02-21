@@ -135,6 +135,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;
   DrmProperty link_status_property_;
+
+  uint32_t preferred_mode_id_{};
 };
 }  // namespace android
 
