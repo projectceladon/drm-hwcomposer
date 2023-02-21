@@ -153,7 +153,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     CleanupPriorFrameResources();
   }
 
-  if (nonblock) {
+  if (nonblock && drm->GetName() == "i915") {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
