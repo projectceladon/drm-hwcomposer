@@ -112,15 +112,17 @@ static auto TryCreatePipelineUsingEncoder(DrmDevice &dev, DrmConnector &conn,
   if (crtc != nullptr) {
     auto pipeline = TryCreatePipeline(dev, conn, enc, *crtc);
     if (pipeline) {
+      crtc->BindConnector(conn.GetId());
       return pipeline;
     }
   }
 
   /* Try to find a possible crtc which will work */
   for (const auto &crtc : dev.GetCrtcs()) {
-    if (enc.SupportsCrtc(*crtc)) {
+    if (enc.SupportsCrtc(*crtc) && crtc->CanBind(conn.GetId())) {
       auto pipeline = TryCreatePipeline(dev, conn, enc, *crtc);
       if (pipeline) {
+        crtc->BindConnector(conn.GetId());
         return pipeline;
       }
     }
@@ -189,4 +191,26 @@ auto DrmDisplayPipeline::GetUsablePlanes()
   return planes;
 }
 
+auto DrmDisplayPipeline::AtomicDisablePipeline() -> int {
+  auto pset = MakeDrmModeAtomicReqUnique();
+  if (!pset) {
+    ALOGE("Failed to allocate property set");
+    return -EINVAL;
+  }
+
+  if (!connector->Get()->GetCrtcIdProperty().AtomicSet(*pset, 0) ||
+      !crtc->Get()->GetActiveProperty().AtomicSet(*pset,  0)||
+      !crtc->Get()->GetModeProperty().AtomicSet(*pset, 0)){
+        ALOGE("Failed to atomic disable connector & crtc property set");
+        return -EINVAL;
+  }
+
+  int err = drmModeAtomicCommit(device->GetFd(), pset.get(), DRM_MODE_ATOMIC_ALLOW_MODESET, device);
+  if (err != 0) {
+    ALOGE("Failed to commit pset ret=%d\n", err);
+    return -EINVAL;
+  }
+
+  return 0;
+}
 }  // namespace android
