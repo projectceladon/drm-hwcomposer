@@ -30,7 +30,7 @@
 #include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"
-
+#include "hwc2_device/DrmHwcTwo.h"
 namespace android {
 
 ResourceManager::ResourceManager(
@@ -153,6 +153,8 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
   return int64_t(ts.tv_sec) * kNsInSec + int64_t(ts.tv_nsec);
 }
 
+#define DRM_MODE_LINK_STATUS_GOOD       0
+#define DRM_MODE_LINK_STATUS_BAD        1
 void ResourceManager::UpdateFrontendDisplays() {
   auto ordered_connectors = GetOrderedConnectors();
 
@@ -175,6 +177,31 @@ void ResourceManager::UpdateFrontendDisplays() {
         auto &pipeline = attached_pipelines_[conn];
         frontend_interface_->UnbindDisplay(pipeline.get());
         attached_pipelines_.erase(conn);
+      }
+    } else {
+      if (connected) {
+        uint64_t link_status = 0;
+        int ret = 0;
+        auto &pipeline = attached_pipelines_[conn];
+        conn->UpdateLinkStatusProperty();
+        std::tie(ret, link_status) = conn->link_status_property().value();
+        if (ret) {
+          ALOGE("Connector %u get link status value error %d", conn->GetId(),
+                ret);
+          continue;
+        }
+        if (link_status != DRM_MODE_LINK_STATUS_GOOD) {
+          ALOGW("Connector %u link status bad", conn->GetId());
+          HwcDisplay *display = frontend_interface_->GetDisplay(pipeline.get());
+          if (display) {
+            display->SetPowerMode(static_cast<int32_t>(HWC2::PowerMode::Off));
+            display->ChosePreferredConfig();
+            display->SetPowerMode(static_cast<int32_t>(HWC2::PowerMode::On));
+            ALOGD("Connector %u link status bad handling done", conn->GetId());
+          }
+        } else {
+          ALOGD("Connector %u link status good. Do nothing", conn->GetId());
+        }
       }
     }
   }

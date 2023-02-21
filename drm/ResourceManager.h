@@ -25,12 +25,13 @@
 #include "UEventListener.h"
 
 namespace android {
-
+class HwcDisplay;
 class PipelineToFrontendBindingInterface {
  public:
   virtual ~PipelineToFrontendBindingInterface() = default;
   virtual bool BindDisplay(DrmDisplayPipeline *);
   virtual bool UnbindDisplay(DrmDisplayPipeline *);
+  virtual HwcDisplay * GetDisplay(DrmDisplayPipeline *pipeline);
   virtual void FinalizeDisplayBinding();
 };
 

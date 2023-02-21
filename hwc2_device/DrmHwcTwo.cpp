@@ -73,6 +73,19 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
   mutex.lock();
 }
 
+HwcDisplay *DrmHwcTwo::GetDisplay(DrmDisplayPipeline *pipeline) {
+  if (display_handles_.count(pipeline) == 0) {
+    ALOGE("%s, can't find the display, pipeline: %p", __func__, pipeline);
+    return nullptr;
+  }
+  auto handle = display_handles_[pipeline];
+  if (displays_.count(handle) == 0) {
+    ALOGE("%s, can't find the display, handle: %" PRIu64, __func__, handle);
+    return nullptr;
+  }
+  return displays_[handle].get();
+}
+
 bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
   if (display_handles_.count(pipeline) != 0) {
     ALOGE("%s, pipeline is already used by another display, FIXME!!!: %p",

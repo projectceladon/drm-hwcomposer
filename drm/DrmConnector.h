@@ -39,7 +39,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   DrmConnector(const DrmProperty &) = delete;
   DrmConnector &operator=(const DrmProperty &) = delete;
-
+  int UpdateLinkStatusProperty();
   int UpdateEdidProperty();
   auto GetEdidBlob() -> DrmModePropertyBlobUnique;
 
@@ -113,6 +113,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return connector_->mmHeight;
   };
 
+  const DrmProperty &link_status_property() const;
  private:
   DrmConnector(DrmModeConnectorUnique connector, DrmDevice *drm, uint32_t index)
       : connector_(std::move(connector)),
@@ -133,6 +134,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty writeback_pixel_formats_;
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;
+  DrmProperty link_status_property_;
 };
 }  // namespace android
 
