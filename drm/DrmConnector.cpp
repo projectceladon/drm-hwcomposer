@@ -92,6 +92,15 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
   return c;
 }
 
+int DrmConnector::UpdateLinkStatusProperty() {
+  int ret = GetConnectorProperty(*drm_, *this, "link-status",
+                                 &link_status_property_);
+  if (!ret) {
+    ALOGW("Conn %u Could not get link-status property\n", GetId());
+  }
+  return ret;
+}
+
 int DrmConnector::UpdateEdidProperty() {
   return GetOptionalConnectorProperty(*drm_, *this, "EDID", &edid_property_)
              ? 0
@@ -188,4 +197,7 @@ void DrmConnector::SetActiveMode(DrmMode &mode) {
   active_mode_ = mode;
 }
 
+const DrmProperty &DrmConnector::link_status_property() const {
+  return link_status_property_;
+}
 }  // namespace android
