@@ -262,7 +262,7 @@ HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
 
   DrmConnector *conn = pipeline_->connector->Get();
   ALOGD("%s, num_modes:%p, modes:%p, conn:%p", __FUNCTION__, num_modes, modes, conn);
-  if (conn && !conn->IsHdrSupportedDevice()) {
+  if (conn && (!conn->IsHdrSupportedDevice() || !conn->IsConnectorHdrCapable())) {
      ALOGD("%s HDR mode is not supported!", __FUNCTION__);
      if (!modes) {
        if (num_modes) {
@@ -437,14 +437,6 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
   DrmConnector *conn = pipeline_->connector->Get();
 
   if (conn && conn->IsHdrSupportedDevice()) {
-    auto blob = conn->GetEdidBlob();
-    if (blob) {
-      ALOGE("Failed to get edid property value.");
-      return HWC2::Error::Unsupported;
-    }
-
-    conn->ParseCTAFromExtensionBlock((uint8_t*)blob->data);
-
     if (conn->GetHdrCapabilities(num_types, types, max_luminance,
                                    max_average_luminance, min_luminance)) {
       return HWC2::Error::None;
