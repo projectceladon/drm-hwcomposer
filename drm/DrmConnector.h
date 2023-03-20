@@ -120,6 +120,9 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   }
 
   bool IsHdrSupportedDevice();
+  bool IsConnectorHdrCapable() {
+    return edid_contains_hdr_tag_;
+  }
 
   auto GetMmWidth() const {
     return connector_->mmWidth;
@@ -168,6 +171,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   uint32_t preferred_mode_id_{};
   //hdr_output_metadata property
   DrmProperty hdr_op_metadata_prop_;
+
+  bool edid_contains_hdr_tag_ = false;
 
   /* Display's color primaries */
   struct cta_display_color_primaries primaries_;
