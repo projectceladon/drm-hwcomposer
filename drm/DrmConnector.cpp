@@ -76,12 +76,25 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
   if (!GetConnectorProperty(dev, *c, "DPMS", &c->dpms_property_) ||
       !GetConnectorProperty(dev, *c, "CRTC_ID", &c->crtc_id_property_) ||
       (dev.IsHdrSupportedDevice() && !GetConnectorProperty(dev, *c, "HDR_OUTPUT_METADATA", &c->hdr_op_metadata_prop_))) {
+      ALOGE("%s GetConnectorProperty check failed!", __FUNCTION__);
       return {};
   }
 
   c->hdr_metadata_.valid = false;
 
-  c->UpdateEdidProperty();
+  int edid_valid = c->UpdateEdidProperty();
+
+  // Starts to parse HDR meta data at the connecotr initialization stage,so
+  // we know if the connector supports HDR or not. This will help to report
+  // HDR capabilities to surfaceflinger correctly in later HWC API calls.
+  if (edid_valid >=0 && c->IsHdrSupportedDevice()) {
+    auto blob = c->GetEdidBlob();
+    if (!blob) {
+       ALOGE("%s Failed to get edid property value.", __FUNCTION__);
+    } else {
+      c->ParseCTAFromExtensionBlock((uint8_t*)blob->data);
+    }
+  }
 
   if (c->IsWriteback() &&
       (!GetConnectorProperty(dev, *c, "WRITEBACK_PIXEL_FORMATS",
@@ -359,8 +372,11 @@ void DrmConnector::GetHDRStaticMetadata(uint8_t *b, uint8_t length) {
   }
   memset(display_hdrMd_, 0, sizeof(struct cta_edid_hdr_metadata_static));
 
+  ALOGD("Found HDR Static Metadata in EDID extension block.");
   display_hdrMd_->eotf = b[0] & 0x3F;
   display_hdrMd_->metadata_type = b[1];
+
+  edid_contains_hdr_tag_ = true;
 
   if (length > 2 && length < 6) {
     display_hdrMd_->desired_max_ll = b[2];
@@ -453,7 +469,7 @@ void DrmConnector::ParseCTAFromExtensionBlock(uint8_t *edid) {
             DrmConnector::GetHDRStaticMetadata(dbptr + 2, dblen - 1);
             break;
           default:
-            ALOGE(" Unknown tag/Parsing option\n");
+            ALOGE(" Unknown tag/Parsing option:%x\n", dbptr[1]);
         }
         DrmConnector::GetColorPrimaries(dbptr + 2, &primaries_);
       }
@@ -474,7 +490,7 @@ bool DrmConnector::GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
     ALOGE("outTypes couldn't be NULL!");
     //TODO: clarify SF's logic here
     //kindly skip this check now and return nothing if it's NULL
-    //return false;
+    return false;
   }
 
   if (NULL == outMaxLuminance) {
@@ -497,12 +513,14 @@ bool DrmConnector::GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
     if (display_hdrMd_->eotf & 0x04) {
       if(outTypes)
         *(outTypes + *outNumTypes) = (uint32_t)EOTF_ST2084;
+      ALOGD("EOTF_ST2084 found!");
       (*outNumTypes)+=1;
     }
     // HDR meta block bit 4 of byte 3: HLG
     if (display_hdrMd_->eotf & 0x08) {
       if(outTypes)
         *(outTypes + *outNumTypes) = (uint32_t)EOTF_HLG;
+      ALOGD("EOTF_HLG found!");
       (*outNumTypes)+=1;
     }
     double outmaxluminance, outmaxaverageluminance, outminluminance;
@@ -520,12 +538,12 @@ bool DrmConnector::GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
 
     int ret = GetConnectorProperty(*drm_, *this, "HDR_OUTPUT_METADATA", &hdr_op_metadata_prop_);
     if (ret) {
-      ALOGE("Could not get HDR_OUTPUT_METADATA property\n");
-      //return ret;
+      ALOGE("%s Could not get HDR_OUTPUT_METADATA property\n", __FUNCTION__);
     }
+    return true;
   }
 
-  return true;
+  return false;
 }
 
 bool DrmConnector::GetRenderIntents(uint32_t *outNumIntents, int32_t *outIntents) {
