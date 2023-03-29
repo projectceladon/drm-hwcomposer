@@ -30,7 +30,6 @@
 #include "drm/DrmPlane.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
-#include "utils/cta_hdr_defs.h"
 
 namespace android {
 
@@ -129,7 +128,6 @@ class DrmAtomicStateManager {
   UniqueFd last_present_fence_;
   int frames_staged_{};
   int frames_tracked_{};
-  bool hdr_mdata_set_ = false;
 };
 
 }  // namespace android

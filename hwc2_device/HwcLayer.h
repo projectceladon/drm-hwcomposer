@@ -77,9 +77,6 @@ class HwcLayer {
   HWC2::Error SetLayerTransform(int32_t transform);
   HWC2::Error SetLayerVisibleRegion(hwc_region_t visible);
   HWC2::Error SetLayerZOrder(uint32_t order);
-  HWC2::Error SetLayerPerFrameMetadata(uint32_t numElements,
-                                     const int32_t *keys,
-                                     const float *metadata);
 
  private:
   // sf_type_ stores the initial type given to us by surfaceflinger,

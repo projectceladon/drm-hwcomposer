@@ -65,8 +65,6 @@ class DrmDevice {
 
   std::string GetName() const;
 
-  bool IsHdrSupportedDevice();
-
   auto RegisterUserPropertyBlob(void *data, size_t length) const
       -> DrmModeUserPropertyBlobUnique;
 
@@ -112,9 +110,6 @@ class DrmDevice {
 
   UniqueFd fd_;
   uint32_t mode_id_ = 0;
-
-  bool is_hdr_supported_ = false;
-  bool hdr_device_checked_ = false;
 
   std::vector<std::unique_ptr<DrmConnector>> connectors_;
   std::vector<std::unique_ptr<DrmConnector>> writeback_connectors_;
