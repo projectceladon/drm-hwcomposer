@@ -532,7 +532,10 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
   std::map<uint32_t, HwcLayer *> z_map;
+  uint32_t video_layer_number = 0;
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+    if (l.second.IsVideoLayer())
+      video_layer_number++;
     switch (l.second.GetValidatedType()) {
       case HWC2::Composition::Device:
         z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
@@ -578,7 +581,8 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
    * in between of ValidateDisplay() and PresentDisplay() calls
    */
   current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
-                                               std::move(composition_layers));
+                                               std::move(composition_layers),
+                                               video_layer_number);
   if (!current_plan_) {
     if (!a_args.test_only) {
       ALOGE("Failed to create DrmKmsPlan");

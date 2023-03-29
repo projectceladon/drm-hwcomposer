@@ -36,7 +36,8 @@ struct DrmKmsPlan {
   std::vector<LayerToPlaneJoining> plan;
 
   static auto CreateDrmKmsPlan(DrmDisplayPipeline &pipe,
-                               std::vector<LayerData> composition)
+                               std::vector<LayerData> composition,
+                               uint32_t video_layer_number)
       -> std::unique_ptr<DrmKmsPlan>;
 };
 

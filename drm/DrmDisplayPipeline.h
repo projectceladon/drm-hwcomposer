@@ -72,7 +72,7 @@ struct DrmDisplayPipeline {
   static auto CreatePipeline(DrmConnector &connector)
       -> std::unique_ptr<DrmDisplayPipeline>;
 
-  auto GetUsablePlanes()
+  auto GetUsablePlanes(uint32_t video_layer_number)
       -> std::vector<std::shared_ptr<BindingOwner<DrmPlane>>>;
 
   auto AtomicDisablePipeline() -> int;

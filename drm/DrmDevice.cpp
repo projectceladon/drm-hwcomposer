@@ -163,13 +163,7 @@ auto DrmDevice::Init(const char *path) -> int {
   for (uint32_t i = 0; i < plane_res->count_planes; ++i) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto plane = DrmPlane::CreateInstance(*this, plane_res->planes[i]);
-
-    if (!planes_enabling_) {
-      if (plane->GetType() == DRM_PLANE_TYPE_PRIMARY)
-        planes_.emplace_back(std::move(plane));
-    } else {
-      planes_.emplace_back(std::move(plane));
-    }
+    planes_.emplace_back(std::move(plane));
   }
 
   return 0;

@@ -21,7 +21,7 @@
 #include "HwcDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
-
+#include "cros_gralloc_handle.h"
 namespace android {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -58,6 +58,39 @@ HWC2::Error HwcLayer::SetLayerBuffer(buffer_handle_t buffer,
   buffer_handle_updated_ = true;
 
   return HWC2::Error::None;
+}
+
+bool HwcLayer::IsVideoLayer() {
+  if (nullptr != buffer_handle_) {
+    cros_gralloc_handle *gr_handle = (cros_gralloc_handle *)(buffer_handle_);
+    if ((nullptr != gr_handle) && (IsSupportedMediaFormat(gr_handle->format)))
+      return true;
+  }
+  return false;
+}
+
+bool HwcLayer::IsSupportedMediaFormat(uint32_t format) {
+  switch (format) {
+	case DRM_FORMAT_NV12:
+	case DRM_FORMAT_NV16:
+	case DRM_FORMAT_P010:
+	case DRM_FORMAT_YVU420:
+	case DRM_FORMAT_YUV420:
+	case DRM_FORMAT_YUV422:
+	case DRM_FORMAT_YUV444:
+	case DRM_FORMAT_UYVY:
+	case DRM_FORMAT_YUYV:
+	case DRM_FORMAT_YVYU:
+	case DRM_FORMAT_VYUY:
+	case DRM_FORMAT_AYUV:
+	case DRM_FORMAT_NV12_Y_TILED_INTEL:
+	case DRM_FORMAT_NV21:
+	case DRM_FORMAT_YVU420_ANDROID:
+	  return true;
+	default:
+	  break;
+  }
+  return false;
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
