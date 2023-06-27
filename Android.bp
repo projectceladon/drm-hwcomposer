@@ -53,6 +53,11 @@ cc_defaults {
 }
 
 filegroup {
+    name: "drm_hwcomposer_fd",
+    srcs: ["utils/fd.cpp"],
+}
+
+filegroup {
     name: "drm_hwcomposer_common",
     srcs: [
         "bufferinfo/BufferInfoGetter.cpp",

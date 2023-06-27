@@ -23,7 +23,10 @@ cc_library_shared {
 cc_test {
     name: "hwc-drm-uevent-print",
 
-    srcs: ["uevent_print.cpp"],
+    srcs: [
+        ":drm_hwcomposer_fd",
+        "uevent_print.cpp",
+    ],
 
     vendor: true,
     header_libs: [
