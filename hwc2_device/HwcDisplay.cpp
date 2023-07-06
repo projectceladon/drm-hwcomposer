@@ -25,7 +25,9 @@
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 #include "utils/properties.h"
-
+#ifdef HWC_DUMP_BUFFER
+#include "bufferinfo/legacy/BufferInfoMinigbm.h"
+#endif
 namespace android {
 
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
@@ -132,7 +134,9 @@ void HwcDisplay::Deinit() {
 
 HWC2::Error HwcDisplay::Init() {
   ChosePreferredConfig();
-
+#ifdef HWC_DUMP_BUFFER
+  BufferInfoMinigbm::InitializeGralloc1(pipeline_->device);
+#endif  
   int ret = vsync_worker_.Init(pipeline_, [this](int64_t timestamp) {
     const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
     if (vsync_event_en_) {

@@ -79,7 +79,7 @@ filegroup {
     srcs: [
         "bufferinfo/BufferInfoGetter.cpp",
         "bufferinfo/BufferInfoMapperMetadata.cpp",
-
+        
         "compositor/DrmKmsPlan.cpp",
 
         "drm/DrmAtomicStateManager.cpp",
@@ -132,6 +132,7 @@ cc_library_shared {
         ":drm_hwcomposer_common",
         "bufferinfo/legacy/BufferInfoMinigbm.cpp",
     ],
+    cflags: ["-DHWC_DUMP_BUFFER"],
 }
 
 // Used by hwcomposer.drm_imagination

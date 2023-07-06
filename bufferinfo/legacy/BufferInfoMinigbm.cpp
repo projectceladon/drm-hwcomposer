@@ -122,4 +122,93 @@ int BufferInfoMinigbm::ValidateGralloc() {
   return 0;
 }
 
+void BufferInfoMinigbm::InitializeGralloc1(DrmDevice *drmDevice) {
+  hw_device_t *device;
+
+  struct dri2_drm_display *dri_drm = (struct dri2_drm_display *)calloc(1, sizeof(*dri_drm));
+  if (!dri_drm)
+    return;
+
+  dri_drm->fd = -1;
+  int ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
+                      (const hw_module_t **)&dri_drm->gralloc);
+  if (ret) {
+    return;
+  }
+
+  dri_drm->gralloc_version = dri_drm->gralloc->common.module_api_version;
+  if (dri_drm->gralloc_version == HARDWARE_MODULE_API_VERSION(1, 0)) {
+    ret = dri_drm->gralloc->common.methods->open(&dri_drm->gralloc->common, GRALLOC_HARDWARE_MODULE_ID, &device);
+    if (ret) {
+      ALOGE("Failed to open device");
+      return;
+    } else {
+      ALOGE("success to open device, Initialize");
+      dri_drm->gralloc1_dvc = (gralloc1_device_t *)device;
+      dri_drm->pfn_lock = (GRALLOC1_PFN_LOCK)dri_drm->gralloc1_dvc->getFunction(dri_drm->gralloc1_dvc, GRALLOC1_FUNCTION_LOCK);
+      dri_drm->pfn_importBuffer = (GRALLOC1_PFN_IMPORT_BUFFER)dri_drm->gralloc1_dvc->getFunction(dri_drm->gralloc1_dvc, GRALLOC1_FUNCTION_IMPORT_BUFFER);
+      dri_drm->pfn_release = (GRALLOC1_PFN_RELEASE)dri_drm->gralloc1_dvc->getFunction(dri_drm->gralloc1_dvc, GRALLOC1_FUNCTION_RELEASE);
+      dri_drm->pfn_unlock = (GRALLOC1_PFN_UNLOCK)dri_drm->gralloc1_dvc->getFunction(dri_drm->gralloc1_dvc, GRALLOC1_FUNCTION_UNLOCK);
+      dri_drm->pfn_get_stride = (GRALLOC1_PFN_GET_STRIDE)dri_drm->gralloc1_dvc->getFunction(dri_drm->gralloc1_dvc, GRALLOC1_FUNCTION_GET_STRIDE);
+      drmDevice->dri_drm_ = (void *)dri_drm;
+      }
+    }
+  return;
+}
+
+void BufferInfoMinigbm::DumpBuffer(DrmDevice *drmDevice, buffer_handle_t handle, BufferInfo buffer_info) {
+  if (NULL == handle)
+    return;
+  char dump_file[256] = {0};
+  buffer_handle_t handle_copy;
+  uint8_t* pixels = nullptr;
+  gralloc1_rect_t accessRegion = {0, 0, (int32_t)buffer_info.width, (int32_t)buffer_info.height};;
+
+  struct dri2_drm_display *dri_drm = (struct dri2_drm_display *)drmDevice->dri_drm_;
+
+  assert (dri_drm == nullptr ||
+          dri_drm->pfn_importBuffer  == nullptr ||
+          dri_drm->pfn_lock  == nullptr ||
+          dri_drm->pfn_unlock  == nullptr ||
+          dri_drm->pfn_release  == nullptr ||
+          dri_drm->pfn_get_stride);
+
+  int ret = dri_drm->pfn_importBuffer(dri_drm->gralloc1_dvc, handle, &handle_copy);
+  if (ret) {
+    ALOGE("Gralloc importBuffer failed");
+    return;
+  }
+
+  ret = dri_drm->pfn_lock(dri_drm->gralloc1_dvc, handle_copy,
+                          GRALLOC1_CONSUMER_USAGE_CPU_READ_OFTEN, GRALLOC1_PRODUCER_USAGE_CPU_WRITE_NEVER,
+                          &accessRegion, reinterpret_cast<void**>(&pixels), 0);
+  if (ret) {
+    ALOGE("gralloc->lock failed: %d", ret);
+    return;
+  } else {
+    char ctime[32];
+    time_t t = time(0);
+    static int i = 0;
+    if (i >= 1000) {
+      i = 0;
+    }
+    strftime(ctime, sizeof(ctime), "%Y-%m-%d", localtime(&t));
+    sprintf(dump_file, "/data/local/traces/dump_%dx%d_0x%x_%s_%d", buffer_info.width, buffer_info.height, buffer_info.format, ctime,i);
+    int file_fd = 0;
+    file_fd = open(dump_file, O_RDWR|O_CREAT, 0666);
+    if (file_fd == -1) {
+      ALOGE("Failed to open %s while dumping", dump_file);
+    } else {
+      uint32_t bytes = 64;
+      size_t size = buffer_info.width * buffer_info.height * bytes;
+      ALOGE("write file buffer_info.size = %zu", size);
+      write(file_fd, pixels, size);
+      close(file_fd);
+    }
+    int outReleaseFence = 0;
+    dri_drm->pfn_unlock(dri_drm->gralloc1_dvc, handle_copy, &outReleaseFence);
+    dri_drm->pfn_release(dri_drm->gralloc1_dvc, handle_copy);
+  }
+}
+
 }  // namespace android
