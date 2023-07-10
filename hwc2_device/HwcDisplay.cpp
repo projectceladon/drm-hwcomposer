@@ -260,6 +260,16 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
 
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
 
+  if (IsInHeadlessMode()) {
+    if (num_modes)
+      *num_modes = 1;
+
+    if (modes)
+      *modes = HAL_COLOR_MODE_NATIVE;
+
+    return HWC2::Error::None;
+  }
+
   DrmConnector *conn = pipeline_->connector->Get();
   ALOGD("%s, num_modes:%p, modes:%p, conn:%p", __FUNCTION__, num_modes, modes, conn);
   if (conn && (!conn->IsHdrSupportedDevice() || !conn->IsConnectorHdrCapable())) {
@@ -434,6 +444,10 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
                                            float * max_average_luminance,
                                            float * min_luminance) {
   *num_types = 0;
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::Unsupported;
+  }
+
   DrmConnector *conn = pipeline_->connector->Get();
 
   if (conn && conn->IsHdrSupportedDevice()) {
@@ -946,6 +960,12 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     ALOGE("Null pointer error, outNumIntents: %p, outIntents: %p",
           outNumIntents, outIntents);
     return HWC2::Error::BadParameter;
+  }
+
+  if (IsInHeadlessMode()) {
+    *outNumIntents = 1;
+    outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
+    return HWC2::Error::None;
   }
 
   DrmConnector *conn = pipeline_->connector->Get();
