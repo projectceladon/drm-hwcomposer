@@ -956,7 +956,7 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
 
-  if (NULL == outNumIntents && NULL == outIntents) {
+  if (NULL == outNumIntents || NULL == outIntents) {
     ALOGE("Null pointer error, outNumIntents: %p, outIntents: %p",
           outNumIntents, outIntents);
     return HWC2::Error::BadParameter;
