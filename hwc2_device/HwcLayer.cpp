@@ -21,7 +21,10 @@
 #include "HwcDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
-
+#ifdef HWC_DUMP_BUFFER
+#include "bufferinfo/legacy/BufferInfoMinigbm.h"
+#include "utils/properties.h"
+#endif
 namespace android {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -251,6 +254,18 @@ void HwcLayer::ImportFb() {
     bi_get_failed_ = true;
     return;
   }
+
+#ifdef HWC_DUMP_BUFFER
+  char status[PROPERTY_VALUE_MAX];
+  if (property_get("drm.dumpbuffer.on", status, NULL) > 0) {
+    ALOGE("drm.dumpbuffer.on does support");
+    if (status != "0") {
+      BufferInfoMinigbm::DumpBuffer(parent_->GetPipe().device, buffer_handle_, layer_data_.bi.value());
+    } else {
+      ALOGE("DumpBuffer does not support");
+    }
+  }
+#endif
 
   layer_data_
       .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
