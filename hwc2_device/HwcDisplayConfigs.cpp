@@ -22,12 +22,20 @@
 
 #include "drm/DrmConnector.h"
 #include "utils/log.h"
-
+// 8 inch
+#ifdef HEADLESS_RESOLUTION_2560_1600
+constexpr uint32_t kHeadlessModeDisplayWidthMm = 173;
+constexpr uint32_t kHeadlessModeDisplayHeightMm = 108;
+constexpr uint32_t kHeadlessModeDisplayWidthPx = 2560;
+constexpr uint32_t kHeadlessModeDisplayHeightPx = 1600;
+constexpr uint32_t kHeadlessModeDisplayVRefresh = 60;
+#else
 constexpr uint32_t kHeadlessModeDisplayWidthMm = 163;
 constexpr uint32_t kHeadlessModeDisplayHeightMm = 122;
 constexpr uint32_t kHeadlessModeDisplayWidthPx = 1024;
 constexpr uint32_t kHeadlessModeDisplayHeightPx = 768;
 constexpr uint32_t kHeadlessModeDisplayVRefresh = 60;
+#endif
 
 namespace android {
 
