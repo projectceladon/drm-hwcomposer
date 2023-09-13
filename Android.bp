@@ -132,6 +132,9 @@ cc_library_shared {
         ":drm_hwcomposer_common",
         "bufferinfo/legacy/BufferInfoMinigbm.cpp",
     ],
+    cppflags: [
+        "-DHEADLESS_RESOLUTION_2560_1600",
+    ],
 }
 
 // Used by hwcomposer.drm_imagination
