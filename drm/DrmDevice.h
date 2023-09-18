@@ -47,6 +47,8 @@ class DrmDevice {
   }
 
   auto GetConnectors() -> const std::vector<std::unique_ptr<DrmConnector>> &;
+  auto GetWritebackConnectors()
+      -> const std::vector<std::unique_ptr<DrmConnector>> &;
   auto GetPlanes() -> const std::vector<std::unique_ptr<DrmPlane>> &;
   auto GetCrtcs() -> const std::vector<std::unique_ptr<DrmCrtc>> &;
   auto GetEncoders() -> const std::vector<std::unique_ptr<DrmEncoder>> &;

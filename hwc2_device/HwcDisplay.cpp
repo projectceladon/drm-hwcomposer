@@ -67,7 +67,11 @@ std::string HwcDisplay::Dump() {
 
 HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                        DrmHwcTwo *hwc2)
-    : hwc2_(hwc2), handle_(handle), type_(type), client_layer_(this){};
+    : hwc2_(hwc2), handle_(handle), type_(type), client_layer_(this) {
+  if (type_ == HWC2::DisplayType::Virtual) {
+    writeback_layer_ = std::make_unique<HwcLayer>(this);
+  }
+}
 
 void HwcDisplay::SetColorMarixToIdentity() {
   color_matrix_ = std::make_shared<drm_color_ctm>();
@@ -160,10 +164,12 @@ HWC2::Error HwcDisplay::Init() {
       },
   };
 
-  vsync_worker_ = VSyncWorker::CreateInstance(pipeline_, vsw_callbacks);
-  if (!vsync_worker_) {
-    ALOGE("Failed to create event worker for d=%d\n", int(handle_));
-    return HWC2::Error::BadDisplay;
+  if (type_ != HWC2::DisplayType::Virtual) {
+    vsync_worker_ = VSyncWorker::CreateInstance(pipeline_, vsw_callbacks);
+    if (!vsync_worker_) {
+      ALOGE("Failed to create event worker for d=%d\n", int(handle_));
+      return HWC2::Error::BadDisplay;
+    }
   }
 
   if (!IsInHeadlessMode()) {
@@ -190,10 +196,12 @@ HWC2::Error HwcDisplay::Init() {
 
 HWC2::Error HwcDisplay::ChosePreferredConfig() {
   HWC2::Error err{};
-  if (!IsInHeadlessMode()) {
+  if (type_ == HWC2::DisplayType::Virtual) {
+    configs_.GenFakeMode(virtual_disp_width_, virtual_disp_height_);
+  } else if (!IsInHeadlessMode()) {
     err = configs_.Update(*pipeline_->connector->Get());
   } else {
-    configs_.FillHeadless();
+    configs_.GenFakeMode(0, 0);
   }
   if (!IsInHeadlessMode() && err != HWC2::Error::None) {
     return HWC2::Error::BadDisplay;
@@ -528,6 +536,13 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
    */
   current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
                                                std::move(composition_layers));
+
+  if (type_ == HWC2::DisplayType::Virtual) {
+    a_args.writeback_fb = writeback_layer_->GetLayerData().fb;
+    a_args.writeback_release_fence = writeback_layer_->GetLayerData()
+                                         .acquire_fence;
+  }
+
   if (!current_plan_) {
     if (!a_args.test_only) {
       ALOGE("Failed to create DrmKmsPlan");
@@ -722,10 +737,16 @@ bool HwcDisplay::CtmByGpu() {
   return true;
 }
 
-HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
-                                        int32_t /*release_fence*/) {
-  // TODO(nobody): Need virtual display support
-  return HWC2::Error::Unsupported;
+HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t buffer,
+                                        int32_t release_fence) {
+  writeback_layer_->SetLayerBuffer(buffer, release_fence);
+  writeback_layer_->PopulateLayerData();
+  if (!writeback_layer_->IsLayerUsableAsDevice()) {
+    ALOGE("Output layer must be always usable by DRM/KMS");
+    return HWC2::Error::BadLayer;
+  }
+  /* TODO: Check if format is supported by writeback connector */
+  return HWC2::Error::None;
 }
 
 HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
@@ -773,6 +794,10 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
 }
 
 HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
+  if (type_ == HWC2::DisplayType::Virtual) {
+    return HWC2::Error::None;
+  }
+
   vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
   if (vsync_event_en_) {
     vsync_worker_->VSyncControl(true);
@@ -845,6 +870,10 @@ HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
     hwc2_config_t config,
     hwc_vsync_period_change_constraints_t *vsyncPeriodChangeConstraints,
     hwc_vsync_period_change_timeline_t *outTimeline) {
+  if (type_ == HWC2::DisplayType::Virtual) {
+    return HWC2::Error::None;
+  }
+
   if (vsyncPeriodChangeConstraints == nullptr || outTimeline == nullptr) {
     return HWC2::Error::BadParameter;
   }

@@ -182,6 +182,15 @@ class HwcDisplay {
     return flatcon_;
   }
 
+  auto &GetWritebackLayer() {
+    return writeback_layer_;
+  }
+
+  void SetVirtualDisplayResolution(uint16_t width, uint16_t height) {
+    virtual_disp_width_ = width;
+    virtual_disp_height_ = height;
+  }
+
  private:
   HwcDisplayConfigs configs_;
 
@@ -210,6 +219,9 @@ class HwcDisplay {
 
   std::map<hwc2_layer_t, HwcLayer> layers_;
   HwcLayer client_layer_;
+  std::unique_ptr<HwcLayer> writeback_layer_;
+  uint16_t virtual_disp_width_{};
+  uint16_t virtual_disp_height_{};
   int32_t color_mode_{};
   static constexpr int kCtmRows = 3;
   static constexpr int kCtmCols = 3;

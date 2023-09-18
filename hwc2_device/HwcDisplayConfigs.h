@@ -39,7 +39,7 @@ struct HwcDisplayConfig {
 
 struct HwcDisplayConfigs {
   HWC2::Error Update(DrmConnector &conn);
-  void FillHeadless();
+  void GenFakeMode(uint16_t width, uint16_t height);
 
   std::map<uint32_t /*config_id*/, struct HwcDisplayConfig> hwc_configs;
 

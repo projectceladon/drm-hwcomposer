@@ -37,6 +37,9 @@ struct AtomicCommitArgs {
   std::shared_ptr<DrmKmsPlan> composition;
   std::shared_ptr<drm_color_ctm> color_matrix;
 
+  std::shared_ptr<DrmFbIdHandle> writeback_fb;
+  SharedFd writeback_release_fence;
+
   /* out */
   SharedFd out_fence;
 
