@@ -137,14 +137,16 @@ void ResourceManager::UpdateFrontendDisplays() {
             conn->GetName().c_str());
 
       if (connected) {
-        auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
+        std::shared_ptr<DrmDisplayPipeline>
+            pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
+
         if (pipeline) {
-          frontend_interface_->BindDisplay(pipeline.get());
+          frontend_interface_->BindDisplay(pipeline);
           attached_pipelines_[conn] = std::move(pipeline);
         }
       } else {
         auto &pipeline = attached_pipelines_[conn];
-        frontend_interface_->UnbindDisplay(pipeline.get());
+        frontend_interface_->UnbindDisplay(pipeline);
         attached_pipelines_.erase(conn);
       }
     }
@@ -154,7 +156,7 @@ void ResourceManager::UpdateFrontendDisplays() {
 
 void ResourceManager::DetachAllFrontendDisplays() {
   for (auto &p : attached_pipelines_) {
-    frontend_interface_->UnbindDisplay(p.second.get());
+    frontend_interface_->UnbindDisplay(p.second);
   }
   attached_pipelines_.clear();
   frontend_interface_->FinalizeDisplayBinding();

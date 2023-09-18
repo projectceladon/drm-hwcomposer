@@ -30,14 +30,14 @@
 
 namespace android {
 
-auto VSyncWorker::CreateInstance(DrmDisplayPipeline *pipe,
+auto VSyncWorker::CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe,
                                  VSyncWorkerCallbacks &callbacks)
     -> std::shared_ptr<VSyncWorker> {
   auto vsw = std::shared_ptr<VSyncWorker>(new VSyncWorker());
 
   vsw->callbacks_ = callbacks;
 
-  if (pipe != nullptr) {
+  if (pipe) {
     vsw->high_crtc_ = pipe->crtc->Get()->GetIndexInResArray()
                       << DRM_VBLANK_HIGH_CRTC_SHIFT;
     vsw->drm_fd_ = pipe->device->GetFd();

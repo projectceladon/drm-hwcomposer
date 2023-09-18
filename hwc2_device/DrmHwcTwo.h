@@ -61,8 +61,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   }
 
   // PipelineToFrontendBindingInterface
-  bool BindDisplay(DrmDisplayPipeline *pipeline) override;
-  bool UnbindDisplay(DrmDisplayPipeline *pipeline) override;
+  bool BindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) override;
+  bool UnbindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) override;
   void FinalizeDisplayBinding() override;
 
   void SendVsyncEventToClient(hwc2_display_t displayid, int64_t timestamp,
@@ -75,7 +75,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
 
   ResourceManager resource_manager_;
   std::map<hwc2_display_t, std::unique_ptr<HwcDisplay>> displays_;
-  std::map<DrmDisplayPipeline *, hwc2_display_t> display_handles_;
+  std::map<std::shared_ptr<DrmDisplayPipeline>, hwc2_display_t>
+      display_handles_;
 
   std::string mDumpString;
 

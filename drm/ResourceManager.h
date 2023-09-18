@@ -34,8 +34,8 @@ enum class CtmHandling {
 class PipelineToFrontendBindingInterface {
  public:
   virtual ~PipelineToFrontendBindingInterface() = default;
-  virtual bool BindDisplay(DrmDisplayPipeline *);
-  virtual bool UnbindDisplay(DrmDisplayPipeline *);
+  virtual bool BindDisplay(std::shared_ptr<DrmDisplayPipeline>);
+  virtual bool UnbindDisplay(std::shared_ptr<DrmDisplayPipeline>);
   virtual void FinalizeDisplayBinding();
 };
 
@@ -82,7 +82,7 @@ class ResourceManager {
 
   std::recursive_mutex main_lock_;
 
-  std::map<DrmConnector *, std::unique_ptr<DrmDisplayPipeline>>
+  std::map<DrmConnector *, std::shared_ptr<DrmDisplayPipeline>>
       attached_pipelines_;
 
   PipelineToFrontendBindingInterface *const frontend_interface_;

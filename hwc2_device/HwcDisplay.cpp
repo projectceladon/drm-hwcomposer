@@ -83,12 +83,12 @@ void HwcDisplay::SetColorMarixToIdentity() {
 
 HwcDisplay::~HwcDisplay() = default;
 
-void HwcDisplay::SetPipeline(DrmDisplayPipeline *pipeline) {
+void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
 
-  pipeline_ = pipeline;
+  pipeline_ = std::move(pipeline);
 
-  if (pipeline != nullptr || handle_ == kPrimaryDisplay) {
+  if (pipeline_ != nullptr || handle_ == kPrimaryDisplay) {
     Init();
     hwc2_->ScheduleHotplugEvent(handle_, /*connected = */ true);
   } else {

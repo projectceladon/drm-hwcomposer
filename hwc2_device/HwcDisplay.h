@@ -44,7 +44,7 @@ class HwcDisplay {
   ~HwcDisplay();
 
   /* SetPipeline should be carefully used only by DrmHwcTwo hotplug handlers */
-  void SetPipeline(DrmDisplayPipeline *pipeline);
+  void SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline);
 
   HWC2::Error CreateComposition(AtomicCommitArgs &a_args);
   std::vector<HwcLayer *> GetOrderLayersByZPos();
@@ -193,7 +193,7 @@ class HwcDisplay {
   int64_t staged_mode_change_time_{};
   uint32_t staged_mode_config_id_{};
 
-  DrmDisplayPipeline *pipeline_{};
+  std::shared_ptr<DrmDisplayPipeline> pipeline_;
 
   std::unique_ptr<Backend> backend_;
   std::shared_ptr<FlatteningController> flatcon_;

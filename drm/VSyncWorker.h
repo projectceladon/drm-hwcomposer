@@ -35,7 +35,7 @@ class VSyncWorker {
  public:
   ~VSyncWorker() = default;
 
-  auto static CreateInstance(DrmDisplayPipeline *pipe,
+  auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe,
                              VSyncWorkerCallbacks &callbacks)
       -> std::shared_ptr<VSyncWorker>;
 

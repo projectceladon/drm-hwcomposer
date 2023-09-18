@@ -35,13 +35,13 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
     displays_[kPrimaryDisplay] = std::make_unique<
         HwcDisplay>(kPrimaryDisplay, HWC2::DisplayType::Physical, this);
     /* Initializes null-display */
-    displays_[kPrimaryDisplay]->SetPipeline(nullptr);
+    displays_[kPrimaryDisplay]->SetPipeline({});
   }
 
   if (displays_[kPrimaryDisplay]->IsInHeadlessMode() &&
       !display_handles_.empty()) {
     /* Reattach first secondary display to take place of the primary */
-    auto *pipe = display_handles_.begin()->first;
+    auto pipe = display_handles_.begin()->first;
     ALOGI("Primary display was disconnected, reattaching '%s' as new primary",
           pipe->connector->Get()->GetName().c_str());
     UnbindDisplay(pipe);
@@ -66,10 +66,10 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
   }
 }
 
-bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
+bool DrmHwcTwo::BindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   if (display_handles_.count(pipeline) != 0) {
     ALOGE("%s, pipeline is already used by another display, FIXME!!!: %p",
-          __func__, pipeline);
+          __func__, pipeline.get());
     return false;
   }
 
@@ -96,9 +96,9 @@ bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
   return true;
 }
 
-bool DrmHwcTwo::UnbindDisplay(DrmDisplayPipeline *pipeline) {
+bool DrmHwcTwo::UnbindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   if (display_handles_.count(pipeline) == 0) {
-    ALOGE("%s, can't find the display, pipeline: %p", __func__, pipeline);
+    ALOGE("%s, can't find the display, pipeline: %p", __func__, pipeline.get());
     return false;
   }
   auto handle = display_handles_[pipeline];
@@ -112,7 +112,7 @@ bool DrmHwcTwo::UnbindDisplay(DrmDisplayPipeline *pipeline) {
     ALOGE("%s, can't find the display, handle: %" PRIu64, __func__, handle);
     return false;
   }
-  displays_[handle]->SetPipeline(nullptr);
+  displays_[handle]->SetPipeline({});
 
   /* We must defer display disposal and removal, since it may still have pending
    * HWC_API calls scheduled and waiting until ueventlistener thread releases
