@@ -1,4 +1,4 @@
-image: ubuntu:22.10
+image: ubuntu:23.04
 
 variables:
   DEBIAN_FRONTEND: noninteractive
@@ -6,8 +6,8 @@ variables:
 before_script:
   - apt-get --quiet update --yes >/dev/null
   - apt-get --quiet install --yes clang-15 clang-tidy-15 clang-format-15 git libdrm-dev blueprint-tools libgtest-dev make >/dev/null
-  - apt-get --quiet install --yes clang llvm make python3 python3-pip wget sudo rsync lld pkg-config ninja-build >/dev/null
-  - pip3 install mako meson jinja2 ply pyyaml >/dev/null
+  - apt-get --quiet install --yes clang llvm make python3 wget sudo rsync lld pkg-config ninja-build meson >/dev/null
+  - apt-get --quiet install --yes python3-mako python3-jinja2 python3-ply python3-yaml >/dev/null
 
 stages:
   - build

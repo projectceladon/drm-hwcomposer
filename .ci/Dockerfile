@@ -1,4 +1,4 @@
-FROM ubuntu:22.10
+FROM ubuntu:23.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -7,11 +7,11 @@ ENV PATH="/home/user/bin:${PATH}"
 # Taking into account layer structure, everything should be done within one layer.
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y clang-15 clang-tidy-15 clang-format-15 git libdrm-dev blueprint-tools libgtest-dev clang \
-    llvm make python3 python3-pip wget sudo rsync lld pkg-config ninja-build && \
-    pip3 install mako meson jinja2 ply pyyaml
+    llvm make python3 wget sudo rsync lld pkg-config ninja-build meson \
+    python3-mako python3-jinja2 python3-ply python3-yaml
 
 ENV RUN_USER user
-ENV RUN_UID 1000
+ENV RUN_UID 1001
 
 ENV USER_HOME /home/${RUN_USER}
 
