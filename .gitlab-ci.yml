@@ -1,5 +1,10 @@
 image: ubuntu:23.04
 
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+
 variables:
   DEBIAN_FRONTEND: noninteractive
 
