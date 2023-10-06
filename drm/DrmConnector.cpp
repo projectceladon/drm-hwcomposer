@@ -114,7 +114,8 @@ auto DrmConnector::GetEdidBlob() -> DrmModePropertyBlobUnique {
 
 bool DrmConnector::IsInternal() const {
   auto type = connector_->connector_type;
-  return type == DRM_MODE_CONNECTOR_LVDS || type == DRM_MODE_CONNECTOR_eDP ||
+  return type == DRM_MODE_CONNECTOR_Unknown ||
+         type == DRM_MODE_CONNECTOR_LVDS || type == DRM_MODE_CONNECTOR_eDP ||
          type == DRM_MODE_CONNECTOR_DSI || type == DRM_MODE_CONNECTOR_VIRTUAL ||
          type == DRM_MODE_CONNECTOR_DPI || type == DRM_MODE_CONNECTOR_SPI;
 }
