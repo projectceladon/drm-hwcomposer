@@ -33,6 +33,7 @@ namespace android {
 
 class DrmFbIdHandle;
 
+/* Rotation is defined in the clockwise direction */
 enum LayerTransform : uint32_t {
   kIdentity = 0,
   kFlipH = 1 << 0,

@@ -88,14 +88,17 @@ int DrmPlane::Init() {
 
   GetPlaneProperty("zpos", zpos_property_, Presence::kOptional);
 
+  /* DRM/KMS uses counter-clockwise rotations, while HWC API uses
+   * clockwise. That's why 90 and 270 are swapped here.
+   */
   if (GetPlaneProperty("rotation", rotation_property_, Presence::kOptional)) {
     rotation_property_.AddEnumToMap("rotate-0", LayerTransform::kIdentity,
                                     transform_enum_map_);
-    rotation_property_.AddEnumToMap("rotate-90", LayerTransform::kRotate90,
+    rotation_property_.AddEnumToMap("rotate-90", LayerTransform::kRotate270,
                                     transform_enum_map_);
     rotation_property_.AddEnumToMap("rotate-180", LayerTransform::kRotate180,
                                     transform_enum_map_);
-    rotation_property_.AddEnumToMap("rotate-270", LayerTransform::kRotate270,
+    rotation_property_.AddEnumToMap("rotate-270", LayerTransform::kRotate90,
                                     transform_enum_map_);
     rotation_property_.AddEnumToMap("reflect-x", LayerTransform::kFlipH,
                                     transform_enum_map_);
@@ -220,16 +223,19 @@ bool DrmPlane::HasNonRgbFormat() const {
 
 static uint64_t ToDrmRotation(LayerTransform transform) {
   uint64_t rotation = 0;
+  /* DRM/KMS uses counter-clockwise rotations, while HWC API uses
+   * clockwise. That's why 90 and 270 are swapped here.
+   */
   if ((transform & LayerTransform::kFlipH) != 0)
     rotation |= DRM_MODE_REFLECT_X;
   if ((transform & LayerTransform::kFlipV) != 0)
     rotation |= DRM_MODE_REFLECT_Y;
   if ((transform & LayerTransform::kRotate90) != 0)
-    rotation |= DRM_MODE_ROTATE_90;
+    rotation |= DRM_MODE_ROTATE_270;
   else if ((transform & LayerTransform::kRotate180) != 0)
     rotation |= DRM_MODE_ROTATE_180;
   else if ((transform & LayerTransform::kRotate270) != 0)
-    rotation |= DRM_MODE_ROTATE_270;
+    rotation |= DRM_MODE_ROTATE_90;
   else
     rotation |= DRM_MODE_ROTATE_0;
 
