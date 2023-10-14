@@ -11,11 +11,15 @@ RUN apt-get update && apt-get upgrade -y && \
     python3-mako python3-jinja2 python3-ply python3-yaml
 
 ENV RUN_USER user
-ENV RUN_UID 1001
+ENV RUN_UID 1000
 
 ENV USER_HOME /home/${RUN_USER}
 
 RUN mkdir -pv ${USER_HOME}
+
+# Delete default user
+RUN userdel -r ubuntu
+
 # Create new user
 RUN adduser \
     --gecos 'Build User' \
