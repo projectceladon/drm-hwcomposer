@@ -63,6 +63,10 @@ class DrmDevice {
     return max_resolution_;
   }
 
+  auto GetColorAdjustmentEnabling() const {
+    return color_adjustment_enabling_;
+  }
+
   std::string GetName() const;
 
   bool IsHdrSupportedDevice();
@@ -134,6 +138,7 @@ public:
   bool preferred_mode_limit_;
   bool planes_enabling_;
   int32_t planes_num_;
+  bool color_adjustment_enabling_;
 };
 }  // namespace android
 
