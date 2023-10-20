@@ -40,6 +40,7 @@ struct AtomicCommitArgs {
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
+  bool color_adjustment = false;
 
   /* out */
   UniqueFd out_fence;
@@ -48,6 +49,12 @@ struct AtomicCommitArgs {
   auto HasInputs() -> bool {
     return display_mode || active || composition;
   }
+};
+
+struct gamma_colors {
+  float red;
+  float green;
+  float blue;
 };
 
 class PresentTrackerThread {
@@ -92,6 +99,17 @@ class DrmAtomicStateManager {
 
   auto ExecuteAtomicCommit(AtomicCommitArgs &args) -> int;
   auto ActivateDisplayUsingDPMS() -> int;
+  auto SetColorSaturationHue(void) ->int;
+  auto SetColorBrightnessContrast(void) ->int;
+  auto SetColorTransformMatrix(
+      double *color_transform_matrix,
+      int32_t color_transform_hint) -> int;
+  auto ApplyPendingCTM(struct drm_color_ctm *ctm) -> int;
+
+  auto SetColorCorrection(struct gamma_colors gamma,
+                                    uint32_t contrast_c,
+                                    uint32_t brightness_c) ->int;
+  auto ApplyPendingLUT(struct drm_color_lut *lut,  uint64_t lut_size) -> int;
 
  private:
   auto CommitFrame(AtomicCommitArgs &args) -> int;
@@ -122,6 +140,14 @@ class DrmAtomicStateManager {
   DrmDisplayPipeline *const pipe_;
 
   void CleanupPriorFrameResources();
+  int64_t FloatToFixedPoint(float value);
+  void GenerateHueSaturationMatrix(double hue, double saturation, double coeff[3][3]);
+  void MatrixMult3x3(const double matrix_1[3][3], const double matrix_2[3][3], double result[3][3]);
+
+  float TransformContrastBrightness(float value, float brightness,
+                                                float contrast);
+  float TransformGamma(float value, float gamma);
+
 
   /* Present (swap) tracking */
   PresentTrackerThread *ptt_;
@@ -130,6 +156,7 @@ class DrmAtomicStateManager {
   int frames_staged_{};
   int frames_tracked_{};
   bool hdr_mdata_set_ = false;
+  const double pi_ = 3.1415926535897932;
 };
 
 }  // namespace android

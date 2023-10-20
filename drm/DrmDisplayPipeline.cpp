@@ -203,7 +203,10 @@ auto DrmDisplayPipeline::AtomicDisablePipeline() -> int {
 
   if (!connector->Get()->GetCrtcIdProperty().AtomicSet(*pset, 0) ||
       !crtc->Get()->GetActiveProperty().AtomicSet(*pset,  0)||
-      !crtc->Get()->GetModeProperty().AtomicSet(*pset, 0)){
+      !crtc->Get()->GetModeProperty().AtomicSet(*pset, 0)||
+      !crtc->Get()->GetCtmProperty().AtomicSet(*pset, 0)||
+      !crtc->Get()->GetGammaLutProperty().AtomicSet(*pset, 0)||
+      !crtc->Get()->GetGammaLutSizeProperty().AtomicSet(*pset, 0)){
         ALOGE("Failed to atomic disable connector & crtc property set");
         return -EINVAL;
   }
