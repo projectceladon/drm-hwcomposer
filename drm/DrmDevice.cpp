@@ -107,7 +107,7 @@ auto DrmDevice::Init(const char *path) -> int {
   ALOGD("The property 'vendor.hwcomposer.preferred.mode.limit' value is %d", preferred_mode_limit_);
 
   memset(property, 0 , PROPERTY_VALUE_MAX);
-  property_get("vendor.hwcomposer.planes.enabling", property, "0");
+  property_get("vendor.hwcomposer.planes.enabling", property, "1");
   planes_enabling_ = atoi(property) != 0 ? true : false;
   ALOGD("The property 'vendor.hwcomposer.planes.enabling' value is %d, %s",
     planes_enabling_, planes_enabling_ ? "support all planes":"only support primary plane");
