@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#undef NDEBUG
+#define LOG_NDEBUG 0
 #define LOG_TAG "hwc-drm-connector"
 
 #include "DrmConnector.h"
@@ -196,23 +198,50 @@ int DrmConnector::UpdateModes() {
     mode_id = -1;
 
   bool have_preferred_mode = false;
+/*
   for (int i = 0; i < connector_->count_modes; ++i) {
     if (connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
       have_preferred_mode = true;
       break;
     }
   }
+*/
+
+  bool has_the_safe_resolution = false;
+  for (int i = 0; i < connector_->count_modes; ++i) {
+      ALOGE("connector mode id: %d, hdisplay:%d, vdisplay:%d, vrefresh:%d", i, connector_->modes[i].hdisplay, connector_->modes[i].vdisplay, connector_->modes[i].vrefresh);
+
+      if (connector_->modes[i].hdisplay == 1920 && connector_->modes[i].vdisplay == 1080 && connector_->modes[i].vrefresh == 30) {
+	  has_the_safe_resolution = true;
+          ALOGE("the matched mode: %d", i);
+	  break;
+      }
+  }
+
+  ALOGE("has_the_safe_resolution: %d", has_the_safe_resolution);
 
   for (int i = 0; i < connector_->count_modes; ++i) {
-    
-        if (drm_->preferred_mode_limit_ && connector_id == -1) {
+    ALOGE("connector mode id: %d, hdisplay:%d, vdisplay:%d, vrefresh:%d", i, connector_->modes[i].hdisplay, connector_->modes[i].vdisplay, connector_->modes[i].vrefresh);
+
+    if (connector_->modes[i].hdisplay == 1920 && connector_->modes[i].vdisplay == 1080 && connector_->modes[i].vrefresh == 30) {
+      ALOGE("the matched mode: %d", i);
+    }
+    else {
+      ALOGE("The mode id:%d is above 1080p@30fps, need to skip it.", i);
+      if (has_the_safe_resolution) {
+        drm_->GetNextModeId();
+        continue;
+      }
+    }
+
+    if (drm_->preferred_mode_limit_ && connector_id == -1) {
       if (have_preferred_mode) {
         if (!(connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED)) {
           drm_->GetNextModeId();
           continue;
         }
       } else {
-        have_preferred_mode = true;
+        //have_preferred_mode = true;
       }
     }
     if (connector_->connector_id == connector_id) {
@@ -224,7 +253,7 @@ int DrmConnector::UpdateModes() {
               continue;
             }
           } else {
-            have_preferred_mode = true;
+            //have_preferred_mode = true;
          }
         }
       } else {
@@ -242,7 +271,7 @@ int DrmConnector::UpdateModes() {
               continue;
             }
           } else {
-            have_preferred_mode = true;
+            //have_preferred_mode = true;
           }
         }
       }
@@ -264,7 +293,7 @@ int DrmConnector::UpdateModes() {
       m.SetId(drm_->GetNextModeId());
       new_modes.push_back(m);
       ALOGD("CONNECTOR:%d select one mode, id = %d, name = %s, refresh = %f",
-            GetId(), m.id(), m.name().c_str(), m.v_refresh());
+	     GetId(), m.id(), m.name().c_str(), m.v_refresh());
     }
     if (!preferred_mode_found &&
         (new_modes.back().type() & DRM_MODE_TYPE_PREFERRED)) {
@@ -277,7 +306,8 @@ int DrmConnector::UpdateModes() {
     }
   }
 
-  UpdateMultiRefreshRateModes(new_modes);
+  ALOGE("Disable the multi mode for debug.");
+  //UpdateMultiRefreshRateModes(new_modes);
 
   modes_.swap(new_modes);
   if (!preferred_mode_found && !modes_.empty()) {
