@@ -45,6 +45,35 @@ ResourceManager::~ResourceManager() {
   uevent_listener_.Exit();
 }
 
+void ResourceManager::ReloadNode() {
+  char path_pattern[PROPERTY_VALUE_MAX];
+  // Could be a valid path or it can have at the end of it the wildcard %
+  // which means that it will try open all devices until an error is met.
+  int path_len = property_get("vendor.hwc.drm.device", path_pattern,
+                              "/dev/dri/card%");
+  int node_num = 0;
+  path_pattern[path_len - 1] = '\0';
+  for (int idx = 0;; ++idx) {
+    std::ostringstream path;
+    path << path_pattern << idx;
+
+    struct stat buf {};
+    if (stat(path.str().c_str(), &buf) != 0)
+      break;
+
+    node_num++;
+  }
+  if (node_num > card_num) {
+    card_num = node_num;
+    std::ostringstream path;
+    path << path_pattern << (node_num - 1);
+    auto dev = DrmDevice::CreateInstance(path.str(), this);
+    if (dev) {
+      drms_.emplace_back(std::move(dev));
+    }
+  }
+}
+
 void ResourceManager::Init() {
   if (initialized_) {
     ALOGE("Already initialized");
@@ -75,6 +104,7 @@ void ResourceManager::Init() {
       node_num++;
     }
 
+    card_num = node_num;
     // only have card0, is BM/GVT-d/Virtio
     if (node_num == 1) {
       std::ostringstream path;
@@ -89,14 +119,14 @@ void ResourceManager::Init() {
       std::ostringstream path;
       path << path_pattern << 1;
       auto dev = DrmDevice::CreateInstance(path.str(), this);
-      if (dev->GetName() == "i915") { // iGPU+dGPU, use iGPU(card0) for display
+      if (dev->GetName() == "i915") {  // iGPU+dGPU, use iGPU(card0) for display
         std::ostringstream path;
         path << path_pattern << 0;
         auto dev = DrmDevice::CreateInstance(path.str(), this);
         if (dev) {
           drms_.emplace_back(std::move(dev));
         }
-      } else { // SR-IOV, use virtio-gpu(card1) for display
+      } else {  // SR-IOV, use virtio-gpu(card1) for display
         if (dev) {
           drms_.emplace_back(std::move(dev));
         }
@@ -105,10 +135,22 @@ void ResourceManager::Init() {
     // is SRI-IOV + dGPU, use virtio-gpu(card2) for display
     if (node_num == 3) {
       std::ostringstream path;
-      path << path_pattern << 2;
+      path << path_pattern << 1;
       auto dev = DrmDevice::CreateInstance(path.str(), this);
-      if (dev) {
-        drms_.emplace_back(std::move(dev));
+      /* If card1 is i915, is the SRI-IOV + dGPU, use virtio-gpu(card2) for
+         display; If card1 is not i915, is iGPU vf + virtio-gpu + ivshemem, use
+         virtio-gpu(card1) and ivshmem(card2) for display.
+       */
+      if (dev->GetName() != "i915") {
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+      }
+      std::ostringstream path2;
+      path2 << path_pattern << 2;
+      auto dev2 = DrmDevice::CreateInstance(path2.str(), this);
+      if (dev2) {
+        drms_.emplace_back(std::move(dev2));
       }
     }
   }
@@ -153,10 +195,16 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
   return int64_t(ts.tv_sec) * kNsInSec + int64_t(ts.tv_nsec);
 }
 
-#define DRM_MODE_LINK_STATUS_GOOD       0
-#define DRM_MODE_LINK_STATUS_BAD        1
+#define DRM_MODE_LINK_STATUS_GOOD 0
+#define DRM_MODE_LINK_STATUS_BAD 1
 
+bool hotplug_event_init = false;
+bool boot_event = true;
+bool boot_init = true;
+std::ostringstream display_cast;
 void ResourceManager::UpdateFrontendDisplays() {
+  static int call_count = 0;
+  ReloadNode();
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
@@ -164,9 +212,18 @@ void ResourceManager::UpdateFrontendDisplays() {
     bool connected = conn->IsConnected();
     bool attached = attached_pipelines_.count(conn) != 0;
 
-    if (connected != attached) {
+    if ((connected != attached) && (hotplug_event_init || boot_event)) {
       ALOGI("%s connector %s", connected ? "Attaching" : "Detaching",
             conn->GetName().c_str());
+
+      if (boot_event &&
+          (!strcmp(conn->GetName().c_str(), display_cast.str().c_str()))) {
+        call_count++;
+        if (call_count > 1) {
+          boot_event = false;
+        }
+        continue;
+      }
 
       if (connected) {
         auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
@@ -180,6 +237,13 @@ void ResourceManager::UpdateFrontendDisplays() {
         frontend_interface_->UnbindDisplay(pipeline.get());
         attached_pipelines_.erase(conn);
       }
+    } else if ((!hotplug_event_init) &&
+               (!strcmp(conn->GetName().c_str(), display_cast.str().c_str())) &&
+               connected) {
+      auto &pipeline = attached_pipelines_[conn];
+      pipeline->AtomicDisablePipeline();
+      frontend_interface_->UnbindDisplay(pipeline.get());
+      attached_pipelines_.erase(conn);
     } else {
       if (connected) {
         uint64_t link_status = 0;
@@ -188,7 +252,8 @@ void ResourceManager::UpdateFrontendDisplays() {
         conn->UpdateLinkStatusProperty();
         std::tie(ret, link_status) = conn->link_status_property().value();
         if (ret) {
-          ALOGE("Connector %u get link status value error %d", conn->GetId(), ret);
+          ALOGE("Connector %u get link status value error %d", conn->GetId(),
+                ret);
           continue;
         }
         if (link_status != DRM_MODE_LINK_STATUS_GOOD) {
@@ -206,6 +271,7 @@ void ResourceManager::UpdateFrontendDisplays() {
       }
     }
   }
+  hotplug_event_init = !hotplug_event_init;
   frontend_interface_->FinalizeDisplayBinding();
 }
 
@@ -223,11 +289,14 @@ auto ResourceManager::GetOrderedConnectors() -> std::vector<DrmConnector *> {
    */
 
   std::vector<DrmConnector *> ordered_connectors;
+  int conn_virtual = 0;
 
   for (auto &drm : drms_) {
     for (const auto &conn : drm->GetConnectors()) {
       if (conn->IsInternal()) {
         ordered_connectors.emplace_back(conn.get());
+        if (strstr(conn->GetName().c_str(), "Virtual"))
+          conn_virtual++;
       }
     }
   }
@@ -236,8 +305,16 @@ auto ResourceManager::GetOrderedConnectors() -> std::vector<DrmConnector *> {
     for (const auto &conn : drm->GetConnectors()) {
       if (conn->IsExternal()) {
         ordered_connectors.emplace_back(conn.get());
+        if (strstr(conn->GetName().c_str(), "Virtual"))
+          conn_virtual++;
       }
     }
+  }
+
+  if (boot_init) {
+    display_cast << "Virtual"
+                 << "-" << conn_virtual + 1;
+    boot_init = false;
   }
 
   return ordered_connectors;
