@@ -48,7 +48,10 @@ cc_defaults {
         "libutils",
     ],
 
-    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+    include_dirs: [
+        "vendor/intel/external/drm-hwcomposer",
+        "hardware/intel/external/minigbm-intel/cros_gralloc",
+    ],
 
     static_libs: ["libdrmhwc_utils"],
 
@@ -131,6 +134,9 @@ cc_library_shared {
     srcs: [
         ":drm_hwcomposer_common",
         "bufferinfo/legacy/BufferInfoMinigbm.cpp",
+    ],
+    cppflags: [
+        "-DHEADLESS_RESOLUTION_2560_1600",
     ],
 }
 

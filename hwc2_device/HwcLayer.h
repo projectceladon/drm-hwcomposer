@@ -23,7 +23,8 @@
 #include "compositor/LayerData.h"
 
 namespace android {
-
+#define DRM_FORMAT_YVU420_ANDROID fourcc_code('9', '9', '9', '7')
+#define DRM_FORMAT_P010		fourcc_code('P', '0', '1', '0')
 class HwcDisplay;
 
 class HwcLayer {
@@ -61,6 +62,8 @@ class HwcLayer {
   auto &GetLayerData() {
     return layer_data_;
   }
+
+  bool IsVideoLayer();
 
   // Layer hooks
   HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
@@ -122,7 +125,7 @@ class HwcLayer {
   void ImportFb();
   bool bi_get_failed_{};
   bool fb_import_failed_{};
-
+  bool IsSupportedMediaFormat(uint32_t format);
   /* SwapChain Cache */
  public:
   void SwChainClearCache();

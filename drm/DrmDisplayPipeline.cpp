@@ -168,15 +168,16 @@ static bool ReadUseOverlayProperty() {
   return strtol(use_overlay_planes_prop, nullptr, kStrtolBase) != 0;
 }
 
-auto DrmDisplayPipeline::GetUsablePlanes()
+auto DrmDisplayPipeline::GetUsablePlanes(uint32_t video_layer_number)
     -> std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> {
   std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> planes;
   planes.emplace_back(primary_plane);
 
   static bool use_overlay_planes = ReadUseOverlayProperty();
-
   if (use_overlay_planes) {
     int32_t planes_num = device->planes_num_ - 1;
+    if (!device->planes_enabling_)
+      planes_num = video_layer_number;
     for (const auto &plane : device->GetPlanes()) {
       if (plane->IsCrtcSupported(*crtc->Get())) {
         if (plane->GetType() == DRM_PLANE_TYPE_OVERLAY) {
@@ -190,7 +191,6 @@ auto DrmDisplayPipeline::GetUsablePlanes()
       }
     }
   }
-
   return planes;
 }
 

@@ -260,6 +260,16 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
 
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
 
+  if (IsInHeadlessMode()) {
+    if (num_modes)
+      *num_modes = 1;
+
+    if (modes)
+      *modes = HAL_COLOR_MODE_NATIVE;
+
+    return HWC2::Error::None;
+  }
+
   DrmConnector *conn = pipeline_->connector->Get();
   ALOGD("%s, num_modes:%p, modes:%p, conn:%p", __FUNCTION__, num_modes, modes, conn);
   if (conn && (!conn->IsHdrSupportedDevice() || !conn->IsConnectorHdrCapable())) {
@@ -434,6 +444,10 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
                                            float * max_average_luminance,
                                            float * min_luminance) {
   *num_types = 0;
+  if (IsInHeadlessMode()) {
+    return HWC2::Error::Unsupported;
+  }
+
   DrmConnector *conn = pipeline_->connector->Get();
 
   if (conn && conn->IsHdrSupportedDevice()) {
@@ -518,7 +532,10 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
   std::map<uint32_t, HwcLayer *> z_map;
+  uint32_t video_layer_number = 0;
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+    if (l.second.IsVideoLayer())
+      video_layer_number++;
     switch (l.second.GetValidatedType()) {
       case HWC2::Composition::Device:
         z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
@@ -564,7 +581,8 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
    * in between of ValidateDisplay() and PresentDisplay() calls
    */
   current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
-                                               std::move(composition_layers));
+                                               std::move(composition_layers),
+                                               video_layer_number);
   if (!current_plan_) {
     if (!a_args.test_only) {
       ALOGE("Failed to create DrmKmsPlan");
@@ -942,10 +960,16 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
 
-  if (NULL == outNumIntents && NULL == outIntents) {
+  if (NULL == outNumIntents || NULL == outIntents) {
     ALOGE("Null pointer error, outNumIntents: %p, outIntents: %p",
           outNumIntents, outIntents);
     return HWC2::Error::BadParameter;
+  }
+
+  if (IsInHeadlessMode()) {
+    *outNumIntents = 1;
+    outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
+    return HWC2::Error::None;
   }
 
   DrmConnector *conn = pipeline_->connector->Get();
