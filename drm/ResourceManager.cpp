@@ -157,6 +157,7 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
 #define DRM_MODE_LINK_STATUS_BAD        1
 
 void ResourceManager::UpdateFrontendDisplays() {
+  ALOGE("--yue-- %s\n", __FUNCTION__);
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
@@ -165,12 +166,14 @@ void ResourceManager::UpdateFrontendDisplays() {
     bool attached = attached_pipelines_.count(conn) != 0;
 
     if (connected != attached) {
+
       ALOGI("%s connector %s", connected ? "Attaching" : "Detaching",
             conn->GetName().c_str());
 
       if (connected) {
         auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
         if (pipeline) {
+          ALOGE("--yue-- beofre BindDisplay\n");
           frontend_interface_->BindDisplay(pipeline.get());
           attached_pipelines_[conn] = std::move(pipeline);
         }

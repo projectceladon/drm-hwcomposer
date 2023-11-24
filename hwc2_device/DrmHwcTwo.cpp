@@ -29,12 +29,14 @@ DrmHwcTwo::DrmHwcTwo() : resource_manager_(this){};
 
 /* Must be called after every display attach/detach cycle */
 void DrmHwcTwo::FinalizeDisplayBinding() {
+  ALOGE("--yue-- %s\n", __FUNCTION__);
   if (displays_.count(kPrimaryDisplay) == 0) {
     /* Primary display MUST always exist */
     ALOGI("No pipelines available. Creating null-display for headless mode");
     displays_[kPrimaryDisplay] = std::make_unique<
         HwcDisplay>(kPrimaryDisplay, HWC2::DisplayType::Physical, this);
     /* Initializes null-display */
+    ALOGE("--yue-- null-display\n");
     displays_[kPrimaryDisplay]->SetPipeline(nullptr);
   }
 
@@ -45,11 +47,13 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
     ALOGI("Primary display was disconnected, reattaching '%s' as new primary",
           pipe->connector->Get()->GetName().c_str());
     UnbindDisplay(pipe);
+    ALOGE("--yue-- Reattach first secondary display \n");
     BindDisplay(pipe);
   }
 
   // Finally, send hotplug events to the client
   for (auto &dhe : deferred_hotplug_events_) {
+    ALOGE("--yue-- send hotplug events to the client\n");
     SendHotplugEventToClient(dhe.first, dhe.second);
   }
   deferred_hotplug_events_.clear();
@@ -87,6 +91,7 @@ HwcDisplay *  DrmHwcTwo::GetDisplay(DrmDisplayPipeline *pipeline) {
 }
 
 bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
+  ALOGE("--yue-- %s\n", __FUNCTION__);
   if (display_handles_.count(pipeline) != 0) {
     ALOGE("%s, pipeline is already used by another display, FIXME!!!: %p",
           __func__, pipeline);
@@ -228,6 +233,7 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
 
 void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
                                          bool connected) {
+  ALOGE("--yue-- %s\n", __FUNCTION__);
   auto &mutex = GetResMan().GetMainLock();
   if (mutex.try_lock()) {
     ALOGE("FIXME!!!: Main mutex must be locked in %s", __func__);
@@ -241,9 +247,11 @@ void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
      * which will cause deadlock . Unlock main mutex to prevent this.
      */
     mutex.unlock();
+    ALOGE("--yue-- before hc.first\n");
     hc.first(hc.second, displayid,
              connected == DRM_MODE_CONNECTED ? HWC2_CONNECTION_CONNECTED
                                              : HWC2_CONNECTION_DISCONNECTED);
+    ALOGE("--yue-- connected is %d\n", connected);
     mutex.lock();
   }
 }

@@ -41,6 +41,7 @@ int UEventListener::Init() {
 }
 
 void UEventListener::Routine() {
+  ALOGE("--yue-- %s", __FUNCTION__);
   while (true) {
     auto uevent_str = uevent_->ReadNext();
 
@@ -49,6 +50,9 @@ void UEventListener::Routine() {
 
     bool drm_event = uevent_str->find("DEVTYPE=drm_minor") != std::string::npos;
     bool hotplug_event = uevent_str->find("HOTPLUG=1") != std::string::npos;
+    if (hotplug_event) {
+	ALOGE("--yue-- has hotplug event!!!!\n");
+    }
 
     if (drm_event && hotplug_event) {
       constexpr useconds_t kDelayAfterUeventUs = 200000;
