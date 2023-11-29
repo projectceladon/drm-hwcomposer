@@ -1,7 +1,7 @@
 project(
     'drm_hwcomposer',
     ['c', 'cpp'],
-    version : '2',
+    version : '3',
     license : 'APACHE-2.0',
     meson_version : '>= 0.56',
     default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++17', 'cpp_rtti=false']
@@ -17,6 +17,14 @@ src_common = files(
     'backend/BackendClient.cpp',
     'utils/fd.cpp',
 )
+
+srcs_hwc2_device = [
+    'hwc2_device/hwc2_device.cpp',
+    'hwc2_device/DrmHwcTwo.cpp',
+    'hwc2_device/HwcDisplayConfigs.cpp',
+    'hwc2_device/HwcDisplay.cpp',
+    'hwc2_device/HwcLayer.cpp',
+]
 
 deps = [
     dependency('cutils'),
@@ -50,3 +58,4 @@ drmhwc_common = static_library(
 )
 
 subdir('hwc2_device')
+subdir('hwc3')

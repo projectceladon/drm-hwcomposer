@@ -94,6 +94,35 @@ filegroup {
     ],
 }
 
+filegroup {
+    name: "drm_hwcomposer_hwc3",
+    srcs: [
+        "hwc3/Composer.cpp",
+        "hwc3/ComposerClient.cpp",
+    ],
+}
+
+filegroup {
+    name: "drm_hwcomposer_service",
+    srcs: [
+        "hwc3/service.cpp",
+    ],
+}
+
+filegroup {
+    name: "drm_hwcomposer_init_rc",
+    srcs: [
+        "hwc3/hwc3-drm.rc",
+    ],
+}
+
+filegroup {
+    name: "drm_hwcomposer_vintf_manifest",
+    srcs: [
+        "hwc3/hwc3-drm.xml",
+    ],
+}
+
 // Kept only for compatibility with older Android version. Please do not use!
 cc_library_static {
     name: "drm_hwcomposer",
