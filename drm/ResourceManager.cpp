@@ -180,7 +180,13 @@ void ResourceManager::UpdateFrontendDisplays() {
     bool connected = conn->IsConnected();
     bool attached = attached_pipelines_.count(conn) != 0;
 
-    if (connected != attached) {
+    if ((connected != attached) && (hotplug_event_init || boot_event)) {
+
+      if (boot_event && (!strcmp(conn->GetName().c_str(), "Virtual-2"))) {
+        ALOGD("yue do not use ivshmem display when bootup\n");
+        boot_event = false;
+        continue;
+      }
 
       ALOGI("%s connector %s", connected ? "Attaching" : "Detaching",
             conn->GetName().c_str());
@@ -198,6 +204,12 @@ void ResourceManager::UpdateFrontendDisplays() {
         frontend_interface_->UnbindDisplay(pipeline.get());
         attached_pipelines_.erase(conn);
       }
+    } else if ((!hotplug_event_init) && (!strcmp(conn->GetName().c_str(), "Virtual-2")) && connected) {
+      ALOGI("---yue--- Detaching connector %s", conn->GetName().c_str());
+      auto &pipeline = attached_pipelines_[conn];
+      pipeline->AtomicDisablePipeline();
+      frontend_interface_->UnbindDisplay(pipeline.get());
+      attached_pipelines_.erase(conn);
     } else {
       if (connected) {
         uint64_t link_status = 0;
@@ -224,6 +236,7 @@ void ResourceManager::UpdateFrontendDisplays() {
       }
     }
   }
+  hotplug_event_init =  !hotplug_event_init;
   frontend_interface_->FinalizeDisplayBinding();
 }
 
