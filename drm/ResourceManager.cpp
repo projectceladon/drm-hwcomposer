@@ -105,10 +105,25 @@ void ResourceManager::Init() {
     // is SRI-IOV + dGPU, use virtio-gpu(card2) for display
     if (node_num == 3) {
       std::ostringstream path;
-      path << path_pattern << 2;
+      path << path_pattern << 1;
       auto dev = DrmDevice::CreateInstance(path.str(), this);
-      if (dev) {
-        drms_.emplace_back(std::move(dev));
+      if (dev->GetName() == "i915") { //is SRI-IOV + dGPU, use virtio-gpu(card2) for display
+        std::ostringstream path;
+        path << path_pattern << 2;
+        auto dev = DrmDevice::CreateInstance(path.str(), this);
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+      } else {   //is iGPU vf + virtio-gpu + ivshemem, use ivshmem and virtio-gpu
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+        std::ostringstream path;
+        path << path_pattern << 2;
+        auto dev = DrmDevice::CreateInstance(path.str(), this);
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
       }
     }
   }
