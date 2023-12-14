@@ -33,14 +33,14 @@
 namespace android {
 
 class Backend;
-class DrmHwcTwo;
+class DrmHwc;
 
 inline constexpr uint32_t kPrimaryDisplay = 0;
 
 // NOLINTNEXTLINE
 class HwcDisplay {
  public:
-  HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);
+  HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwc *hwc);
   HwcDisplay(const HwcDisplay &) = delete;
   ~HwcDisplay();
 
@@ -149,8 +149,8 @@ class HwcDisplay {
   const Backend *backend() const;
   void set_backend(std::unique_ptr<Backend> backend);
 
-  auto GetHwc2() {
-    return hwc2_;
+  auto GetHwc() {
+    return hwc_;
   }
 
   std::map<hwc2_layer_t, HwcLayer> &layers() {
@@ -195,7 +195,7 @@ class HwcDisplay {
  private:
   HwcDisplayConfigs configs_;
 
-  DrmHwcTwo *const hwc2_;
+  DrmHwc *const hwc_;
 
   SharedFd present_fence_;
 

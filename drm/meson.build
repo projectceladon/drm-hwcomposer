@@ -6,6 +6,7 @@ src_common += files(
     'DrmDisplayPipeline.cpp',
     'DrmEncoder.cpp',
     'DrmFbImporter.cpp',
+    'DrmHwc.cpp',
     'DrmMode.cpp',
     'DrmPlane.cpp',
     'DrmProperty.cpp',

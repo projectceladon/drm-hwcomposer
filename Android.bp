@@ -78,6 +78,7 @@ filegroup {
         "drm/ResourceManager.cpp",
         "drm/UEventListener.cpp",
         "drm/VSyncWorker.cpp",
+        "drm/DrmHwc.cpp",
 
         "backend/Backend.cpp",
         "backend/BackendClient.cpp",

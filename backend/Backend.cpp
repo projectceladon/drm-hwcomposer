@@ -94,7 +94,7 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
   return !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() || display->CtmByGpu() ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
+          display->GetHwc()->GetResMan().ForcedScalingWithGpu());
 }
 
 bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
