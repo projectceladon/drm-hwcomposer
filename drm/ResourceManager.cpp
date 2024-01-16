@@ -105,10 +105,25 @@ void ResourceManager::Init() {
     // is SRI-IOV + dGPU, use virtio-gpu(card2) for display
     if (node_num == 3) {
       std::ostringstream path;
-      path << path_pattern << 2;
+      path << path_pattern << 1;
       auto dev = DrmDevice::CreateInstance(path.str(), this);
-      if (dev) {
-        drms_.emplace_back(std::move(dev));
+      if (dev->GetName() == "i915") { //is SRI-IOV + dGPU, use virtio-gpu(card2) for display
+        std::ostringstream path;
+        path << path_pattern << 2;
+        auto dev = DrmDevice::CreateInstance(path.str(), this);
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+      } else {   //is iGPU vf + virtio-gpu + ivshemem, use ivshmem and virtio-gpu
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+        std::ostringstream path;
+        path << path_pattern << 2;
+        auto dev = DrmDevice::CreateInstance(path.str(), this);
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
       }
     }
   }
@@ -157,6 +172,7 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
 #define DRM_MODE_LINK_STATUS_BAD        1
 
 void ResourceManager::UpdateFrontendDisplays() {
+  ALOGE("--yue-- %s\n", __FUNCTION__);
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
@@ -164,13 +180,21 @@ void ResourceManager::UpdateFrontendDisplays() {
     bool connected = conn->IsConnected();
     bool attached = attached_pipelines_.count(conn) != 0;
 
-    if (connected != attached) {
+    if ((connected != attached) && (hotplug_event_init || boot_event)) {
+
+      if (boot_event && (!strcmp(conn->GetName().c_str(), "Virtual-2"))) {
+        ALOGD("yue do not use ivshmem display when bootup\n");
+        boot_event = false;
+        continue;
+      }
+
       ALOGI("%s connector %s", connected ? "Attaching" : "Detaching",
             conn->GetName().c_str());
 
       if (connected) {
         auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
         if (pipeline) {
+          ALOGE("--yue-- beofre BindDisplay\n");
           frontend_interface_->BindDisplay(pipeline.get());
           attached_pipelines_[conn] = std::move(pipeline);
         }
@@ -180,6 +204,12 @@ void ResourceManager::UpdateFrontendDisplays() {
         frontend_interface_->UnbindDisplay(pipeline.get());
         attached_pipelines_.erase(conn);
       }
+    } else if ((!hotplug_event_init) && (!strcmp(conn->GetName().c_str(), "Virtual-2")) && connected) {
+      ALOGI("---yue--- Detaching connector %s", conn->GetName().c_str());
+      auto &pipeline = attached_pipelines_[conn];
+      pipeline->AtomicDisablePipeline();
+      frontend_interface_->UnbindDisplay(pipeline.get());
+      attached_pipelines_.erase(conn);
     } else {
       if (connected) {
         uint64_t link_status = 0;
@@ -206,6 +236,7 @@ void ResourceManager::UpdateFrontendDisplays() {
       }
     }
   }
+  hotplug_event_init =  !hotplug_event_init;
   frontend_interface_->FinalizeDisplayBinding();
 }
 
