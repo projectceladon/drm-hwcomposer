@@ -25,6 +25,7 @@
 #include <hardware/hwcomposer2.h>
 
 #include <cinttypes>
+#include <cmath>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -879,6 +880,10 @@ ndk::ScopedAStatus ComposerClient::setPowerMode(int64_t display_id,
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
     return ToBinderStatus(hwc3::Error::kBadDisplay);
+  }
+
+  if (mode == PowerMode::ON_SUSPEND) {
+    return ToBinderStatus(hwc3::Error::kUnsupported);
   }
 
   auto error = display->SetPowerMode(Hwc3PowerModeToHwc2(mode));

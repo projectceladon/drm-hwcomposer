@@ -32,6 +32,10 @@ ndk::ScopedAStatus Composer::createClient(
     std::shared_ptr<IComposerClient>* out_client) {
   DEBUG_FUNC();
 
+  if (!client_.expired()) {
+    return ToBinderStatus(hwc3::Error::kNoResources);
+  }
+
   auto client = ndk::SharedRefBase::make<ComposerClient>();
   if (!client || !client->Init()) {
     *out_client = nullptr;
