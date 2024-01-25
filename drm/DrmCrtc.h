@@ -71,6 +71,10 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
    return ctm_property_;
  }
 
+ auto &GetCtmPostOffsetProperty() const {
+   return ctm_post_offset_property_;
+ }
+
  auto &GetGammaLutProperty() const {
    return gamma_lut_property_;
  }
@@ -91,6 +95,7 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmProperty mode_property_;
   DrmProperty out_fence_ptr_property_;
   DrmProperty ctm_property_;
+  DrmProperty ctm_post_offset_property_;
   DrmProperty gamma_lut_property_;
   DrmProperty gamma_lut_size_property_;
 
