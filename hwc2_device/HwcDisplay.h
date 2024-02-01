@@ -48,7 +48,7 @@ class HwcDisplay {
   std::vector<HwcLayer *> GetOrderLayersByZPos();
 
   void ClearDisplay();
-
+  int64_t FloatToFixedPoint(float value) const;
   std::string Dump();
 
   // HWC Hooks

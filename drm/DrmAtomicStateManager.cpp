@@ -377,12 +377,22 @@ auto DrmAtomicStateManager::SetColorTransformMatrix(
     return -ENOMEM;
   }
 
+  struct drm_color_ctm_post_offset *ctm_post_offset =
+      (struct drm_color_ctm_post_offset *)malloc(
+          sizeof(struct drm_color_ctm_post_offset));
+  if (!ctm_post_offset) {
+    free(ctm);
+    ALOGE("Cannot allocate ctm_post_offset memory");
+    return -EINVAL;
+  }
+
   file_saturation = fopen("/data/vendor/color/saturation", "r+");
   if (file_saturation != NULL) {
     read_bytes = fread(buf, 1, 8, file_saturation);
     if (read_bytes <= 0) {
       ALOGE("COLOR_ fread saturation error");
       free(ctm);
+      free(ctm_post_offset);
       fclose(file_saturation);
       return -EINVAL;
     }
@@ -396,6 +406,7 @@ auto DrmAtomicStateManager::SetColorTransformMatrix(
     if (read_bytes <= 0) {
       ALOGE("COLOR_ fread hue error");
       free(ctm);
+      free(ctm_post_offset);
       fclose(file_hue);
       return -EINVAL;
     }
@@ -429,8 +440,10 @@ auto DrmAtomicStateManager::SetColorTransformMatrix(
       for (int i = 0; i < 3; i++) {
         ctm->matrix[i * 3 + i] = (1ll << 32);
       }
-
-      ApplyPendingCTM(ctm);
+      ctm_post_offset->red = 0;
+      ctm_post_offset->green = 0;
+      ctm_post_offset->blue = 0;
+      ApplyPendingCTM(ctm, ctm_post_offset);
       break;
     }
     case HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX: {
@@ -448,19 +461,28 @@ auto DrmAtomicStateManager::SetColorTransformMatrix(
           }
         }
       }
-
-      ApplyPendingCTM(ctm);
+      ctm_post_offset->red = color_transform_matrix[12] * 0xffff;
+      ctm_post_offset->green = color_transform_matrix[13] * 0xffff;
+      ctm_post_offset->blue = color_transform_matrix[14] * 0xffff;
+      ApplyPendingCTM(ctm, ctm_post_offset);
       break;
     }
   }
   free(ctm);
+  free(ctm_post_offset);
   return 0;
 }
 
 auto DrmAtomicStateManager::ApplyPendingCTM(
-  struct drm_color_ctm *ctm) -> int {
+  struct drm_color_ctm *ctm,
+  struct drm_color_ctm_post_offset *ctm_post_offset) -> int {
   if (pipe_->crtc->Get()->GetCtmProperty().id() == 0) {
     ALOGE("GetCtmProperty().id() == 0");
+    return -EINVAL;
+  }
+
+  if (pipe_->crtc->Get()->GetCtmPostOffsetProperty().id() == 0) {
+    ALOGE("GetCtmPostOffsetProperty().id()_ == 0");
     return -EINVAL;
   }
 
@@ -471,9 +493,22 @@ auto DrmAtomicStateManager::ApplyPendingCTM(
     return -EINVAL;
   }
 
+  uint32_t ctm_post_offset_id = 0;
+  drmModeCreatePropertyBlob(pipe_->device->GetFd(), ctm_post_offset,
+                            sizeof(drm_color_ctm_post_offset),
+                            &ctm_post_offset_id);
+  if (ctm_post_offset_id == 0) {
+    ALOGE("ctm_post_offset_id == 0");
+    return -EINVAL;
+  }
+
   drmModeObjectSetProperty(pipe_->device->GetFd(), pipe_->crtc->Get()->GetId(), DRM_MODE_OBJECT_CRTC,
                            pipe_->crtc->Get()->GetCtmProperty().id(), ctm_id);
   drmModeDestroyPropertyBlob(pipe_->device->GetFd(), ctm_id);
+
+  drmModeObjectSetProperty(pipe_->device->GetFd(), pipe_->crtc->Get()->GetId(), DRM_MODE_OBJECT_CRTC,
+                           pipe_->crtc->Get()->GetCtmPostOffsetProperty().id(), ctm_post_offset_id);
+  drmModeDestroyPropertyBlob(pipe_->device->GetFd(), ctm_post_offset_id);
 
   return 0;
 }

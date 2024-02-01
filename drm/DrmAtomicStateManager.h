@@ -24,6 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <tuple>
+#include <system/graphics.h>
 
 #include "compositor/DrmKmsPlan.h"
 #include "compositor/LayerData.h"
@@ -40,7 +41,7 @@ struct AtomicCommitArgs {
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
-  bool color_adjustment = false;
+  int32_t color_adjustment = 0;
 
   /* out */
   UniqueFd out_fence;
@@ -55,6 +56,13 @@ struct gamma_colors {
   float red;
   float green;
   float blue;
+};
+
+struct drm_color_ctm_post_offset {
+  /* Data is U0.16 fixed point format. */
+  __u16 red;
+  __u16 green;
+  __u16 blue;
 };
 
 class PresentTrackerThread {
@@ -104,7 +112,8 @@ class DrmAtomicStateManager {
   auto SetColorTransformMatrix(
       double *color_transform_matrix,
       int32_t color_transform_hint) -> int;
-  auto ApplyPendingCTM(struct drm_color_ctm *ctm) -> int;
+  auto ApplyPendingCTM(struct drm_color_ctm *ctm,
+		  struct drm_color_ctm_post_offset *ctm_post_offset) -> int;
 
   auto SetColorCorrection(struct gamma_colors gamma,
                                     uint32_t contrast_c,

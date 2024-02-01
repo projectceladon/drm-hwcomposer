@@ -132,6 +132,14 @@ void HwcDisplay::Deinit() {
   SetClientTarget(nullptr, -1, 0, {});
 }
 
+int64_t HwcDisplay::FloatToFixedPoint(float value) const {
+  uint32_t *pointer = (uint32_t *)&value;
+  uint32_t negative = (*pointer & (1u << 31)) >> 31;
+  *pointer &= 0x7fffffff; /* abs of value*/
+  return (negative ? (1ll << 63) : 0) |
+         (__s64)((*(float *)pointer) * (double)(1ll << 32));
+}
+
 HWC2::Error HwcDisplay::Init() {
   ChosePreferredConfig();
 
@@ -725,6 +733,41 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
   color_transform_hint_ = static_cast<android_color_transform_t>(hint);
   if (color_transform_hint_ == HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX)
     std::copy(matrix, matrix + MATRIX_SIZE, color_transform_matrix_.begin());
+
+  struct drm_color_ctm *ctm =
+      (struct drm_color_ctm *)malloc(sizeof(struct drm_color_ctm));
+  if (!ctm) {
+    ALOGE("Cannot allocate CTM memory");
+    return HWC2::Error::BadParameter;
+  }
+
+  memset(ctm->matrix, 0, sizeof(ctm->matrix));
+
+  struct drm_color_ctm_post_offset *ctm_post_offset =
+      (struct drm_color_ctm_post_offset *)malloc(
+          sizeof(struct drm_color_ctm_post_offset));
+  if (!ctm_post_offset) {
+    free(ctm);
+    ALOGE("Cannot allocate ctm_post_offset memory");
+    return HWC2::Error::BadParameter;
+  }
+  
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      ctm->matrix[i * 3 + j] =
+          FloatToFixedPoint(matrix[j * 4 + i]);
+      ALOGD("COLOR_ SetColorTransform ctm->matrix[%d]= %llu", i * 3 + j, ctm->matrix[i * 3 + j]);
+    }
+  }
+
+  ctm_post_offset->red = matrix[12] * 0xffff;
+  ctm_post_offset->green = matrix[13] * 0xffff;
+  ctm_post_offset->blue = matrix[14] * 0xffff;
+
+  GetPipe().atomic_state_manager->ApplyPendingCTM(ctm, ctm_post_offset);
+
+  free(ctm);
+  free(ctm_post_offset);
 
   return HWC2::Error::None;
 }

@@ -68,6 +68,12 @@ auto DrmCrtc::CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
       return {};
     }
 
+    ret = GetCrtcProperty(dev, *c, "CTM_POST_OFFSET", &c->ctm_post_offset_property_);
+    if (ret != 0) {
+      ALOGE("Failed to get CTM_POST_OFFSET property");
+      return {};
+    }
+
     ret = GetCrtcProperty(dev, *c, "GAMMA_LUT", &c->gamma_lut_property_);
     if (ret != 0) {
       ALOGE("Failed to get GAMMA_LUT property");
