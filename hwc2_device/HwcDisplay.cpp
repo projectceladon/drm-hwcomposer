@@ -765,7 +765,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
     case HWC2::PowerMode::DozeSuspend:
       return HWC2::Error::Unsupported;
     default:
-      ALOGE("Incorrect power mode value (%d)\n", mode);
+      ALOGE("Incorrect power mode value (%d)\n", mode_in);
       return HWC2::Error::BadParameter;
   }
 
