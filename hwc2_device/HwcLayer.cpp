@@ -41,7 +41,7 @@ HWC2::Error HwcLayer::SetLayerBlendMode(int32_t mode) {
       blend_mode_ = BufferBlendMode::kCoverage;
       break;
     default:
-      ALOGE("Unknown blending mode b=%d", blend_mode_);
+      ALOGE("Unknown blending mode b=%d", mode);
       blend_mode_ = BufferBlendMode::kUndefined;
       break;
   }
