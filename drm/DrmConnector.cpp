@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#undef NDEBUG
+#define LOG_NDEBUG 0
 #define LOG_TAG "hwc-drm-connector"
 
 #include "DrmConnector.h"
@@ -178,6 +180,8 @@ int DrmConnector::UpdateModes() {
   int32_t connector_id;
   int32_t mode_id;
 
+  int32_t disable_safe_mode;
+
   char property[PROPERTY_VALUE_MAX];
   memset(property, 0 , PROPERTY_VALUE_MAX);
   property_get("vendor.hwcomposer.connector.id", property, "-1");
@@ -189,6 +193,11 @@ int DrmConnector::UpdateModes() {
   mode_id = atoi(property);
   ALOGD("The property 'vendor.hwcomposer.mode.id' value is %d", mode_id);
 
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.disable.safe_mode", property, "0");
+  disable_safe_mode= atoi(property);
+  ALOGD("The property 'vendor.hwcomposer.disable.safe_mode' value is %d", disable_safe_mode);
+
   bool preferred_mode_found = false;
   std::vector<DrmMode> new_modes;
 
@@ -196,23 +205,75 @@ int DrmConnector::UpdateModes() {
     mode_id = -1;
 
   bool have_preferred_mode = false;
-  for (int i = 0; i < connector_->count_modes; ++i) {
-    if (connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
-      have_preferred_mode = true;
-      break;
+  if (disable_safe_mode) {
+    for (int i = 0; i < connector_->count_modes; ++i) {
+      if (connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
+        have_preferred_mode = true;
+        break;
+      }
     }
   }
 
+  /*
+   *  WA to use the downgraded resolution for A14 on RPL to avoid screen blink issue.
+   *  The real root cause of the blink is under invetigating.
+   */
+#if PLATFORM_SDK_VERSION != 34
+   disable_safe_mode = 1;
+   ALOGE("API level is not 34(Android 14), don't use resolution safe mode!");
+#else
+   ALOGE("API level is 34 and keeps the safe mode resolution property no changed:%d", disable_safe_mode);
+#endif
+
+  bool has_the_safe_resolution = false;
+  int32_t lowest_fps = 60;
   for (int i = 0; i < connector_->count_modes; ++i) {
-    
-        if (drm_->preferred_mode_limit_ && connector_id == -1) {
+      ALOGE("connector mode id: %d, hdisplay:%d, vdisplay:%d, vrefresh:%d",
+	     i, connector_->modes[i].hdisplay, connector_->modes[i].vdisplay, connector_->modes[i].vrefresh);
+
+      if (connector_->modes[i].hdisplay == 1920 && connector_->modes[i].vdisplay == 1080
+          && connector_->modes[i].vrefresh >= 30) {
+	  has_the_safe_resolution = true;
+	  if (lowest_fps > connector_->modes[i].vrefresh) {
+	      lowest_fps = connector_->modes[i].vrefresh;
+	  }
+          ALOGE("the matched mode: %d, fps:%d", i, connector_->modes[i].vrefresh);
+      }
+  }
+
+  ALOGE("has_the_safe_resolution: %d, lowest_fps:%d", has_the_safe_resolution, lowest_fps);
+
+  bool added_safe_resolution = false;
+
+  for (int i = 0; i < connector_->count_modes; ++i) {
+    ALOGE("connector mode id: %d, hdisplay:%d, vdisplay:%d, vrefresh:%d",
+	  i, connector_->modes[i].hdisplay, connector_->modes[i].vdisplay, connector_->modes[i].vrefresh);
+
+    if (!disable_safe_mode && has_the_safe_resolution) {
+      if (connector_->modes[i].hdisplay == 1920 && connector_->modes[i].vdisplay == 1080
+          && connector_->modes[i].vrefresh == lowest_fps && !added_safe_resolution) {
+        ALOGE("the matched mode: %d", i);
+	added_safe_resolution = true;
+      }
+      else {
+        ALOGE("The mode id:%d is above 1080p@%dfps, need to skip it.", i, lowest_fps);
+        if (has_the_safe_resolution) {
+          drm_->GetNextModeId();
+          continue;
+        }
+      }
+    }
+
+    if (drm_->preferred_mode_limit_ && connector_id == -1) {
       if (have_preferred_mode) {
         if (!(connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED)) {
           drm_->GetNextModeId();
           continue;
         }
       } else {
-        have_preferred_mode = true;
+        if (disable_safe_mode || !has_the_safe_resolution) {
+          have_preferred_mode = true;
+	}
       }
     }
     if (connector_->connector_id == connector_id) {
@@ -224,7 +285,9 @@ int DrmConnector::UpdateModes() {
               continue;
             }
           } else {
-            have_preferred_mode = true;
+            if (disable_safe_mode || !has_the_safe_resolution) {
+              have_preferred_mode = true;
+	    }
          }
         }
       } else {
@@ -242,7 +305,9 @@ int DrmConnector::UpdateModes() {
               continue;
             }
           } else {
-            have_preferred_mode = true;
+            if (disable_safe_mode || !has_the_safe_resolution) {
+              have_preferred_mode = true;
+            }
           }
         }
       }
@@ -264,7 +329,7 @@ int DrmConnector::UpdateModes() {
       m.SetId(drm_->GetNextModeId());
       new_modes.push_back(m);
       ALOGD("CONNECTOR:%d select one mode, id = %d, name = %s, refresh = %f",
-            GetId(), m.id(), m.name().c_str(), m.v_refresh());
+	     GetId(), m.id(), m.name().c_str(), m.v_refresh());
     }
     if (!preferred_mode_found &&
         (new_modes.back().type() & DRM_MODE_TYPE_PREFERRED)) {
@@ -277,7 +342,8 @@ int DrmConnector::UpdateModes() {
     }
   }
 
-  UpdateMultiRefreshRateModes(new_modes);
+  ALOGE("Disable the multi mode to avoid blink on A14 + RPL NUC.");
+  //UpdateMultiRefreshRateModes(new_modes);
 
   modes_.swap(new_modes);
   if (!preferred_mode_found && !modes_.empty()) {
