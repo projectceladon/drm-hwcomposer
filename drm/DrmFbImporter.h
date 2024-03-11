@@ -24,6 +24,7 @@
 
 #include "bufferinfo/BufferInfo.h"
 #include "drm/DrmDevice.h"
+#include "utils/fd.h"
 
 #ifndef DRM_FORMAT_INVALID
 #define DRM_FORMAT_INVALID 0
@@ -49,9 +50,9 @@ class DrmFbIdHandle {
   }
 
  private:
-  explicit DrmFbIdHandle(DrmDevice &drm) : drm_(&drm){};
+  explicit DrmFbIdHandle(DrmDevice &drm) : drm_fd_(drm.GetFd()) {};
 
-  DrmDevice *const drm_;
+  SharedFd drm_fd_;
 
   uint32_t fb_id_{};
   std::array<GemHandle, kBufferMaxPlanes> gem_handles_{};
@@ -81,6 +82,7 @@ class DrmFbImporter {
   }
 
   DrmDevice *const drm_;
+  SharedFd drm_fd_;
 
   std::map<GemHandle, std::weak_ptr<DrmFbIdHandle>> drm_fb_id_handle_cache_;
 };

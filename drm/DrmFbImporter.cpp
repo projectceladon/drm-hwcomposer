@@ -97,7 +97,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
   ATRACE_NAME("Close FB and dmabufs");
 
   /* Destroy framebuffer object */
-  if (drmModeRmFB(*drm_->GetFd(), fb_id_) != 0) {
+  if (drmModeRmFB(*drm_fd_, fb_id_) != 0) {
     ALOGE("Failed to rm fb");
   }
 
@@ -118,7 +118,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
       continue;
     }
     gem_close.handle = gem_handles_[i];
-    auto err = drmIoctl(*drm_->GetFd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
+    auto err = drmIoctl(*drm_fd_, DRM_IOCTL_GEM_CLOSE, &gem_close);
     if (err != 0) {
       ALOGE("Failed to close gem handle %d, errno: %d", gem_handles_[i], errno);
     }
@@ -127,10 +127,21 @@ DrmFbIdHandle::~DrmFbIdHandle() {
 
 auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
     -> std::shared_ptr<DrmFbIdHandle> {
+  /* TODO: Clean up DrmDevices and DrmFbImporter inter-dependency.
+   *
+   * DrmFbImporter can outlive DrmDevice which will cause issues when resources
+   * are released. Addressing this would require a restructure on how
+   * ResourceManager stores DrmDevices and DrmFbImporter to make sure they
+   * depend on each other. For now, just acquire the DRM fd from the DrmDevice
+   * to make sure it is not closed.
+   */
+  if (drm_fd_ == nullptr) {
+    drm_fd_ = drm_->GetFd();
+  }
+
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
-  auto err = drmPrimeFDToHandle(*drm_->GetFd(), bo->prime_fds[0],
-                                &first_handle);
+  auto err = drmPrimeFDToHandle(*drm_fd_, bo->prime_fds[0], &first_handle);
 
   if (err != 0) {
     ALOGE("Failed to import prime fd %d ret=%d", bo->prime_fds[0], err);
