@@ -41,6 +41,12 @@ auto FlatteningController::CreateInstance(FlatConCallbacks &cbks)
     -> std::shared_ptr<FlatteningController> {
   auto fc = std::shared_ptr<FlatteningController>(new FlatteningController());
 
+  /* Disable the controller by default as it can cause refresh event to be
+   * issued at creation time, even when it is not required. This can fail VTS
+   * tests at teardown that check for this behaviour. See:
+   * https://cs.android.com/android/platform/superproject/main/+/cedca652b903e4f4e584e457b5a7038e0825fb94:hardware/interfaces/graphics/composer/aidl/vts/VtsComposerClient.cpp;drc=a2a6deaf5036e081f48379b6573db4465538b5ac;l=604
+   */
+  fc->Disable();
   fc->cbks_ = cbks;
 
   std::thread(&FlatteningController::ThreadFn, fc).detach();
