@@ -123,6 +123,7 @@ void DrmHwcThree::HandleDisplayHotplugEvent(uint64_t display_id,
   DEBUG_FUNC();
   if (!connected) {
     composer_resources_->RemoveDisplay(display_id);
+    RemoveDisplay(display_id);
     return;
   }
 
@@ -130,6 +131,7 @@ void DrmHwcThree::HandleDisplayHotplugEvent(uint64_t display_id,
     /* Cleanup existing display resources */
     CleanDisplayResources(display_id);
     composer_resources_->RemoveDisplay(display_id);
+    RemoveDisplay(display_id);
   }
   composer_resources_->AddPhysicalDisplay(display_id);
 }

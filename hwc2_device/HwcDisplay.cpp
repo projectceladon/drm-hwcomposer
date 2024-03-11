@@ -85,7 +85,9 @@ void HwcDisplay::SetColorMarixToIdentity() {
   color_transform_hint_ = HAL_COLOR_TRANSFORM_IDENTITY;
 }
 
-HwcDisplay::~HwcDisplay() = default;
+HwcDisplay::~HwcDisplay() {
+  Deinit();
+};
 
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
