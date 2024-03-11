@@ -77,7 +77,6 @@ bool ComposerClient::Init() {
   return composer_resources_ != nullptr;
 }
 
-// NOLINTNEXTLINE(bugprone-exception-escape)
 ComposerClient::~ComposerClient() {
   DEBUG_FUNC();
   LOG(DEBUG) << "removed composer client";

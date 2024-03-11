@@ -25,17 +25,9 @@ namespace aidl::android::hardware::graphics::composer3::impl {
 
 using ::android::HwcDisplay;
 
-// NOLINTNEXTLINE(bugprone-exception-escape)
 DrmHwcThree::~DrmHwcThree() {
-  std::vector<uint64_t> display_ids;
-  display_ids.reserve(Displays().size());
-  for (auto& [display_id, display] : Displays()) {
-    display_ids.push_back(display_id);
-  }
-
-  for (auto display_id : display_ids) {
-    RemoveAndDestroyDisplay(display_id);
-  }
+  /* Display deinit routine is handled by resource manager */
+  GetResMan().DeInit();
 }
 
 void DrmHwcThree::Init(std::shared_ptr<IComposerCallback> callback) {
@@ -72,17 +64,12 @@ void DrmHwcThree::SendHotplugEventToClient(hwc2_display_t display_id,
   composer_callback_->onHotplug(static_cast<int64_t>(display_id), connected);
 }
 
-void DrmHwcThree::RemoveAndDestroyDisplay(uint64_t display_id) {
+void DrmHwcThree::RemoveDisplay(uint64_t display_id) {
   DEBUG_FUNC();
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
     return;
   }
-
-  display->SetPowerMode(static_cast<int32_t>(HWC2::PowerMode::Off));
-  display->Deinit();
-
-  composer_resources_->RemoveDisplay(static_cast<int64_t>(display_id));
   Displays().erase(display_id);
 }
 

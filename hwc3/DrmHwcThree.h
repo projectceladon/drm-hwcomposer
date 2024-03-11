@@ -42,7 +42,7 @@ class DrmHwcThree : public ::android::DrmHwc {
                                 bool connected) override;
 
  private:
-  void RemoveAndDestroyDisplay(uint64_t display_id);
+  void RemoveDisplay(uint64_t display_id);
   void CleanDisplayResources(uint64_t display_id);
   void HandleDisplayHotplugEvent(uint64_t display_id, bool connected);
 
