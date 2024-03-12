@@ -233,6 +233,10 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
       return ToHook<HWC2_PFN_SET_COLOR_TRANSFORM>(
           DisplayHook<decltype(&HwcDisplay::SetColorTransform),
                       &HwcDisplay::SetColorTransform, const float *, int32_t>);
+    case HWC2::FunctionDescriptor::SetColorTransformCorrection:
+      return ToHook<HWC2_PFN_SET_COLOR_TRANSFORM_CORRECTION>(
+          DisplayHook<decltype(&HwcDisplay::SetColorTransformCorrection),
+                      &HwcDisplay::SetColorTransformCorrection, int32_t, int32_t>);
     case HWC2::FunctionDescriptor::SetOutputBuffer:
       return ToHook<HWC2_PFN_SET_OUTPUT_BUFFER>(
           DisplayHook<decltype(&HwcDisplay::SetOutputBuffer),
