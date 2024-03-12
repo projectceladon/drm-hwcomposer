@@ -1165,6 +1165,15 @@ void ComposerClient::ExecuteValidateDisplay(
   }
 
   /* TODO: Handle expectedPresentTime */
+  /* This can be implemented in multiple ways. For example, the expected present
+   * time property can be implemented by the DRM driver directly as a CRTC
+   * property. See:
+   * https://cs.android.com/android/platform/superproject/main/+/b8b3b1646e64d0235f77b9e717a3e4082e26f2a8:hardware/google/graphics/common/libhwc2.1/libdrmresource/drm/drmcrtc.cpp;drc=468f6172546ab98983de18210222f231f16b21e1;l=88
+   * Unfortunately there doesn't seem to be a standardised way of delaying
+   * presentation with a timestamp in the DRM API. What we can do alternatively
+   * is to spawn a separate presentation thread that could handle the VBlank
+   * events by using DRM_MODE_PAGE_FLIP_EVENT and schedule them appropriately.
+   */
 
   std::vector<int64_t> changed_layers;
   std::vector<Composition> composition_types;
@@ -1254,6 +1263,16 @@ void ComposerClient::ExecutePresentOrValidateDisplay(
   }
 
   /* TODO: Handle expectedPresentTime */
+  /* This can be implemented in multiple ways. For example, the expected present
+   * time property can be implemented by the DRM driver directly as a CRTC
+   * property. See:
+   * https://cs.android.com/android/platform/superproject/main/+/b8b3b1646e64d0235f77b9e717a3e4082e26f2a8:hardware/google/graphics/common/libhwc2.1/libdrmresource/drm/drmcrtc.cpp;drc=468f6172546ab98983de18210222f231f16b21e1;l=88
+   * Unfortunately there doesn't seem to be a standardised way of delaying
+   * presentation with a timestamp in the DRM API. What we can do alternatively
+   * is to spawn a separate presentation thread that could handle the VBlank
+   * events by using DRM_MODE_PAGE_FLIP_EVENT and schedule them appropriately.
+   */
+
   /* TODO: Add check if it's possible to skip display validation */
   ExecuteValidateDisplay(display_id, expected_present_time);
   cmd_result_writer_
