@@ -132,6 +132,14 @@ void HwcDisplay::Deinit() {
   SetClientTarget(nullptr, -1, 0, {});
 }
 
+int64_t HwcDisplay::FloatToFixedPoint(float value) const {
+  uint32_t *pointer = (uint32_t *)&value;
+  uint32_t negative = (*pointer & (1u << 31)) >> 31;
+  *pointer &= 0x7fffffff; /* abs of value*/
+  return (negative ? (1ll << 63) : 0) |
+         (__s64)((*(float *)pointer) * (double)(1ll << 32));
+}
+
 HWC2::Error HwcDisplay::Init() {
   ChosePreferredConfig();
 
@@ -726,6 +734,57 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
   if (color_transform_hint_ == HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX)
     std::copy(matrix, matrix + MATRIX_SIZE, color_transform_matrix_.begin());
 
+  struct drm_color_ctm *ctm =
+      (struct drm_color_ctm *)malloc(sizeof(struct drm_color_ctm));
+  if (!ctm) {
+    ALOGE("Cannot allocate CTM memory");
+    return HWC2::Error::BadParameter;
+  }
+
+  memset(ctm->matrix, 0, sizeof(ctm->matrix));
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      ctm->matrix[i * 3 + j] =
+          FloatToFixedPoint(matrix[j * 4 + i]);
+    }
+  }
+
+  GetPipe().atomic_state_manager->ApplyPendingCTM(ctm);
+
+  free(ctm);
+  return HWC2::Error::None;
+}
+
+HWC2::Error HwcDisplay::SetColorTransformCorrection(int32_t contrast, int32_t luminance) {
+  uint32_t new_contrast = 0x808080;
+  if (contrast < 0 || contrast > 255) {
+    new_contrast = 0x80;
+  } else {
+    new_contrast = contrast &0xFF;
+  }
+
+  new_contrast = ((new_contrast<< 16) |
+                  (new_contrast << 8) |
+                  (new_contrast));
+
+  uint32_t new_luminance = 0x808080;
+  if (luminance < 0 || luminance > 256) {
+    new_luminance = 0x80;
+  } else {
+    new_luminance = luminance &0xFF;
+  }
+
+  new_luminance = ((new_luminance<< 16) |
+                  (new_luminance << 8) |
+                  (new_luminance));
+
+  struct gamma_colors gamma;
+  gamma.red   = 1;
+  gamma.green = 1;
+  gamma.blue  = 1;
+  
+  GetPipe().atomic_state_manager->SetColorCorrection(gamma, new_contrast, new_luminance);
   return HWC2::Error::None;
 }
 
