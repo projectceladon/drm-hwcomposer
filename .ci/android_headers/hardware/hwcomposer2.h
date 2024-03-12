@@ -268,6 +268,7 @@ typedef enum {
     HWC2_FUNCTION_SET_CLIENT_TARGET,
     HWC2_FUNCTION_SET_COLOR_MODE,
     HWC2_FUNCTION_SET_COLOR_TRANSFORM,
+    HWC2_FUNCTION_SET_COLOR_TRANSFORM_CORRECTION,
     HWC2_FUNCTION_SET_CURSOR_POSITION,
     HWC2_FUNCTION_SET_LAYER_BLEND_MODE,
     HWC2_FUNCTION_SET_LAYER_BUFFER,
@@ -625,6 +626,8 @@ static inline const char* getFunctionDescriptorName(
         case HWC2_FUNCTION_SET_CLIENT_TARGET: return "SetClientTarget";
         case HWC2_FUNCTION_SET_COLOR_MODE: return "SetColorMode";
         case HWC2_FUNCTION_SET_COLOR_TRANSFORM: return "SetColorTransform";
+        case HWC2_FUNCTION_SET_COLOR_TRANSFORM_CORRECTION: 
+            return "SetColorTransformCorrection";
         case HWC2_FUNCTION_SET_CURSOR_POSITION: return "SetCursorPosition";
         case HWC2_FUNCTION_SET_LAYER_BLEND_MODE: return "SetLayerBlendMode";
         case HWC2_FUNCTION_SET_LAYER_BUFFER: return "SetLayerBuffer";
@@ -910,6 +913,7 @@ enum class FunctionDescriptor : int32_t {
     SetClientTarget = HWC2_FUNCTION_SET_CLIENT_TARGET,
     SetColorMode = HWC2_FUNCTION_SET_COLOR_MODE,
     SetColorTransform = HWC2_FUNCTION_SET_COLOR_TRANSFORM,
+    SetColorTransformCorrection = HWC2_FUNCTION_SET_COLOR_TRANSFORM_CORRECTION,
     SetCursorPosition = HWC2_FUNCTION_SET_CURSOR_POSITION,
     SetLayerBlendMode = HWC2_FUNCTION_SET_LAYER_BLEND_MODE,
     SetLayerBuffer = HWC2_FUNCTION_SET_LAYER_BUFFER,
@@ -2010,6 +2014,32 @@ typedef int32_t /*hwc2_error_t*/ (*HWC2_PFN_SET_COLOR_MODE_WITH_RENDER_INTENT)(
 typedef int32_t /*hwc2_error_t*/ (*HWC2_PFN_SET_COLOR_TRANSFORM)(
         hwc2_device_t* device, hwc2_display_t display, const float* matrix,
         int32_t /*android_color_transform_t*/ hint);
+
+/* setColorTransformCorrection(..., contrast, luminance)
+ * Descriptor: HWC2_FUNCTION_SET_COLOR_TRANSFORM
+ * Must be provided by all HWC2 devices
+ *
+ * Sets a color transform which will be applied after composition.
+ *
+ * If the device is not capable of using the value to apply
+ * the desired color transform, it should force all layers to client composition
+ * during validateDisplay.
+ *
+ * If HWC2_CAPABILITY_SKIP_CLIENT_COLOR_TRANSFORM is present, then the client
+ * will never apply the color transform during client composition, even if all
+ * layers are being composed by the client.
+ *
+ * Parameters:
+ *   contrast - an integer representing the transform contrast
+ *   luminance - an integer representing the transform luminance
+ *
+ * Returns HWC2_ERROR_NONE or one of the following errors:
+ *   HWC2_ERROR_BAD_DISPLAY - an invalid display handle was passed in
+ *   HWC2_ERROR_BAD_PARAMETER - hint is not a valid color transform hint
+ */
+typedef int32_t /*hwc2_error_t*/ (*HWC2_PFN_SET_COLOR_TRANSFORM_CORRECTION)(
+        hwc2_device_t* device, hwc2_display_t display, int32_t contrast, 
+        int32_t luminance);
 
 /* getPerFrameMetadataKeys(..., outKeys)
  * Descriptor: HWC2_FUNCTION_GET_PER_FRAME_METADATA_KEYS
