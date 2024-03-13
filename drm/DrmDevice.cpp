@@ -116,6 +116,11 @@ auto DrmDevice::Init(const char *path) -> int {
                                                   res->min_height);
   max_resolution_ = std::pair<uint32_t, uint32_t>(res->max_width,
                                                   res->max_height);
+  commit_block_enabling_ = false;
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.commit.mode.block", property, "0");
+  commit_block_enabling_ = atoi(property) != 0 ? true : false;
+  ALOGD("The property 'vendor.hwcomposer.commit.mode.block' value is %d", commit_block_enabling_);
 
   color_adjustment_enabling_ = 0;
   memset(property, 0 , PROPERTY_VALUE_MAX);
