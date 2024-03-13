@@ -41,6 +41,7 @@ struct AtomicCommitArgs {
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
   int32_t color_adjustment = 0;
+  bool commit_block = false;
 
   /* out */
   UniqueFd out_fence;
