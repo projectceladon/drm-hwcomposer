@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HWC2_DEVICE_HWC_DISPLAY_H
-#define ANDROID_HWC2_DEVICE_HWC_DISPLAY_H
+#ifndef ANDROID_HWC2_DEVICE_SF_DISPLAY_H
+#define ANDROID_HWC2_DEVICE_SF_DISPLAY_H
 
 #include <hardware/hwcomposer2.h>
 
@@ -26,25 +26,19 @@
 #include "drm/DrmAtomicStateManager.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
-#include "hwc2_device/HwcLayer.h"
-#include <list>
+#include "hwc2_device/HwcDisplay.h"
+
+
 namespace android {
 
-class Backend;
+class VirtualBackend;
 class DrmHwcTwo;
-#ifndef kPrimaryDisplay
-#define kPrimaryDisplay 0
-#endif
-inline bool RemoveNotPrimaryInVirtualDisplayList(const uint64_t & value) {return value != kPrimaryDisplay;}
 
-class HwcDisplay {
+class VirtualDisplay {
  public:
-  HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);
-  HwcDisplay(const HwcDisplay &) = delete;
-  ~HwcDisplay();
-
-  /* SetPipeline should be carefully used only by DrmHwcTwo hotplug handlers */
-  void SetPipeline(DrmDisplayPipeline *pipeline);
+  VirtualDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2, HwcDisplay *physical_display);
+  VirtualDisplay(const VirtualDisplay &) = delete;
+  ~VirtualDisplay();
 
   HWC2::Error CreateComposition(AtomicCommitArgs &a_args);
   std::vector<HwcLayer *> GetOrderLayersByZPos();
@@ -146,19 +140,19 @@ class HwcDisplay {
     uint32_t frames_flattened_ = 0;
   };
 
-  const Backend *backend() const;
-  void set_backend(std::unique_ptr<Backend> backend);
+  const VirtualBackend *backend() const;
+  void set_backend(std::unique_ptr<VirtualBackend> backend);
 
   auto GetHwc2() {
     return hwc2_;
   }
 
-  std::map<hwc2_layer_t, HwcLayer> &layers() {
-    return layers_;
+  auto &GetPipe() {
+    return physical_display_->GetPipe();
   }
 
-  auto &GetPipe() {
-    return *pipeline_;
+  std::map<hwc2_layer_t, HwcLayer> &layers() {
+    return layers_;
   }
 
   android_color_transform_t &color_transform_hint() {
@@ -171,23 +165,14 @@ class HwcDisplay {
 
   /* returns true if composition should be sent to client */
   bool ProcessClientFlatteningState(bool skip);
-  void ProcessFlatenningVsyncInternal();
-
-  /* Headless mode required to keep SurfaceFlinger alive when all display are
-   * disconnected, Without headless mode Android will continuously crash.
-   * Only single internal (primary) display is required to be in HEADLESS mode
-   * to prevent the crash. See:
-   * https://source.android.com/devices/graphics/hotplug#handling-common-scenarios
-   */
-  bool IsInHeadlessMode() {
-    return !pipeline_;
-  }
 
   void Deinit();
 
-  const HwcDisplayConfigs & GetHwcDisplayConfigs() {
-    return configs_;
+  void SetHeadLessMode(bool headless) {
+    headless_mode_ = headless;
   }
+
+  bool IsInHeadlessMode() {return headless_mode_;}
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,
@@ -211,13 +196,8 @@ class HwcDisplay {
   int64_t staged_mode_change_time_{};
   uint32_t staged_mode_config_id_{};
 
-  DrmDisplayPipeline *pipeline_{};
+  std::unique_ptr<VirtualBackend> backend_;
 
-  std::unique_ptr<Backend> backend_;
-
-  VSyncWorker vsync_worker_;
-  bool vsync_event_en_{};
-  bool vsync_flattening_en_{};
   bool vsync_tracking_en_{};
   int64_t last_vsync_ts_{};
 
@@ -238,24 +218,13 @@ class HwcDisplay {
   uint32_t frame_no_ = 0;
   Stats total_stats_;
   Stats prev_stats_;
-  std::string DumpDelta(HwcDisplay::Stats delta);
+  std::string DumpDelta(VirtualDisplay::Stats delta);
 
   HWC2::Error Init();
 
   HWC2::Error SetActiveConfigInternal(uint32_t config, int64_t change_time);
-
-  uint32_t virtual_display_num_ = 2;
-  std::list<uint64_t> virtual_display_handles_;
-
-public:
-  uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
-  void AddVirtualDisplayHandle(uint32_t virtual_display_handle) {
-    virtual_display_handles_.push_back(virtual_display_handle);
-  }
-  void ClearVirtualDisplayHandle() {
-    virtual_display_handles_.remove_if(RemoveNotPrimaryInVirtualDisplayList);
-  }
-  std::list<uint64_t> &GetVirtualDisplayHandle() {return virtual_display_handles_;}
+  HwcDisplay * physical_display_;
+  bool headless_mode_ = false;
 };
 
 }  // namespace android

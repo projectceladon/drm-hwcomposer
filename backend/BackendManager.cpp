@@ -41,6 +41,12 @@ int BackendManager::RegisterBackend(const std::string &name,
   return 0;
 }
 
+int BackendManager::RegisterBackend(const std::string &name,
+                                    VirtualBackendConstructorT backend_constructor) {
+  available_virtual_backends_[name] = std::move(backend_constructor);
+  return 0;
+}
+
 int BackendManager::SetBackendForDisplay(HwcDisplay *display) {
   std::string driver_name(display->GetPipe().device->GetName());
   char backend_override[PROPERTY_VALUE_MAX];
@@ -62,6 +68,14 @@ int BackendManager::SetBackendForDisplay(HwcDisplay *display) {
         display->GetPipe().connector->Get()->GetName().c_str(),
         driver_name.c_str());
 
+  return 0;
+}
+
+int BackendManager::SetBackendForDisplay(VirtualDisplay *display) {
+  display->set_backend(available_virtual_backends_["virtual"]());
+  if (display->backend() == nullptr) {
+    return -EINVAL;
+  }
   return 0;
 }
 

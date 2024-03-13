@@ -21,6 +21,7 @@
 
 #include "drm/ResourceManager.h"
 #include "hwc2_device/HwcDisplay.h"
+#include "hwc2_device/VirtualDisplay.h"
 
 namespace android {
 
@@ -48,8 +49,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
                                hwc2_function_pointer_t function);
 
   auto GetDisplay(hwc2_display_t display_handle) {
-    return displays_.count(display_handle) != 0
-               ? displays_[display_handle].get()
+    return virtual_displays_.count(display_handle) != 0
+               ? virtual_displays_[display_handle].get()
                : nullptr;
   }
 
@@ -68,6 +69,8 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   bool UnbindDisplay(DrmDisplayPipeline *pipeline) override;
   void FinalizeDisplayBinding() override;
 
+  bool BindVirtualDisplay(DrmDisplayPipeline *pipeline) override;
+  bool UnbindVirtualDisplay(DrmDisplayPipeline *) override;
   void SendVsyncEventToClient(hwc2_display_t displayid, int64_t timestamp,
                               uint32_t vsync_period) const;
   void SendVsyncPeriodTimingChangedEventToClient(hwc2_display_t displayid,
@@ -79,13 +82,15 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   ResourceManager resource_manager_;
   std::map<hwc2_display_t, std::unique_ptr<HwcDisplay>> displays_;
   std::map<DrmDisplayPipeline *, hwc2_display_t> display_handles_;
+  std::map<hwc2_display_t, std::unique_ptr<VirtualDisplay>> virtual_displays_;
 
   std::string mDumpString;
 
   std::map<hwc2_display_t, bool> deferred_hotplug_events_;
   std::vector<hwc2_display_t> displays_for_removal_list_;
-
+  std::vector<hwc2_display_t> virtual_displays_for_removal_list_;
   uint32_t last_display_handle_ = kPrimaryDisplay;
+  uint32_t last_virtual_display_handle_ = kPrimaryDisplay;
 };
 }  // namespace android
 

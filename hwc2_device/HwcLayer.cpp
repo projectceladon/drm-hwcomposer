@@ -105,6 +105,18 @@ HWC2::Error HwcLayer::SetLayerDataspace(int32_t dataspace) {
 
 HWC2::Error HwcLayer::SetLayerDisplayFrame(hwc_rect_t frame) {
   layer_data_.pi.display_frame = frame;
+  hwc2_config_t config = 0;
+  parent_->GetActiveConfig(&config);
+  int32_t value = 0;
+  switch (handle_){
+  case 1:
+    parent_->GetDisplayAttribute(config, int32_t(HWC2::Attribute::Width), &value);
+    layer_data_.pi.display_frame.left += value / 2;
+    layer_data_.pi.display_frame.right += value / 2;
+    break;
+  default:
+    break;
+  }
   return HWC2::Error::None;
 }
 

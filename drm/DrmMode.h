@@ -41,6 +41,7 @@ class DrmMode {
   uint32_t clock() const;
 
   uint16_t h_display() const;
+  void set_h_display(uint16_t h_display) {h_display_ = h_display;}
   uint16_t h_sync_start() const;
   uint16_t h_sync_end() const;
   uint16_t h_total() const;

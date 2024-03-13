@@ -24,6 +24,7 @@
 #include "DrmHwcTwo.h"
 #include "backend/Backend.h"
 #include "utils/log.h"
+#include "VirtualDisplay.h"
 
 namespace android {
 
@@ -142,173 +143,173 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
     // Display functions
     case HWC2::FunctionDescriptor::AcceptDisplayChanges:
       return ToHook<HWC2_PFN_ACCEPT_DISPLAY_CHANGES>(
-          DisplayHook<decltype(&HwcDisplay::AcceptDisplayChanges),
-                      &HwcDisplay::AcceptDisplayChanges>);
+          DisplayHook<decltype(&VirtualDisplay::AcceptDisplayChanges),
+                      &VirtualDisplay::AcceptDisplayChanges>);
     case HWC2::FunctionDescriptor::CreateLayer:
       return ToHook<HWC2_PFN_CREATE_LAYER>(
-          DisplayHook<decltype(&HwcDisplay::CreateLayer),
-                      &HwcDisplay::CreateLayer, hwc2_layer_t *>);
+          DisplayHook<decltype(&VirtualDisplay::CreateLayer),
+                      &VirtualDisplay::CreateLayer, hwc2_layer_t *>);
     case HWC2::FunctionDescriptor::DestroyLayer:
       return ToHook<HWC2_PFN_DESTROY_LAYER>(
-          DisplayHook<decltype(&HwcDisplay::DestroyLayer),
-                      &HwcDisplay::DestroyLayer, hwc2_layer_t>);
+          DisplayHook<decltype(&VirtualDisplay::DestroyLayer),
+                      &VirtualDisplay::DestroyLayer, hwc2_layer_t>);
     case HWC2::FunctionDescriptor::GetActiveConfig:
       return ToHook<HWC2_PFN_GET_ACTIVE_CONFIG>(
-          DisplayHook<decltype(&HwcDisplay::GetActiveConfig),
-                      &HwcDisplay::GetActiveConfig, hwc2_config_t *>);
+          DisplayHook<decltype(&VirtualDisplay::GetActiveConfig),
+                      &VirtualDisplay::GetActiveConfig, hwc2_config_t *>);
     case HWC2::FunctionDescriptor::GetChangedCompositionTypes:
       return ToHook<HWC2_PFN_GET_CHANGED_COMPOSITION_TYPES>(
-          DisplayHook<decltype(&HwcDisplay::GetChangedCompositionTypes),
-                      &HwcDisplay::GetChangedCompositionTypes, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetChangedCompositionTypes),
+                      &VirtualDisplay::GetChangedCompositionTypes, uint32_t *,
                       hwc2_layer_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetClientTargetSupport:
       return ToHook<HWC2_PFN_GET_CLIENT_TARGET_SUPPORT>(
-          DisplayHook<decltype(&HwcDisplay::GetClientTargetSupport),
-                      &HwcDisplay::GetClientTargetSupport, uint32_t, uint32_t,
+          DisplayHook<decltype(&VirtualDisplay::GetClientTargetSupport),
+                      &VirtualDisplay::GetClientTargetSupport, uint32_t, uint32_t,
                       int32_t, int32_t>);
     case HWC2::FunctionDescriptor::GetColorModes:
       return ToHook<HWC2_PFN_GET_COLOR_MODES>(
-          DisplayHook<decltype(&HwcDisplay::GetColorModes),
-                      &HwcDisplay::GetColorModes, uint32_t *, int32_t *>);
+          DisplayHook<decltype(&VirtualDisplay::GetColorModes),
+                      &VirtualDisplay::GetColorModes, uint32_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayAttribute:
       return ToHook<HWC2_PFN_GET_DISPLAY_ATTRIBUTE>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayAttribute),
-                      &HwcDisplay::GetDisplayAttribute, hwc2_config_t, int32_t,
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayAttribute),
+                      &VirtualDisplay::GetDisplayAttribute, hwc2_config_t, int32_t,
                       int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayConfigs:
       return ToHook<HWC2_PFN_GET_DISPLAY_CONFIGS>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayConfigs),
-                      &HwcDisplay::GetDisplayConfigs, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayConfigs),
+                      &VirtualDisplay::GetDisplayConfigs, uint32_t *,
                       hwc2_config_t *>);
     case HWC2::FunctionDescriptor::GetDisplayName:
       return ToHook<HWC2_PFN_GET_DISPLAY_NAME>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayName),
-                      &HwcDisplay::GetDisplayName, uint32_t *, char *>);
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayName),
+                      &VirtualDisplay::GetDisplayName, uint32_t *, char *>);
     case HWC2::FunctionDescriptor::GetDisplayRequests:
       return ToHook<HWC2_PFN_GET_DISPLAY_REQUESTS>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayRequests),
-                      &HwcDisplay::GetDisplayRequests, int32_t *, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayRequests),
+                      &VirtualDisplay::GetDisplayRequests, int32_t *, uint32_t *,
                       hwc2_layer_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayType:
       return ToHook<HWC2_PFN_GET_DISPLAY_TYPE>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayType),
-                      &HwcDisplay::GetDisplayType, int32_t *>);
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayType),
+                      &VirtualDisplay::GetDisplayType, int32_t *>);
     case HWC2::FunctionDescriptor::GetDozeSupport:
       return ToHook<HWC2_PFN_GET_DOZE_SUPPORT>(
-          DisplayHook<decltype(&HwcDisplay::GetDozeSupport),
-                      &HwcDisplay::GetDozeSupport, int32_t *>);
+          DisplayHook<decltype(&VirtualDisplay::GetDozeSupport),
+                      &VirtualDisplay::GetDozeSupport, int32_t *>);
     case HWC2::FunctionDescriptor::GetPerFrameMetadataKeys:
       return ToHook<HWC2_PFN_GET_PER_FRAME_METADATA_KEYS>(
-          DisplayHook<decltype(&HwcDisplay::GetPerFrameMetadataKeys),
-                      &HwcDisplay::GetPerFrameMetadataKeys, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetPerFrameMetadataKeys),
+                      &VirtualDisplay::GetPerFrameMetadataKeys, uint32_t *,
                       int32_t *>);
     case HWC2::FunctionDescriptor::GetHdrCapabilities:
       return ToHook<HWC2_PFN_GET_HDR_CAPABILITIES>(
-          DisplayHook<decltype(&HwcDisplay::GetHdrCapabilities),
-                      &HwcDisplay::GetHdrCapabilities, uint32_t *, int32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetHdrCapabilities),
+                      &VirtualDisplay::GetHdrCapabilities, uint32_t *, int32_t *,
                       float *, float *, float *>);
     case HWC2::FunctionDescriptor::GetReleaseFences:
       return ToHook<HWC2_PFN_GET_RELEASE_FENCES>(
-          DisplayHook<decltype(&HwcDisplay::GetReleaseFences),
-                      &HwcDisplay::GetReleaseFences, uint32_t *, hwc2_layer_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetReleaseFences),
+                      &VirtualDisplay::GetReleaseFences, uint32_t *, hwc2_layer_t *,
                       int32_t *>);
     case HWC2::FunctionDescriptor::PresentDisplay:
       return ToHook<HWC2_PFN_PRESENT_DISPLAY>(
-          DisplayHook<decltype(&HwcDisplay::PresentDisplay),
-                      &HwcDisplay::PresentDisplay, int32_t *>);
+          DisplayHook<decltype(&VirtualDisplay::PresentDisplay),
+                      &VirtualDisplay::PresentDisplay, int32_t *>);
     case HWC2::FunctionDescriptor::SetActiveConfig:
       return ToHook<HWC2_PFN_SET_ACTIVE_CONFIG>(
-          DisplayHook<decltype(&HwcDisplay::SetActiveConfig),
-                      &HwcDisplay::SetActiveConfig, hwc2_config_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetActiveConfig),
+                      &VirtualDisplay::SetActiveConfig, hwc2_config_t>);
     case HWC2::FunctionDescriptor::SetClientTarget:
       return ToHook<HWC2_PFN_SET_CLIENT_TARGET>(
-          DisplayHook<decltype(&HwcDisplay::SetClientTarget),
-                      &HwcDisplay::SetClientTarget, buffer_handle_t, int32_t,
+          DisplayHook<decltype(&VirtualDisplay::SetClientTarget),
+                      &VirtualDisplay::SetClientTarget, buffer_handle_t, int32_t,
                       int32_t, hwc_region_t>);
     case HWC2::FunctionDescriptor::SetColorMode:
       return ToHook<HWC2_PFN_SET_COLOR_MODE>(
-          DisplayHook<decltype(&HwcDisplay::SetColorMode),
-                      &HwcDisplay::SetColorMode, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetColorMode),
+                      &VirtualDisplay::SetColorMode, int32_t>);
     case HWC2::FunctionDescriptor::SetColorTransform:
       return ToHook<HWC2_PFN_SET_COLOR_TRANSFORM>(
-          DisplayHook<decltype(&HwcDisplay::SetColorTransform),
-                      &HwcDisplay::SetColorTransform, const float *, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetColorTransform),
+                      &VirtualDisplay::SetColorTransform, const float *, int32_t>);
     case HWC2::FunctionDescriptor::SetOutputBuffer:
       return ToHook<HWC2_PFN_SET_OUTPUT_BUFFER>(
-          DisplayHook<decltype(&HwcDisplay::SetOutputBuffer),
-                      &HwcDisplay::SetOutputBuffer, buffer_handle_t, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetOutputBuffer),
+                      &VirtualDisplay::SetOutputBuffer, buffer_handle_t, int32_t>);
     case HWC2::FunctionDescriptor::SetPowerMode:
       return ToHook<HWC2_PFN_SET_POWER_MODE>(
-          DisplayHook<decltype(&HwcDisplay::SetPowerMode),
-                      &HwcDisplay::SetPowerMode, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetPowerMode),
+                      &VirtualDisplay::SetPowerMode, int32_t>);
     case HWC2::FunctionDescriptor::SetVsyncEnabled:
       return ToHook<HWC2_PFN_SET_VSYNC_ENABLED>(
-          DisplayHook<decltype(&HwcDisplay::SetVsyncEnabled),
-                      &HwcDisplay::SetVsyncEnabled, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetVsyncEnabled),
+                      &VirtualDisplay::SetVsyncEnabled, int32_t>);
     case HWC2::FunctionDescriptor::ValidateDisplay:
       return ToHook<HWC2_PFN_VALIDATE_DISPLAY>(
-          DisplayHook<decltype(&HwcDisplay::ValidateDisplay),
-                      &HwcDisplay::ValidateDisplay, uint32_t *, uint32_t *>);
+          DisplayHook<decltype(&VirtualDisplay::ValidateDisplay),
+                      &VirtualDisplay::ValidateDisplay, uint32_t *, uint32_t *>);
 #if PLATFORM_SDK_VERSION > 27
     case HWC2::FunctionDescriptor::GetRenderIntents:
       return ToHook<HWC2_PFN_GET_RENDER_INTENTS>(
-          DisplayHook<decltype(&HwcDisplay::GetRenderIntents),
-                      &HwcDisplay::GetRenderIntents, int32_t, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetRenderIntents),
+                      &VirtualDisplay::GetRenderIntents, int32_t, uint32_t *,
                       int32_t *>);
     case HWC2::FunctionDescriptor::SetColorModeWithRenderIntent:
       return ToHook<HWC2_PFN_SET_COLOR_MODE_WITH_RENDER_INTENT>(
-          DisplayHook<decltype(&HwcDisplay::SetColorModeWithIntent),
-                      &HwcDisplay::SetColorModeWithIntent, int32_t, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetColorModeWithIntent),
+                      &VirtualDisplay::SetColorModeWithIntent, int32_t, int32_t>);
 #endif
 #if PLATFORM_SDK_VERSION > 28
     case HWC2::FunctionDescriptor::GetDisplayIdentificationData:
       return ToHook<HWC2_PFN_GET_DISPLAY_IDENTIFICATION_DATA>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayIdentificationData),
-                      &HwcDisplay::GetDisplayIdentificationData, uint8_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayIdentificationData),
+                      &VirtualDisplay::GetDisplayIdentificationData, uint8_t *,
                       uint32_t *, uint8_t *>);
     case HWC2::FunctionDescriptor::GetDisplayCapabilities:
       return ToHook<HWC2_PFN_GET_DISPLAY_CAPABILITIES>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayCapabilities),
-                      &HwcDisplay::GetDisplayCapabilities, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayCapabilities),
+                      &VirtualDisplay::GetDisplayCapabilities, uint32_t *,
                       uint32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
       return ToHook<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayBrightnessSupport),
-                      &HwcDisplay::GetDisplayBrightnessSupport, bool *>);
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayBrightnessSupport),
+                      &VirtualDisplay::GetDisplayBrightnessSupport, bool *>);
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
       return ToHook<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(
-          DisplayHook<decltype(&HwcDisplay::SetDisplayBrightness),
-                      &HwcDisplay::SetDisplayBrightness, float>);
+          DisplayHook<decltype(&VirtualDisplay::SetDisplayBrightness),
+                      &VirtualDisplay::SetDisplayBrightness, float>);
 #endif /* PLATFORM_SDK_VERSION > 28 */
 #if PLATFORM_SDK_VERSION > 29
     case HWC2::FunctionDescriptor::GetDisplayConnectionType:
       return ToHook<HWC2_PFN_GET_DISPLAY_CONNECTION_TYPE>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayConnectionType),
-                      &HwcDisplay::GetDisplayConnectionType, uint32_t *>);
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayConnectionType),
+                      &VirtualDisplay::GetDisplayConnectionType, uint32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayVsyncPeriod:
       return ToHook<HWC2_PFN_GET_DISPLAY_VSYNC_PERIOD>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayVsyncPeriod),
-                      &HwcDisplay::GetDisplayVsyncPeriod,
+          DisplayHook<decltype(&VirtualDisplay::GetDisplayVsyncPeriod),
+                      &VirtualDisplay::GetDisplayVsyncPeriod,
                       hwc2_vsync_period_t *>);
     case HWC2::FunctionDescriptor::SetActiveConfigWithConstraints:
       return ToHook<HWC2_PFN_SET_ACTIVE_CONFIG_WITH_CONSTRAINTS>(
-          DisplayHook<decltype(&HwcDisplay::SetActiveConfigWithConstraints),
-                      &HwcDisplay::SetActiveConfigWithConstraints,
+          DisplayHook<decltype(&VirtualDisplay::SetActiveConfigWithConstraints),
+                      &VirtualDisplay::SetActiveConfigWithConstraints,
                       hwc2_config_t, hwc_vsync_period_change_constraints_t *,
                       hwc_vsync_period_change_timeline_t *>);
     case HWC2::FunctionDescriptor::SetAutoLowLatencyMode:
       return ToHook<HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE>(
-          DisplayHook<decltype(&HwcDisplay::SetAutoLowLatencyMode),
-                      &HwcDisplay::SetAutoLowLatencyMode, bool>);
+          DisplayHook<decltype(&VirtualDisplay::SetAutoLowLatencyMode),
+                      &VirtualDisplay::SetAutoLowLatencyMode, bool>);
     case HWC2::FunctionDescriptor::GetSupportedContentTypes:
       return ToHook<HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES>(
-          DisplayHook<decltype(&HwcDisplay::GetSupportedContentTypes),
-                      &HwcDisplay::GetSupportedContentTypes, uint32_t *,
+          DisplayHook<decltype(&VirtualDisplay::GetSupportedContentTypes),
+                      &VirtualDisplay::GetSupportedContentTypes, uint32_t *,
                       uint32_t *>);
     case HWC2::FunctionDescriptor::SetContentType:
       return ToHook<HWC2_PFN_SET_CONTENT_TYPE>(
-          DisplayHook<decltype(&HwcDisplay::SetContentType),
-                      &HwcDisplay::SetContentType, int32_t>);
+          DisplayHook<decltype(&VirtualDisplay::SetContentType),
+                      &VirtualDisplay::SetContentType, int32_t>);
 #endif
     // Layer functions
     case HWC2::FunctionDescriptor::SetCursorPosition:

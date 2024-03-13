@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-display"
+#define LOG_TAG "virtual-display"
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 
-#include "HwcDisplay.h"
+#include "VirtualDisplay.h"
 
 #include "DrmHwcTwo.h"
 #include "backend/Backend.h"
@@ -28,7 +28,7 @@
 
 namespace android {
 
-std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
+std::string VirtualDisplay::DumpDelta(VirtualDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
     return "No stats yet";
   double ratio = 1.0 - double(delta.gpu_pixops_) / double(delta.total_pixops_);
@@ -49,7 +49,7 @@ std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   return ss.str();
 }
 
-std::string HwcDisplay::Dump() {
+std::string VirtualDisplay::Dump() {
   std::string flattening_state_str;
   switch (flattenning_state_) {
     case ClientFlattenningState::Disabled:
@@ -69,9 +69,9 @@ std::string HwcDisplay::Dump() {
                              " VSync remains";
   }
 
-  std::string connector_name = IsInHeadlessMode()
-                                   ? "NULL-DISPLAY"
-                                   : GetPipe().connector->Get()->GetName();
+  std::string connector_name = physical_display_->IsInHeadlessMode()
+                                   ? "NULL-VIRTUAL-DISPLAY"
+                                   : physical_display_->GetPipe().connector->Get()->GetName();
 
   std::stringstream ss;
   ss << "- Display on: " << connector_name << "\n"
@@ -85,12 +85,12 @@ std::string HwcDisplay::Dump() {
   return ss.str();
 }
 
-HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
-                       DrmHwcTwo *hwc2)
+VirtualDisplay::VirtualDisplay(hwc2_display_t handle, HWC2::DisplayType type,
+                       DrmHwcTwo *hwc2, HwcDisplay *physical_display)
     : hwc2_(hwc2),
       handle_(handle),
       type_(type),
-      client_layer_(this),
+      client_layer_(physical_display,handle),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
@@ -98,103 +98,56 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                              0.0, 0.0, 1.0, 0.0,
                              0.0, 0.0, 0.0, 1.0};
   // clang-format on
-}
-
-HwcDisplay::~HwcDisplay() = default;
-
-void HwcDisplay::SetPipeline(DrmDisplayPipeline *pipeline) {
+  physical_display_ = physical_display;
   Deinit();
-
-  pipeline_ = pipeline;
-
-  if (pipeline != nullptr || handle_ == kPrimaryDisplay)
+  if (!physical_display->IsInHeadlessMode() || handle_ == kPrimaryDisplay) {
     Init();
-}
-
-void HwcDisplay::Deinit() {
-  if (pipeline_ != nullptr) {
-    AtomicCommitArgs a_args{};
-    a_args.active = false;
-    a_args.composition = std::make_shared<DrmKmsPlan>();
-    a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
-
-    GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
-
-    vsync_worker_.Init(nullptr, [](int64_t) {});
-    current_plan_.reset();
-    backend_.reset();
+    hwc2_->ScheduleHotplugEvent(handle_,/*connected = */ true);
+  } else {
+    hwc2_->ScheduleHotplugEvent(handle_,/*connected = */ false);
   }
 
+}
+
+VirtualDisplay::~VirtualDisplay() = default;
+
+void VirtualDisplay::Deinit() {
   SetClientTarget(nullptr, -1, 0, {});
 }
 
-HWC2::Error HwcDisplay::Init() {
+HWC2::Error VirtualDisplay::Init() {
   ChosePreferredConfig();
-
-  int ret = vsync_worker_.Init(pipeline_, [this](int64_t timestamp) {
-    const std::lock_guard<std::mutex> lock(hwc2_->GetResMan().GetMainLock());
-    if (vsync_event_en_) {
-      uint32_t period_ns{};
-      GetDisplayVsyncPeriod(&period_ns);
-      for (auto h : virtual_display_handles_)
-        hwc2_->SendVsyncEventToClient(h, timestamp, period_ns);
-    }
-    if (vsync_flattening_en_) {
-      ProcessFlatenningVsyncInternal();
-    }
-    if (vsync_tracking_en_) {
-      last_vsync_ts_ = timestamp;
-    }
-    if (!vsync_event_en_ && !vsync_flattening_en_ && !vsync_tracking_en_) {
-      vsync_worker_.VSyncControl(false);
-    }
-  });
-  if (ret && ret != -EALREADY) {
-    ALOGE("Failed to create event worker for d=%d %d\n", int(handle_), ret);
-    return HWC2::Error::BadDisplay;
-  }
-
-  if (!IsInHeadlessMode()) {
-    ret = BackendManager::GetInstance().SetBackendForDisplay(this);
+  if (!physical_display_->IsInHeadlessMode()) {
+    int ret = BackendManager::GetInstance().SetBackendForDisplay(this);
     if (ret) {
       ALOGE("Failed to set backend for d=%d %d\n", int(handle_), ret);
       return HWC2::Error::BadDisplay;
     }
   }
-
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
-
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::ChosePreferredConfig() {
-  HWC2::Error err{};
-  if (!IsInHeadlessMode()) {
-    err = configs_.Update(*pipeline_->connector->Get());
-  } else {
-    configs_.FillHeadless();
-  }
-  if (!IsInHeadlessMode() && err != HWC2::Error::None) {
-    return HWC2::Error::BadDisplay;
-  }
+HWC2::Error VirtualDisplay::ChosePreferredConfig() {
+  configs_ = physical_display_->GetHwcDisplayConfigs();
 
   return SetActiveConfig(configs_.preferred_config_id);
 }
 
-HWC2::Error HwcDisplay::AcceptDisplayChanges() {
+HWC2::Error VirtualDisplay::AcceptDisplayChanges() {
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_)
     l.second.AcceptTypeChange();
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(this));
+HWC2::Error VirtualDisplay::CreateLayer(hwc2_layer_t *layer) {
+  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(physical_display_, handle_));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
+HWC2::Error VirtualDisplay::DestroyLayer(hwc2_layer_t layer) {
   if (!get_layer(layer)) {
     return HWC2::Error::BadLayer;
   }
@@ -203,7 +156,7 @@ HWC2::Error HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
+HWC2::Error VirtualDisplay::GetActiveConfig(hwc2_config_t *config) const {
   if (configs_.hwc_configs.count(staged_mode_config_id_) == 0)
     return HWC2::Error::BadConfig;
 
@@ -211,10 +164,10 @@ HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
+HWC2::Error VirtualDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
                                                    hwc2_layer_t *layers,
                                                    int32_t *types) {
-  if (IsInHeadlessMode()) {
+  if (physical_display_->IsInHeadlessMode()) {
     *num_elements = 0;
     return HWC2::Error::None;
   }
@@ -234,79 +187,18 @@ HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
+HWC2::Error VirtualDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                int32_t /*format*/,
                                                int32_t dataspace) {
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::None;
-  }
-
-  std::pair<uint32_t, uint32_t> min = pipeline_->device->GetMinResolution();
-  std::pair<uint32_t, uint32_t> max = pipeline_->device->GetMaxResolution();
-
-  if (width < min.first || height < min.second)
-    return HWC2::Error::Unsupported;
-
-  if (width > max.first || height > max.second)
-    return HWC2::Error::Unsupported;
-
-  if (dataspace != HAL_DATASPACE_UNKNOWN)
-    return HWC2::Error::Unsupported;
-
-  // TODO(nobody): Validate format can be handled by either GL or planes
-  return HWC2::Error::None;
+  return physical_display_->GetClientTargetSupport(width, height, 0, dataspace);
 }
 
-HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
+HWC2::Error VirtualDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
 
-  if (IsInHeadlessMode()) {
-    if (num_modes)
-      *num_modes = 1;
-
-    if (modes)
-      *modes = HAL_COLOR_MODE_NATIVE;
-
-    return HWC2::Error::None;
-  }
-
-  DrmConnector *conn = pipeline_->connector->Get();
-  if (conn && (!conn->IsHdrSupportedDevice() || !conn->IsConnectorHdrCapable())) {
-     if (!modes) {
-       if (num_modes) {
-         *num_modes = 1;
-       } else {
-         ALOGD("%s:%d num_modes is NULL!", __FUNCTION__, __LINE__);
-       }
-     }
-
-     if (modes)
-       *modes = HAL_COLOR_MODE_NATIVE;
-  }
-  else {
-    ALOGD("%s HDR mode is supported.", __FUNCTION__);
-    if (!modes) {
-      if (num_modes) {
-        *num_modes = current_color_mode_.size();
-        ALOGD("Set the num_modes to: %u!", (uint32_t) current_color_mode_.size());
-      } else {
-        ALOGD("%s:%d num_modes is NULL!", __FUNCTION__, __LINE__);
-      }
-    } else {
-      if (num_modes) {
-        *num_modes = current_color_mode_.size();
-        ALOGD("Set the num_modes to:%u", (uint32_t) current_color_mode_.size());
-      } else {
-        ALOGD("%s:%d num_modes is null!", __FUNCTION__, __LINE__);
-      }
-      for (int i = 0; i < current_color_mode_.size(); i++) {
-        *(modes + i) = current_color_mode_[i];
-      }
-    }
-  }
-  return HWC2::Error::None;
+  return physical_display_->GetColorModes(num_modes, modes);
 }
 
-HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
+HWC2::Error VirtualDisplay::GetDisplayAttribute(hwc2_config_t config,
                                             int32_t attribute_in,
                                             int32_t *value) {
   int conf = static_cast<int>(config);
@@ -324,7 +216,7 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
-      *value = static_cast<int>(hwc_config.mode.h_display());
+      *value = static_cast<int>(hwc_config.mode.h_display() / 2);
       break;
     case HWC2::Attribute::Height:
       *value = static_cast<int>(hwc_config.mode.v_display());
@@ -359,7 +251,7 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
+HWC2::Error VirtualDisplay::GetDisplayConfigs(uint32_t *num_configs,
                                           hwc2_config_t *configs) {
   uint32_t idx = 0;
   for (auto &hwc_config : configs_.hwc_configs) {
@@ -380,12 +272,12 @@ HWC2::Error HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
+HWC2::Error VirtualDisplay::GetDisplayName(uint32_t *size, char *name) {
   std::ostringstream stream;
-  if (IsInHeadlessMode()) {
-    stream << "null-display";
+  if (physical_display_->IsInHeadlessMode()) {
+    stream << "null-virtual-display";
   } else {
-    stream << "display-" << GetPipe().connector->Get()->GetId();
+    stream << "virtual-display-" << physical_display_->GetPipe().connector->Get()->GetId();
   }
   std::string string = stream.str();
   size_t length = string.length();
@@ -399,7 +291,7 @@ HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayRequests(int32_t * /*display_requests*/,
+HWC2::Error VirtualDisplay::GetDisplayRequests(int32_t * /*display_requests*/,
                                            uint32_t *num_elements,
                                            hwc2_layer_t * /*layers*/,
                                            int32_t * /*layer_requests*/) {
@@ -409,55 +301,27 @@ HWC2::Error HwcDisplay::GetDisplayRequests(int32_t * /*display_requests*/,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayType(int32_t *type) {
+HWC2::Error VirtualDisplay::GetDisplayType(int32_t *type) {
   *type = static_cast<int32_t>(type_);
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDozeSupport(int32_t *support) {
+HWC2::Error VirtualDisplay::GetDozeSupport(int32_t *support) {
   *support = 0;
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetPerFrameMetadataKeys(uint32_t *outNumKeys, int32_t *outKeys) {
-  if (NULL == outNumKeys && NULL == outKeys) {
-    return HWC2::Error::BadParameter;
-  }
-
-  *outNumKeys = KEY_NUM_PER_FRAME_METADATA_KEYS;
-  if (NULL == outKeys)
-    return HWC2::Error::None;
-
-  for (int i = 0; i < KEY_NUM_PER_FRAME_METADATA_KEYS; i++) {
-    *(outKeys + i) = i;
-  }
-
-  return HWC2::Error::None;
+HWC2::Error VirtualDisplay::GetPerFrameMetadataKeys(uint32_t *outNumKeys, int32_t *outKeys) {
+  return physical_display_->GetPerFrameMetadataKeys(outNumKeys, outKeys);
 }
 
-HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
+HWC2::Error VirtualDisplay::GetHdrCapabilities(uint32_t *num_types,
                                            int32_t * types,
                                            float * max_luminance,
                                            float * max_average_luminance,
                                            float * min_luminance) {
-  *num_types = 0;
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::Unsupported;
-  }
-
-  DrmConnector *conn = pipeline_->connector->Get();
-
-  if (conn && conn->IsHdrSupportedDevice()) {
-    if (conn->GetHdrCapabilities(num_types, types, max_luminance,
-                                   max_average_luminance, min_luminance)) {
-      return HWC2::Error::None;
-    } else {
-      return HWC2::Error::Unsupported;
-    }
-  }
-
-
-  return HWC2::Error::None;
+  return physical_display_->GetHdrCapabilities(num_types, types,
+                                      max_luminance, max_average_luminance, min_luminance);
 }
 
 /* Find API details at:
@@ -466,10 +330,10 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
  * Called after PresentDisplay(), CLIENT is expecting release fence for the
  * prior buffer (not the one assigned to the layer at the moment).
  */
-HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
+HWC2::Error VirtualDisplay::GetReleaseFences(uint32_t *num_elements,
                                          hwc2_layer_t *layers,
                                          int32_t *fences) {
-  if (IsInHeadlessMode()) {
+  if (physical_display_->IsInHeadlessMode()) {
     *num_elements = 0;
     return HWC2::Error::None;
   }
@@ -499,14 +363,14 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
-  if (IsInHeadlessMode()) {
+HWC2::Error VirtualDisplay::CreateComposition(AtomicCommitArgs &a_args) {
+  if (physical_display_->IsInHeadlessMode()) {
     ALOGE("%s: Display is in headless mode, should never reach here", __func__);
     return HWC2::Error::None;
   }
 
   int PrevModeVsyncPeriodNs = static_cast<int>(
-      1E9 / GetPipe().connector->Get()->GetActiveMode().v_refresh());
+      1E9 / physical_display_->GetPipe().connector->Get()->GetActiveMode().v_refresh());
 
   auto mode_update_commited_ = false;
   if (staged_mode_ &&
@@ -514,7 +378,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     client_layer_.SetLayerDisplayFrame(
         (hwc_rect_t){.left = 0,
                      .top = 0,
-                     .right = static_cast<int>(staged_mode_->h_display()),
+                     .right = static_cast<int>(staged_mode_->h_display() / 2),
                      .bottom = static_cast<int>(staged_mode_->v_display())});
 
     configs_.active_config_id = staged_mode_config_id_;
@@ -525,7 +389,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     }
   }
 
-  a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
+  a_args.color_adjustment = physical_display_->GetPipe().device->GetColorAdjustmentEnabling();
 
   // order the layers by z-order
   bool use_client_layer = false;
@@ -576,7 +440,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   /* Store plan to ensure shared planes won't be stolen by other display
    * in between of ValidateDisplay() and PresentDisplay() calls
    */
-  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
+  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(physical_display_->GetPipe(),
                                                std::move(composition_layers));
   if (!current_plan_) {
     if (!a_args.test_only) {
@@ -587,7 +451,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   a_args.composition = current_plan_;
 
-  int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+  int ret = physical_display_->GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 
   if (ret) {
     if (!a_args.test_only)
@@ -599,7 +463,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     staged_mode_.reset();
     vsync_tracking_en_ = false;
     if (last_vsync_ts_ != 0) {
-      hwc2_->SendVsyncPeriodTimingChangedEventToClient(
+      physical_display_->GetHwc2()->SendVsyncPeriodTimingChangedEventToClient(
           handle_, last_vsync_ts_ + PrevModeVsyncPeriodNs);
     }
   }
@@ -610,8 +474,8 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 /* Find API details at:
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
-HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
-  if (IsInHeadlessMode()) {
+HWC2::Error VirtualDisplay::PresentDisplay(int32_t *out_present_fence) {
+  if (physical_display_->IsInHeadlessMode()) {
     *out_present_fence = -1;
     return HWC2::Error::None;
   }
@@ -635,18 +499,16 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
 
   this->present_fence_ = UniqueFd::Dup(a_args.out_fence.Get());
   *out_present_fence = a_args.out_fence.Release();
-
   ++frame_no_;
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
+HWC2::Error VirtualDisplay::SetActiveConfigInternal(uint32_t config,
                                                 int64_t change_time) {
   if (configs_.hwc_configs.count(config) == 0) {
     ALOGE("Could not find active mode for %u", config);
     return HWC2::Error::BadConfig;
   }
-
   staged_mode_ = configs_.hwc_configs[config].mode;
   staged_mode_change_time_ = change_time;
   staged_mode_config_id_ = config;
@@ -654,14 +516,14 @@ HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetActiveConfig(hwc2_config_t config) {
+HWC2::Error VirtualDisplay::SetActiveConfig(hwc2_config_t config) {
   return SetActiveConfigInternal(config, ResourceManager::GetTimeMonotonicNs());
 }
 
 /* Find API details at:
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1861
  */
-HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
+HWC2::Error VirtualDisplay::SetClientTarget(buffer_handle_t target,
                                         int32_t acquire_fence,
                                         int32_t dataspace,
                                         hwc_region_t /*damage*/) {
@@ -678,7 +540,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
-  if (IsInHeadlessMode()) {
+  if (physical_display_->IsInHeadlessMode()) {
     return HWC2::Error::None;
   }
 
@@ -698,7 +560,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
+HWC2::Error VirtualDisplay::SetColorMode(int32_t mode) {
   if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_BT2100_HLG)
     return HWC2::Error::BadParameter;
 
@@ -709,83 +571,29 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
-  if (hint < HAL_COLOR_TRANSFORM_IDENTITY ||
-      hint > HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA)
-    return HWC2::Error::BadParameter;
-
-  if (!matrix && hint == HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX)
-    return HWC2::Error::BadParameter;
-
-  color_transform_hint_ = static_cast<android_color_transform_t>(hint);
-  if (color_transform_hint_ == HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX)
-    std::copy(matrix, matrix + MATRIX_SIZE, color_transform_matrix_.begin());
-
-  return HWC2::Error::None;
+HWC2::Error VirtualDisplay::SetColorTransform(const float *matrix, int32_t hint) {
+  return physical_display_->SetColorTransform(matrix, hint);
 }
 
-HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
+HWC2::Error VirtualDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
                                         int32_t /*release_fence*/) {
   // TODO(nobody): Need virtual display support
   return HWC2::Error::Unsupported;
 }
 
-HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
-  auto mode = static_cast<HWC2::PowerMode>(mode_in);
-
-  AtomicCommitArgs a_args{};
-
-  switch (mode) {
-    case HWC2::PowerMode::Off:
-      a_args.active = false;
-      break;
-    case HWC2::PowerMode::On:
-      a_args.active = true;
-      a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
-      break;
-    case HWC2::PowerMode::Doze:
-    case HWC2::PowerMode::DozeSuspend:
-      return HWC2::Error::Unsupported;
-    default:
-      ALOGE("Incorrect power mode value (%d)\n", mode);
-      return HWC2::Error::BadParameter;
-  }
-
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::None;
-  }
-
-  if (a_args.active) {
-    /*
-     * Setting the display to active before we have a composition
-     * can break some drivers, so skip setting a_args.active to
-     * true, as the next composition frame will implicitly activate
-     * the display
-     */
-    return GetPipe().atomic_state_manager->ActivateDisplayUsingDPMS() == 0
-               ? HWC2::Error::None
-               : HWC2::Error::BadParameter;
-  };
-
-  int err = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
-  if (err) {
-    ALOGE("Failed to apply the dpms composition err=%d", err);
-    return HWC2::Error::BadParameter;
-  }
+HWC2::Error VirtualDisplay::SetPowerMode(int32_t mode_in) {
+  if (handle_ == kPrimaryDisplay)
+    physical_display_->SetPowerMode(mode_in);
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
-  vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
-  if (vsync_event_en_) {
-    vsync_worker_.VSyncControl(true);
-  }
-  return HWC2::Error::None;
+HWC2::Error VirtualDisplay::SetVsyncEnabled(int32_t enabled) {
+  return physical_display_->SetVsyncEnabled(enabled);
 }
 
-HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
+HWC2::Error VirtualDisplay::ValidateDisplay(uint32_t *num_types,
                                         uint32_t *num_requests) {
-  if (IsInHeadlessMode()) {
+  if (physical_display_->IsInHeadlessMode()) {
     *num_types = *num_requests = 0;
     return HWC2::Error::None;
   }
@@ -798,11 +606,10 @@ HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
     l.second.SetPriorBufferScanOutFlag(l.second.GetValidatedType() !=
                                        HWC2::Composition::Client);
   }
-
   return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
-std::vector<HwcLayer *> HwcDisplay::GetOrderLayersByZPos() {
+std::vector<HwcLayer *> VirtualDisplay::GetOrderLayersByZPos() {
   std::vector<HwcLayer *> ordered_layers;
   ordered_layers.reserve(layers_.size());
 
@@ -818,7 +625,7 @@ std::vector<HwcLayer *> HwcDisplay::GetOrderLayersByZPos() {
   return ordered_layers;
 }
 
-HWC2::Error HwcDisplay::GetDisplayVsyncPeriod(
+HWC2::Error VirtualDisplay::GetDisplayVsyncPeriod(
     uint32_t *outVsyncPeriod /* ns */) {
   return GetDisplayAttribute(configs_.active_config_id,
                              HWC2_ATTRIBUTE_VSYNC_PERIOD,
@@ -826,63 +633,24 @@ HWC2::Error HwcDisplay::GetDisplayVsyncPeriod(
 }
 
 #if PLATFORM_SDK_VERSION > 29
-HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
-  if (IsInHeadlessMode()) {
-    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
-    return HWC2::Error::None;
-  }
-  /* Primary display should be always internal,
-   * otherwise SF will be unhappy and will crash
-   */
-  if (GetPipe().connector->Get()->IsInternal() || handle_ == kPrimaryDisplay)
-    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
-  else if (GetPipe().connector->Get()->IsExternal())
-    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::External);
-  else
-    return HWC2::Error::BadConfig;
-
-  return HWC2::Error::None;
+HWC2::Error VirtualDisplay::GetDisplayConnectionType(uint32_t *outType) {
+  return physical_display_->GetDisplayConnectionType(outType);
 }
 
-HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
+HWC2::Error VirtualDisplay::SetActiveConfigWithConstraints(
     hwc2_config_t config,
     hwc_vsync_period_change_constraints_t *vsyncPeriodChangeConstraints,
     hwc_vsync_period_change_timeline_t *outTimeline) {
-  if (vsyncPeriodChangeConstraints == nullptr || outTimeline == nullptr) {
-    return HWC2::Error::BadParameter;
-  }
-
-  uint32_t current_vsync_period{};
-  GetDisplayVsyncPeriod(&current_vsync_period);
-
-  if (vsyncPeriodChangeConstraints->seamlessRequired) {
-    return HWC2::Error::SeamlessNotAllowed;
-  }
-
-  outTimeline->refreshTimeNanos = vsyncPeriodChangeConstraints
-                                      ->desiredTimeNanos -
-                                  current_vsync_period;
-  auto ret = SetActiveConfigInternal(config, outTimeline->refreshTimeNanos);
-  if (ret != HWC2::Error::None) {
-    return ret;
-  }
-
-  outTimeline->refreshRequired = true;
-  outTimeline->newVsyncAppliedTimeNanos = vsyncPeriodChangeConstraints
-                                              ->desiredTimeNanos;
-
-  last_vsync_ts_ = 0;
-  vsync_tracking_en_ = true;
-  vsync_worker_.VSyncControl(true);
-
-  return HWC2::Error::None;
+  return physical_display_->SetActiveConfigWithConstraints(config,
+                                                          vsyncPeriodChangeConstraints,
+                                                          outTimeline);
 }
 
-HWC2::Error HwcDisplay::SetAutoLowLatencyMode(bool /*on*/) {
+HWC2::Error VirtualDisplay::SetAutoLowLatencyMode(bool /*on*/) {
   return HWC2::Error::Unsupported;
 }
 
-HWC2::Error HwcDisplay::GetSupportedContentTypes(
+HWC2::Error VirtualDisplay::GetSupportedContentTypes(
     uint32_t *outNumSupportedContentTypes,
     const uint32_t *outSupportedContentTypes) {
   if (outSupportedContentTypes == nullptr)
@@ -891,7 +659,7 @@ HWC2::Error HwcDisplay::GetSupportedContentTypes(
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
+HWC2::Error VirtualDisplay::SetContentType(int32_t contentType) {
   if (contentType != HWC2_CONTENT_TYPE_NONE)
     return HWC2::Error::Unsupported;
 
@@ -904,31 +672,13 @@ HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
 #endif
 
 #if PLATFORM_SDK_VERSION > 28
-HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
-                                                     uint32_t *outDataSize,
-                                                     uint8_t *outData) {
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::Unsupported;
-  }
-
-  auto blob = GetPipe().connector->Get()->GetEdidBlob();
-  if (!blob) {
-    return HWC2::Error::Unsupported;
-  }
-
-  *outPort = handle_; /* TDOD(nobody): What should be here? */
-
-  if (outData) {
-    *outDataSize = std::min(*outDataSize, blob->length);
-    memcpy(outData, blob->data, *outDataSize);
-  } else {
-    *outDataSize = blob->length;
-  }
-
-  return HWC2::Error::None;
+HWC2::Error VirtualDisplay::GetDisplayIdentificationData(uint8_t */*outPort*/,
+                                                     uint32_t */*outDataSize*/,
+                                                     uint8_t */*outData*/) {
+  return HWC2::Error::Unsupported;
 }
 
-HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
+HWC2::Error VirtualDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
                                                uint32_t * /*outCapabilities*/) {
   if (outNumCapabilities == nullptr) {
     return HWC2::Error::BadParameter;
@@ -939,12 +689,12 @@ HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayBrightnessSupport(bool *supported) {
+HWC2::Error VirtualDisplay::GetDisplayBrightnessSupport(bool *supported) {
   *supported = false;
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetDisplayBrightness(float /* brightness */) {
+HWC2::Error VirtualDisplay::SetDisplayBrightness(float /* brightness */) {
   return HWC2::Error::Unsupported;
 }
 
@@ -952,56 +702,14 @@ HWC2::Error HwcDisplay::SetDisplayBrightness(float /* brightness */) {
 
 #if PLATFORM_SDK_VERSION > 27
 
-HWC2::Error HwcDisplay::GetRenderIntents(
+HWC2::Error VirtualDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
 
-  if (NULL == outNumIntents || NULL == outIntents) {
-    ALOGE("Null pointer error, outNumIntents: %p, outIntents: %p",
-          outNumIntents, outIntents);
-    return HWC2::Error::BadParameter;
-  }
-
-  if (IsInHeadlessMode()) {
-    *outNumIntents = 1;
-    outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
-    return HWC2::Error::None;
-  }
-
-  DrmConnector *conn = pipeline_->connector->Get();
-
-  if (conn && !conn->IsHdrSupportedDevice()) {
-    if (mode != HAL_COLOR_MODE_NATIVE) {
-      return HWC2::Error::BadParameter;
-    }
-
-    if (outIntents == nullptr) {
-      *outNumIntents = 1;
-      return HWC2::Error::None;
-    }
-    *outNumIntents = 1;
-    outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
-  } else {
-    // Add the SDR render intents by default.
-    if (NULL == outIntents) {
-       *outNumIntents = 2;
-      return HWC2::Error::None;
-    }
-
-    *(outIntents) = HAL_RENDER_INTENT_COLORIMETRIC;
-    *(outIntents + 1) = HAL_RENDER_INTENT_ENHANCE;
-    if (mode > HAL_COLOR_MODE_DISPLAY_P3) {
-      if (conn->GetRenderIntents(outNumIntents, outIntents))
-        return HWC2::Error::None;
-      else
-        return HWC2::Error::BadParameter;
-    }
-  }
-
-  return HWC2::Error::None;
+  return physical_display_->GetRenderIntents(mode, outNumIntents, outIntents);
 }
 
-HWC2::Error HwcDisplay::SetColorModeWithIntent(int32_t mode, int32_t intent) {
+HWC2::Error VirtualDisplay::SetColorModeWithIntent(int32_t mode, int32_t intent) {
   if (intent < HAL_RENDER_INTENT_COLORIMETRIC ||
       intent > HAL_RENDER_INTENT_TONE_MAP_ENHANCE)
     return HWC2::Error::BadParameter;
@@ -1021,45 +729,16 @@ HWC2::Error HwcDisplay::SetColorModeWithIntent(int32_t mode, int32_t intent) {
 
 #endif /* PLATFORM_SDK_VERSION > 27 */
 
-const Backend *HwcDisplay::backend() const {
+const VirtualBackend *VirtualDisplay::backend() const {
   return backend_.get();
 }
 
-void HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
+void VirtualDisplay::set_backend(std::unique_ptr<VirtualBackend> backend) {
   backend_ = std::move(backend);
 }
 
 /* returns true if composition should be sent to client */
-bool HwcDisplay::ProcessClientFlatteningState(bool skip) {
-  int flattenning_state = flattenning_state_;
-  if (flattenning_state == ClientFlattenningState::Disabled) {
-    return false;
-  }
-
-  if (skip) {
-    flattenning_state_ = ClientFlattenningState::NotRequired;
-    return false;
-  }
-
-  if (flattenning_state == ClientFlattenningState::ClientRefreshRequested) {
-    flattenning_state_ = ClientFlattenningState::Flattened;
-    return true;
-  }
-
-  vsync_flattening_en_ = true;
-  vsync_worker_.VSyncControl(true);
-  flattenning_state_ = ClientFlattenningState::VsyncCountdownMax;
-  return false;
+bool VirtualDisplay::ProcessClientFlatteningState(bool skip) {
+  return physical_display_->ProcessClientFlatteningState(skip);
 }
-
-void HwcDisplay::ProcessFlatenningVsyncInternal() {
-  if (flattenning_state_ > ClientFlattenningState::ClientRefreshRequested &&
-      --flattenning_state_ == ClientFlattenningState::ClientRefreshRequested &&
-      hwc2_->refresh_callback_.first != nullptr &&
-      hwc2_->refresh_callback_.second != nullptr) {
-    hwc2_->refresh_callback_.first(hwc2_->refresh_callback_.second, handle_);
-    vsync_flattening_en_ = false;
-  }
-}
-
 }  // namespace android
