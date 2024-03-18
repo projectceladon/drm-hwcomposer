@@ -175,7 +175,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   bool edid_contains_hdr_tag_ = false;
 
   /* Display's color primaries */
-  struct cta_display_color_primaries primaries_;
+  struct cta_display_color_primaries primaries_ = {};
 
   /* Display's static HDR metadata */
   struct cta_edid_hdr_metadata_static *display_hdrMd_;

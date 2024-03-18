@@ -425,7 +425,7 @@ HWC2::Error HwcDisplay::GetDozeSupport(int32_t *support) {
 }
 
 HWC2::Error HwcDisplay::GetPerFrameMetadataKeys(uint32_t *outNumKeys, int32_t *outKeys) {
-  if (NULL == outNumKeys && NULL == outKeys) {
+  if (NULL == outNumKeys) {
     return HWC2::Error::BadParameter;
   }
 
@@ -961,15 +961,15 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
 
-  if (NULL == outNumIntents || NULL == outIntents) {
-    ALOGE("Null pointer error, outNumIntents: %p, outIntents: %p",
-          outNumIntents, outIntents);
+  if (NULL == outNumIntents) {
+    ALOGE("Null pointer error, outNumIntents: %p", outNumIntents);
     return HWC2::Error::BadParameter;
   }
 
   if (IsInHeadlessMode()) {
     *outNumIntents = 1;
-    outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
+    if (outIntents)
+      outIntents[0] = HAL_RENDER_INTENT_COLORIMETRIC;
     return HWC2::Error::None;
   }
 
@@ -996,7 +996,7 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     *(outIntents) = HAL_RENDER_INTENT_COLORIMETRIC;
     *(outIntents + 1) = HAL_RENDER_INTENT_ENHANCE;
     if (mode > HAL_COLOR_MODE_DISPLAY_P3) {
-      if (conn->GetRenderIntents(outNumIntents, outIntents))
+      if (conn && conn->GetRenderIntents(outNumIntents, outIntents))
         return HWC2::Error::None;
       else
         return HWC2::Error::BadParameter;
