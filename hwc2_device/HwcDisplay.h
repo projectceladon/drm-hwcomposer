@@ -110,6 +110,7 @@ class HwcDisplay {
   HWC2::Error GetReleaseFences(uint32_t *num_elements, hwc2_layer_t *layers,
                                int32_t *fences);
   HWC2::Error PresentDisplay(int32_t *out_present_fence);
+  HWC2::Error PresentDisplay(std::map<uint32_t, HwcLayer *> &maps,int32_t *out_present_fence);
   HWC2::Error SetActiveConfig(hwc2_config_t config);
   HWC2::Error ChosePreferredConfig();
   HWC2::Error SetClientTarget(buffer_handle_t target, int32_t acquire_fence,
@@ -227,6 +228,7 @@ class HwcDisplay {
   uint32_t layer_idx_{};
 
   std::map<hwc2_layer_t, HwcLayer> layers_;
+  std::map<uint32_t, HwcLayer *> layers_zmap_;
   HwcLayer client_layer_;
   int32_t color_mode_{};
   std::vector<int32_t> current_color_mode_ = {HAL_COLOR_MODE_NATIVE, HAL_COLOR_MODE_BT2020, HAL_COLOR_MODE_BT2100_PQ, HAL_COLOR_MODE_BT2100_HLG, /*HAL_COLOR_MODE_DISPLAY_BT2020*/};
@@ -246,7 +248,7 @@ class HwcDisplay {
 
   uint32_t virtual_display_num_ = 2;
   std::list<uint64_t> virtual_display_handles_;
-
+  uint32_t commit_ref_num_ = 0;
 public:
   uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
   void AddVirtualDisplayHandle(uint32_t virtual_display_handle) {

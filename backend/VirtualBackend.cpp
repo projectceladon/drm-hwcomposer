@@ -82,7 +82,7 @@ std::tuple<int, size_t> VirtualBackend::GetClientLayers(
 }
 
 bool VirtualBackend::IsClientLayer(VirtualDisplay *display, HwcLayer *layer) {
-  return !HardwareSupportsLayerType(layer->GetSfType()) ||
+  return true || !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&

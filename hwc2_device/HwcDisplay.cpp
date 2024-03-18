@@ -640,6 +640,110 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
   return HWC2::Error::None;
 }
 
+HWC2::Error HwcDisplay::PresentDisplay(std::map<uint32_t, HwcLayer *> &maps,
+                                       int32_t *out_present_fence) {
+  if (IsInHeadlessMode()) {
+    *out_present_fence = -1;
+    return HWC2::Error::None;
+  }
+  ++total_stats_.total_frames_;
+  AtomicCommitArgs a_args{};
+  size_t size = layers_zmap_.size();
+  for (std::pair<const uint32_t, HwcLayer *> &m : maps) {
+    layers_zmap_.emplace(std::make_pair(m.first + size, m.second));
+  }
+  if (++commit_ref_num_ < virtual_display_num_) {
+    return HWC2::Error::None;
+  }
+
+  int PrevModeVsyncPeriodNs = static_cast<int>(
+      1E9 / GetPipe().connector->Get()->GetActiveMode().v_refresh());
+
+  auto mode_update_commited_ = false;
+  if (staged_mode_ &&
+      staged_mode_change_time_ <= ResourceManager::GetTimeMonotonicNs()) {
+    configs_.active_config_id = staged_mode_config_id_;
+
+    a_args.display_mode = *staged_mode_;
+    if (!a_args.test_only) {
+      mode_update_commited_ = true;
+    }
+  }
+
+  a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
+
+
+  std::vector<LayerData> composition_layers;
+
+  /* Import & populate */
+  for (std::pair<const uint32_t, HwcLayer *> &l : layers_zmap_) {
+    l.second->PopulateLayerData(a_args.test_only);
+  }
+
+  // now that they're ordered by z, add them to the composition
+  for (std::pair<const uint32_t, HwcLayer *> &l : layers_zmap_) {
+    if (!l.second->IsLayerUsableAsDevice()) {
+      /* This will be normally triggered on validation of the first frame
+       * containing CLIENT layer. At this moment client buffer is not yet
+       * provided by the CLIENT.
+       * This may be triggered once in HwcLayer lifecycle in case FB can't be
+       * imported. For example when non-contiguous buffer is imported into
+       * contiguous-only DRM/KMS driver.
+       */
+      commit_ref_num_ = 0;
+      *out_present_fence = -1;
+      ++total_stats_.failed_kms_present_;
+      std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+      return HWC2::Error::BadLayer;
+    }
+    composition_layers.emplace_back(l.second->GetLayerData().Clone());
+  }
+
+  /* Store plan to ensure shared planes won't be stolen by other display
+   * in between of ValidateDisplay() and PresentDisplay() calls
+   */
+  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
+                                               std::move(composition_layers));
+  if (!current_plan_) {
+    if (!a_args.test_only) {
+      ALOGE("Failed to create DrmKmsPlan");
+    }
+    commit_ref_num_ = 0;
+    ++total_stats_.failed_kms_present_;
+    std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+    return HWC2::Error::BadConfig;
+  }
+
+  a_args.composition = current_plan_;
+
+  int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+
+  if (ret) {
+    if (!a_args.test_only)
+      ALOGE("Failed to apply the frame composition ret=%d", ret);
+    commit_ref_num_ = 0;
+    ++total_stats_.failed_kms_present_;
+    std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+    return HWC2::Error::BadParameter;
+  }
+
+  if (mode_update_commited_) {
+    staged_mode_.reset();
+    vsync_tracking_en_ = false;
+    if (last_vsync_ts_ != 0) {
+      hwc2_->SendVsyncPeriodTimingChangedEventToClient(
+          handle_, last_vsync_ts_ + PrevModeVsyncPeriodNs);
+    }
+  }
+
+  this->present_fence_ = UniqueFd::Dup(a_args.out_fence.Get());
+  *out_present_fence = a_args.out_fence.Release();
+  commit_ref_num_ = 0;
+  ++frame_no_;
+  std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+  return HWC2::Error::None;
+}
+
 HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
                                                 int64_t change_time) {
   if (configs_.hwc_configs.count(config) == 0) {

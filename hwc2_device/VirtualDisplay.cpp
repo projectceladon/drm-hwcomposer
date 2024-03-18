@@ -151,7 +151,6 @@ HWC2::Error VirtualDisplay::DestroyLayer(hwc2_layer_t layer) {
   if (!get_layer(layer)) {
     return HWC2::Error::BadLayer;
   }
-
   layers_.erase(layer);
   return HWC2::Error::None;
 }
@@ -479,27 +478,38 @@ HWC2::Error VirtualDisplay::PresentDisplay(int32_t *out_present_fence) {
     *out_present_fence = -1;
     return HWC2::Error::None;
   }
-  HWC2::Error ret{};
+  if (staged_mode_ &&
+      staged_mode_change_time_ <= ResourceManager::GetTimeMonotonicNs()) {
+    client_layer_.SetLayerDisplayFrame(
+        (hwc_rect_t){.left = 0,
+                     .top = 0,
+                     .right = static_cast<int>(staged_mode_->h_display() / 2),
+                     .bottom = static_cast<int>(staged_mode_->v_display())});
 
-  ++total_stats_.total_frames_;
-
-  AtomicCommitArgs a_args{};
-  ret = CreateComposition(a_args);
-
-  if (ret != HWC2::Error::None)
-    ++total_stats_.failed_kms_present_;
-
-  if (ret == HWC2::Error::BadLayer) {
-    // Can we really have no client or device layers?
-    *out_present_fence = -1;
-    return HWC2::Error::None;
+    configs_.active_config_id = staged_mode_config_id_;
   }
-  if (ret != HWC2::Error::None)
-    return ret;
 
-  this->present_fence_ = UniqueFd::Dup(a_args.out_fence.Get());
-  *out_present_fence = a_args.out_fence.Release();
-  ++frame_no_;
+  // order the layers by z-order
+  bool use_client_layer = false;
+  uint32_t client_z_order = UINT32_MAX;
+  std::map<uint32_t, HwcLayer *> z_map;
+  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+    switch (l.second.GetValidatedType()) {
+      case HWC2::Composition::Device:
+        z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
+        break;
+      case HWC2::Composition::Client:
+        // Place it at the z_order of the lowest client layer
+        use_client_layer = true;
+        client_z_order = std::min(client_z_order, l.second.GetZOrder());
+        break;
+      default:
+        continue;
+    }
+  }
+  if (use_client_layer)
+    z_map.emplace(std::make_pair(client_z_order, &client_layer_));
+  physical_display_->PresentDisplay(z_map, out_present_fence);
   return HWC2::Error::None;
 }
 
