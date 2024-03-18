@@ -117,6 +117,12 @@ auto DrmDevice::Init(const char *path) -> int {
   max_resolution_ = std::pair<uint32_t, uint32_t>(res->max_width,
                                                   res->max_height);
 
+  color_adjustment_enabling_ = false;
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.color.adjustment.enabling", property, "0");
+  color_adjustment_enabling_ = atoi(property) != 0 ? true : false;
+  ALOGD("COLOR_ The property 'vendor.hwcomposer.color.adjustment.enabling' value is %d", color_adjustment_enabling_);
+
   for (int i = 0; i < res->count_crtcs; ++i) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto crtc = DrmCrtc::CreateInstance(*this, res->crtcs[i], i);
