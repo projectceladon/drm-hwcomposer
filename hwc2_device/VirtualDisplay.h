@@ -36,7 +36,12 @@ class DrmHwcTwo;
 
 class VirtualDisplay {
  public:
-  VirtualDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2, HwcDisplay *physical_display);
+  VirtualDisplay(hwc2_display_t handle,
+                  HWC2::DisplayType type,
+                  DrmHwcTwo *hwc2,
+                  HwcDisplay *physical_display,
+                  uint32_t x_offset,
+                  uint32_t x_resolution);
   VirtualDisplay(const VirtualDisplay &) = delete;
   ~VirtualDisplay();
 
@@ -173,6 +178,7 @@ class VirtualDisplay {
   }
 
   bool IsInHeadlessMode() {return headless_mode_;}
+  uint32_t GetXOffset() {return x_offset_;}
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,
@@ -225,6 +231,8 @@ class VirtualDisplay {
   HWC2::Error SetActiveConfigInternal(uint32_t config, int64_t change_time);
   HwcDisplay * physical_display_;
   bool headless_mode_ = false;
+  uint32_t x_offset_;
+  uint32_t x_resolution_;
 };
 
 }  // namespace android

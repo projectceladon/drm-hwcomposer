@@ -25,7 +25,7 @@
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 #include "utils/properties.h"
-
+#include <numeric>
 namespace android {
 
 std::string VirtualDisplay::DumpDelta(VirtualDisplay::Stats delta) {
@@ -85,13 +85,19 @@ std::string VirtualDisplay::Dump() {
   return ss.str();
 }
 
-VirtualDisplay::VirtualDisplay(hwc2_display_t handle, HWC2::DisplayType type,
-                       DrmHwcTwo *hwc2, HwcDisplay *physical_display)
+VirtualDisplay::VirtualDisplay(hwc2_display_t handle,
+                                HWC2::DisplayType type,
+                                DrmHwcTwo *hwc2,
+                                HwcDisplay *physical_display,
+                                uint32_t x_offset,
+                                uint32_t x_resolution)
     : hwc2_(hwc2),
       handle_(handle),
       type_(type),
-      client_layer_(physical_display,handle),
-      color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
+      client_layer_(physical_display,this),
+      color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY),
+      x_offset_(x_offset),
+      x_resolution_(x_resolution) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
                              0.0, 1.0, 0.0, 0.0,
@@ -141,7 +147,7 @@ HWC2::Error VirtualDisplay::AcceptDisplayChanges() {
 }
 
 HWC2::Error VirtualDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(physical_display_, handle_));
+  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(physical_display_, this));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
@@ -215,7 +221,7 @@ HWC2::Error VirtualDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
-      *value = static_cast<int>(hwc_config.mode.h_display() / 2);
+      *value = static_cast<int>(x_resolution_);
       break;
     case HWC2::Attribute::Height:
       *value = static_cast<int>(hwc_config.mode.v_display());
@@ -377,7 +383,7 @@ HWC2::Error VirtualDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     client_layer_.SetLayerDisplayFrame(
         (hwc_rect_t){.left = 0,
                      .top = 0,
-                     .right = static_cast<int>(staged_mode_->h_display() / 2),
+                     .right = static_cast<int>(x_resolution_),
                      .bottom = static_cast<int>(staged_mode_->v_display())});
 
     configs_.active_config_id = staged_mode_config_id_;
@@ -483,7 +489,7 @@ HWC2::Error VirtualDisplay::PresentDisplay(int32_t *out_present_fence) {
     client_layer_.SetLayerDisplayFrame(
         (hwc_rect_t){.left = 0,
                      .top = 0,
-                     .right = static_cast<int>(staged_mode_->h_display() / 2),
+                     .right = static_cast<int>(x_resolution_),
                      .bottom = static_cast<int>(staged_mode_->v_display())});
 
     configs_.active_config_id = staged_mode_config_id_;
@@ -682,10 +688,62 @@ HWC2::Error VirtualDisplay::SetContentType(int32_t contentType) {
 #endif
 
 #if PLATFORM_SDK_VERSION > 28
-HWC2::Error VirtualDisplay::GetDisplayIdentificationData(uint8_t */*outPort*/,
-                                                     uint32_t */*outDataSize*/,
-                                                     uint8_t */*outData*/) {
-  return HWC2::Error::Unsupported;
+HWC2::Error VirtualDisplay::GetDisplayIdentificationData(uint8_t *outPort,
+                                                     uint32_t *outDataSize,
+                                                     uint8_t *outData) {
+  #define ARRAY_SIZE(a) (uint32_t)(sizeof(a) / sizeof(a[0]))
+  static uint8_t EMU_EDID[] = {
+    0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x05, 0xd7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0x21, 0x01, 0x03, 0x80, 0x32, 0x1f, 0x78, 0x07, 0xee, 0x95, 0xa3, 0x54, 0x4c, 0x99, 0x26,
+    0x0f, 0x50, 0x54, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x3a, 0x80, 0x18, 0x71, 0x38, 0x2d, 0x40, 0x58, 0x2c,
+    0x45, 0x00, 0x63, 0xc8, 0x10, 0x00, 0x00, 0x1e, 0x00, 0x00, 0x00, 0xfd, 0x00, 0x17, 0xf0, 0x0f,
+    0xff, 0x0f, 0x00, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xfc, 0x00, 0x31,
+    0x39, 0x32, 0x30, 0x78, 0x31, 0x30, 0x38, 0x30, 0x0a, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03,
+    0x02, 0x03, 0x18, 0x40, 0x23, 0x09, 0x06, 0x07, 0x67, 0x03, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x1e,
+    0x67, 0xd8, 0x5d, 0xc4, 0x01, 0x1e, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd7};
+  //Fill pnpid 'IVI'
+  constexpr size_t kManufacturerOffset = 8;
+  const uint16_t manufacturerId = static_cast<uint16_t>('I' - 'A' + 1) << 10 |
+                                  static_cast<uint16_t>('V' - 'A' + 1) << 5 |
+                                  static_cast<uint16_t>('I' - 'A' + 1);
+  EMU_EDID[kManufacturerOffset] = manufacturerId >> 8;
+  EMU_EDID[kManufacturerOffset + 1] = static_cast<uint8_t>(manufacturerId);
+
+  constexpr size_t kDescriptorOffset = 54;
+  constexpr size_t kDisplayNameOffset = kDescriptorOffset + 36;
+  constexpr size_t kDescriptorLength = 18;
+  //Fill name 'IVI Display'
+  memset(&EMU_EDID[kDisplayNameOffset + 5], 0, kDescriptorLength - 5);
+  memcpy(&EMU_EDID[kDisplayNameOffset + 5], "IVI Display", strlen("IVI Display"));
+  // EMU_EDID[kDisplayNameOffset + 5 + strlen("IVI Display ")] = uint8_t(handle_) + 0x30;
+  EMU_EDID[kDisplayNameOffset + 5 + strlen("IVI Display")] = '\n';
+  //caculate checksum
+  uint8_t checksum = -(uint8_t)std::accumulate(
+                EMU_EDID, EMU_EDID + ARRAY_SIZE(EMU_EDID) / 2 - 1, static_cast<uint8_t>(0));
+  EMU_EDID[ARRAY_SIZE(EMU_EDID) / 2 - 1] = checksum;
+  checksum = -(uint8_t)std::accumulate(
+                EMU_EDID, EMU_EDID + ARRAY_SIZE(EMU_EDID) - 1, static_cast<uint8_t>(0));
+  EMU_EDID[ARRAY_SIZE(EMU_EDID) - 1] = checksum;
+
+
+  *outPort = handle_; /* TDOD(nobody): What should be here? */
+
+  if (outData) {
+    *outDataSize = std::min(*outDataSize, ARRAY_SIZE(EMU_EDID));
+    memcpy(outData, EMU_EDID, *outDataSize);
+  } else {
+    *outDataSize = ARRAY_SIZE(EMU_EDID);
+  }
+
+  return HWC2::Error::None;
 }
 
 HWC2::Error VirtualDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,

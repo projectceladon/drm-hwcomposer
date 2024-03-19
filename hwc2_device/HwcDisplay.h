@@ -246,9 +246,10 @@ class HwcDisplay {
 
   HWC2::Error SetActiveConfigInternal(uint32_t config, int64_t change_time);
 
-  uint32_t virtual_display_num_ = 2;
+  uint32_t virtual_display_num_;
   std::list<uint64_t> virtual_display_handles_;
   uint32_t commit_ref_num_ = 0;
+  std::vector<uint32_t> x_resolution_;
 public:
   uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
   void AddVirtualDisplayHandle(uint32_t virtual_display_handle) {
@@ -257,7 +258,8 @@ public:
   void ClearVirtualDisplayHandle() {
     virtual_display_handles_.remove_if(RemoveNotPrimaryInVirtualDisplayList);
   }
-  std::list<uint64_t> &GetVirtualDisplayHandle() {return virtual_display_handles_;}
+  const std::list<uint64_t> &GetVirtualDisplayHandle() {return virtual_display_handles_;}
+  const std::vector<uint32_t> &GetXResolution() {return x_resolution_;}
 };
 
 }  // namespace android

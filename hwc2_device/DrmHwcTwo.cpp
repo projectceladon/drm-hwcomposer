@@ -143,13 +143,18 @@ bool DrmHwcTwo::BindVirtualDisplay(DrmDisplayPipeline *pipeline) {
   }
 
   auto handle = display_handles_[pipeline];
-
+  auto x_resolution = displays_[handle]->GetXResolution();
+  uint32_t x_offset = 0;
   for (uint32_t j = 0; j < displays_[handle]->GetVirtualDisplayNum(); j++) {
     if (virtual_displays_.count(disp_handle) == 0) {
+      if ( j > 0)
+        x_offset += x_resolution[j-1];
       auto disp = std::make_unique<VirtualDisplay>(disp_handle,
                                               HWC2::DisplayType::Virtual,
                                               this,
-                                              displays_[handle].get());
+                                              displays_[handle].get(),
+                                              x_offset,
+                                              x_resolution[j]);
       virtual_displays_[disp_handle] = std::move(disp);
       displays_[handle]->AddVirtualDisplayHandle(disp_handle);
       ALOGI("Attaching pipeline '%s' to the VirtualDisplay #%d%s",
