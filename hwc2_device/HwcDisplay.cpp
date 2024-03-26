@@ -98,9 +98,9 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                              0.0, 0.0, 1.0, 0.0,
                              0.0, 0.0, 0.0, 1.0};
   // clang-format on
-  x_resolution_.push_back(640);
-  x_resolution_.push_back(640);
-  x_resolution_.push_back(640);
+  x_resolution_.push_back(2560);
+  x_resolution_.push_back(2560);
+  x_resolution_.push_back(2560);
   virtual_display_num_ = x_resolution_.size();
 }
 
