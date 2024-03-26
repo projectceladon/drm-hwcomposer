@@ -79,6 +79,7 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
   mutex.unlock();
   for_disposal.clear();
   virtual_for_disposal.clear();
+  virtual_displays_for_removal_list_.clear();
   mutex.lock();
 }
 
@@ -146,9 +147,9 @@ bool DrmHwcTwo::BindVirtualDisplay(DrmDisplayPipeline *pipeline) {
   auto x_resolution = displays_[handle]->GetXResolution();
   uint32_t x_offset = 0;
   for (uint32_t j = 0; j < displays_[handle]->GetVirtualDisplayNum(); j++) {
+    if ( j > 0)
+      x_offset += x_resolution[j-1];
     if (virtual_displays_.count(disp_handle) == 0) {
-      if ( j > 0)
-        x_offset += x_resolution[j-1];
       auto disp = std::make_unique<VirtualDisplay>(disp_handle,
                                               HWC2::DisplayType::Virtual,
                                               this,
