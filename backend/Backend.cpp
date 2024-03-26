@@ -40,7 +40,6 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
     MarkValidated(layers, client_start, client_size);
   } else {
     std::tie(client_start, client_size) = GetClientLayers(display, layers);
-
     MarkValidated(layers, client_start, client_size);
 
     bool testing_needed = !(client_start == 0 && client_size == layers.size());
@@ -49,10 +48,31 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
 
     if (testing_needed &&
         display->CreateComposition(a_args) != HWC2::Error::None) {
-      ++display->total_stats().failed_kms_validate_;
-      client_start = 0;
-      client_size = layers.size();
-      MarkValidated(layers, 0, client_size);
+      bool re_testing_needed = false;
+      uint32_t video_layer_number = 0;
+      uint32_t video_layer_order = 0;
+      for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
+        if (layers[z_order]->IsVideoLayer()) {
+          video_layer_number++;
+          video_layer_order = z_order;
+        }
+      }
+      if (video_layer_number == 1 &&
+        (video_layer_order == 0 || video_layer_order == layers.size() - 1)) {
+        for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
+          if (layers[z_order]->GetValidatedType() == HWC2::Composition::Device &&
+            !layers[z_order]->IsVideoLayer())
+            layers[z_order]->SetValidatedType(HWC2::Composition::Client);
+        }
+        re_testing_needed = true;
+      }
+      if ((re_testing_needed && display->CreateComposition(a_args) != HWC2::Error::None) ||
+        !re_testing_needed) {
+        ++display->total_stats().failed_kms_validate_;
+        client_start = 0;
+        client_size = layers.size();
+        MarkValidated(layers, 0, client_size);
+      }
     }
   }
 
@@ -86,7 +106,8 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
+          display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
+          (!layer->IsVideoLayer() && !display->GetPipe().device->planes_enabling_);
 }
 
 bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
@@ -119,10 +140,16 @@ void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
 std::tuple<int, int> Backend::GetExtraClientRange(
     HwcDisplay *display, const std::vector<HwcLayer *> &layers,
     int client_start, size_t client_size) {
-  auto planes = display->GetPipe().GetUsablePlanes();
+  uint32_t video_layer_number = 0;
+  for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
+    if (layers[z_order]->IsVideoLayer())
+      video_layer_number++;
+  }
+  auto planes = display->GetPipe().GetUsablePlanes(video_layer_number);
+
   size_t avail_planes = planes.size();
 
-  /*
+   /*
    * If more layers then planes, save one plane
    * for client composited layers
    */
