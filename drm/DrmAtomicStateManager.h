@@ -25,6 +25,7 @@
 #include <sstream>
 #include <tuple>
 
+#include <system/graphics.h>
 #include "compositor/DrmKmsPlan.h"
 #include "compositor/LayerData.h"
 #include "drm/DrmPlane.h"
@@ -40,7 +41,7 @@ struct AtomicCommitArgs {
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
-  bool color_adjustment = false;
+  int32_t color_adjustment = 0;
 
   /* out */
   UniqueFd out_fence;

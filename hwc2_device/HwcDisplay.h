@@ -49,6 +49,8 @@ class HwcDisplay {
 
   void ClearDisplay();
 
+  int64_t FloatToFixedPoint(float value) const;
+
   std::string Dump();
 
   // HWC Hooks
@@ -114,6 +116,7 @@ class HwcDisplay {
                               int32_t dataspace, hwc_region_t damage);
   HWC2::Error SetColorMode(int32_t mode);
   HWC2::Error SetColorTransform(const float *matrix, int32_t hint);
+  HWC2::Error SetColorTransformCorrection(int32_t contrast, int32_t luminance);
   HWC2::Error SetOutputBuffer(buffer_handle_t buffer, int32_t release_fence);
   HWC2::Error SetPowerMode(int32_t mode);
   HWC2::Error SetVsyncEnabled(int32_t enabled);

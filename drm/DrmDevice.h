@@ -135,7 +135,7 @@ class DrmDevice {
   bool preferred_mode_limit_;
   bool planes_enabling_;
   uint32_t planes_num_;
-  bool color_adjustment_enabling_;
+  int32_t color_adjustment_enabling_;
 };
 }  // namespace android
 
