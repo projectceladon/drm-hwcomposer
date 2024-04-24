@@ -62,6 +62,9 @@ class DrmDevice {
     return max_resolution_;
   }
 
+  auto GetCommitModeBlockEnabling() const {
+    return commit_block_enabling_;
+  }
   auto GetColorAdjustmentEnabling() const {
     return color_adjustment_enabling_;
   }
@@ -136,6 +139,7 @@ class DrmDevice {
   bool planes_enabling_;
   uint32_t planes_num_;
   int32_t color_adjustment_enabling_;
+  bool commit_block_enabling_;
 };
 }  // namespace android
 
