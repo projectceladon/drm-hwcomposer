@@ -37,6 +37,10 @@ class DrmHwcTwo;
 #endif
 inline bool RemoveNotPrimaryInVirtualDisplayList(const uint64_t & value) {return value != kPrimaryDisplay;}
 
+enum class VirtualDisplayType : int32_t {
+    Logical,
+    SuperFrame,
+};
 class HwcDisplay {
  public:
   HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);
@@ -110,7 +114,8 @@ class HwcDisplay {
   HWC2::Error GetReleaseFences(uint32_t *num_elements, hwc2_layer_t *layers,
                                int32_t *fences);
   HWC2::Error PresentDisplay(int32_t *out_present_fence);
-  HWC2::Error PresentDisplay(std::map<uint32_t, HwcLayer *> &maps,int32_t *out_present_fence);
+  HWC2::Error PresentDisplayLogical(std::map<uint32_t, HwcLayer *> &maps,int32_t *out_present_fence);
+  HWC2::Error PresentDisplaySuperFrame(std::map<uint32_t, HwcLayer *> &maps,int32_t *out_present_fence);
   HWC2::Error SetActiveConfig(hwc2_config_t config);
   HWC2::Error ChosePreferredConfig();
   HWC2::Error SetClientTarget(buffer_handle_t target, int32_t acquire_fence,
@@ -250,6 +255,8 @@ class HwcDisplay {
   std::list<uint64_t> virtual_display_handles_;
   uint32_t commit_ref_num_ = 0;
   std::vector<uint32_t> x_resolution_;
+  std::vector<uint32_t> y_resolution_;
+  VirtualDisplayType virtual_display_type_ = VirtualDisplayType::SuperFrame;
 public:
   uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
   void AddVirtualDisplayHandle(uint32_t virtual_display_handle) {
@@ -260,6 +267,8 @@ public:
   }
   const std::list<uint64_t> &GetVirtualDisplayHandle() {return virtual_display_handles_;}
   const std::vector<uint32_t> &GetXResolution() {return x_resolution_;}
+  const std::vector<uint32_t> &GetYResolution() {return y_resolution_;}
+  VirtualDisplayType GetVirtualDisplayType() {return virtual_display_type_;}
 };
 
 }  // namespace android

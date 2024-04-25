@@ -38,10 +38,12 @@ class VirtualDisplay {
  public:
   VirtualDisplay(hwc2_display_t handle,
                   HWC2::DisplayType type,
+                  android::VirtualDisplayType vtype,
                   DrmHwcTwo *hwc2,
                   HwcDisplay *physical_display,
                   uint32_t x_offset,
-                  uint32_t x_resolution);
+                  uint32_t x_resolution,
+                  uint32_t y_resolution);
   VirtualDisplay(const VirtualDisplay &) = delete;
   ~VirtualDisplay();
 
@@ -233,6 +235,8 @@ class VirtualDisplay {
   bool headless_mode_ = false;
   uint32_t x_offset_;
   uint32_t x_resolution_;
+  uint32_t y_resolution_;
+  VirtualDisplayType vitual_display_type_;
 };
 
 }  // namespace android

@@ -98,10 +98,16 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                              0.0, 0.0, 1.0, 0.0,
                              0.0, 0.0, 0.0, 1.0};
   // clang-format on
-  x_resolution_.push_back(2560);
-  x_resolution_.push_back(2560);
-  x_resolution_.push_back(2560);
-  virtual_display_num_ = x_resolution_.size();
+  if (virtual_display_type_ == VirtualDisplayType::SuperFrame) {
+    y_resolution_.push_back(540);
+    y_resolution_.push_back(540);
+    virtual_display_num_ = y_resolution_.size();
+  } else {
+    x_resolution_.push_back(640);
+    x_resolution_.push_back(640);
+    x_resolution_.push_back(640);
+    virtual_display_num_ = x_resolution_.size();
+  }
 }
 
 HwcDisplay::~HwcDisplay() = default;
@@ -644,7 +650,7 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::PresentDisplay(std::map<uint32_t, HwcLayer *> &maps,
+HWC2::Error HwcDisplay::PresentDisplayLogical(std::map<uint32_t, HwcLayer *> &maps,
                                        int32_t *out_present_fence) {
   if (IsInHeadlessMode()) {
     *out_present_fence = -1;
@@ -748,6 +754,15 @@ HWC2::Error HwcDisplay::PresentDisplay(std::map<uint32_t, HwcLayer *> &maps,
   return HWC2::Error::None;
 }
 
+HWC2::Error HwcDisplay::PresentDisplaySuperFrame(std::map<uint32_t, HwcLayer *> &maps,
+                                       int32_t *out_present_fence) {
+  if (IsInHeadlessMode()) {
+    *out_present_fence = -1;
+    return HWC2::Error::None;
+  }
+  maps.find(0);
+  return HWC2::Error::None;
+}
 HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
                                                 int64_t change_time) {
   if (configs_.hwc_configs.count(config) == 0) {

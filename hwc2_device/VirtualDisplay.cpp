@@ -87,17 +87,21 @@ std::string VirtualDisplay::Dump() {
 
 VirtualDisplay::VirtualDisplay(hwc2_display_t handle,
                                 HWC2::DisplayType type,
+                                android::VirtualDisplayType vtype,
                                 DrmHwcTwo *hwc2,
                                 HwcDisplay *physical_display,
                                 uint32_t x_offset,
-                                uint32_t x_resolution)
+                                uint32_t x_resolution,
+                                uint32_t y_resolution)
     : hwc2_(hwc2),
       handle_(handle),
       type_(type),
       client_layer_(physical_display,this),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY),
       x_offset_(x_offset),
-      x_resolution_(x_resolution) {
+      x_resolution_(x_resolution),
+      y_resolution_(y_resolution),
+      vitual_display_type_(vtype) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
                              0.0, 1.0, 0.0, 0.0,
@@ -221,10 +225,10 @@ HWC2::Error VirtualDisplay::GetDisplayAttribute(hwc2_config_t config,
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
-      *value = static_cast<int>(x_resolution_);
+      *value = static_cast<int>(x_resolution_ ? x_resolution_ : hwc_config.mode.h_display());
       break;
     case HWC2::Attribute::Height:
-      *value = static_cast<int>(hwc_config.mode.v_display());
+      *value = static_cast<int>(y_resolution_ ? y_resolution_ : hwc_config.mode.v_display());
       break;
     case HWC2::Attribute::VsyncPeriod:
       // in nanoseconds
@@ -515,7 +519,10 @@ HWC2::Error VirtualDisplay::PresentDisplay(int32_t *out_present_fence) {
   }
   if (use_client_layer)
     z_map.emplace(std::make_pair(client_z_order, &client_layer_));
-  physical_display_->PresentDisplay(z_map, out_present_fence);
+  if (vitual_display_type_ == VirtualDisplayType::SuperFrame)
+    physical_display_->PresentDisplaySuperFrame(z_map, out_present_fence);
+  else
+    physical_display_->PresentDisplayLogical(z_map, out_present_fence);
   return HWC2::Error::None;
 }
 
