@@ -107,6 +107,7 @@ filegroup {
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
         "hwc2_device/VirtualDisplay.cpp",
+        "gralloc/GrallocBufferHandler.cpp",
     ],
 }
 

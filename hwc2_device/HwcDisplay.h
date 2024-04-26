@@ -27,6 +27,7 @@
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "hwc2_device/HwcLayer.h"
+#include "gralloc/GrallocBufferHandler.h"
 #include <list>
 namespace android {
 
@@ -257,6 +258,8 @@ class HwcDisplay {
   std::vector<uint32_t> x_resolution_;
   std::vector<uint32_t> y_resolution_;
   VirtualDisplayType virtual_display_type_ = VirtualDisplayType::SuperFrame;
+  Gralloc1BufferHandler gralloc_handler_;
+  HwcLayer superframe_layer_;
 public:
   uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
   void AddVirtualDisplayHandle(uint32_t virtual_display_handle) {

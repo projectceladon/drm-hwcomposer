@@ -91,7 +91,8 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
       handle_(handle),
       type_(type),
       client_layer_(this),
-      color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
+      color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY),
+      superframe_layer_(this) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
                              0.0, 1.0, 0.0, 0.0,
@@ -174,6 +175,13 @@ HWC2::Error HwcDisplay::Init() {
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
 
+  gralloc_handler_.Init();
+  buffer_handle_t superframe_render_buffer;
+  gralloc_handler_.CreateBuffer(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * 2,
+        configs_.hwc_configs[staged_mode_config_id_].mode.h_display() / 2,
+        &superframe_render_buffer);
+  superframe_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
+  superframe_layer_.SetLayerBuffer(superframe_render_buffer, 0);
   return HWC2::Error::None;
 }
 
