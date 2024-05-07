@@ -45,10 +45,16 @@ cc_defaults {
         "liblog",
         "libsync",
         "libui",
+	"libEGL",
+	"libGLESv2",
         "libutils",
     ],
 
-    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+    include_dirs: [
+	"vendor/intel/external/drm-hwcomposer",
+	"hardware/libhardware/include/hardware",
+	"frameworks/native/opengl/include",
+    ],
 
     static_libs: ["libdrmhwc_utils"],
 
@@ -108,6 +114,7 @@ filegroup {
         "hwc2_device/hwc2_device.cpp",
         "hwc2_device/VirtualDisplay.cpp",
         "gralloc/GrallocBufferHandler.cpp",
+	"gl/GLRenderer.cpp",
     ],
 }
 

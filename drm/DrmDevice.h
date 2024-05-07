@@ -34,6 +34,10 @@ namespace android {
 class DrmFbImporter;
 class DrmPlane;
 class ResourceManager;
+enum class VirtualDisplayType : int32_t {
+    Logical,
+    SuperFrame,
+};
 
 class DrmDevice {
  public:

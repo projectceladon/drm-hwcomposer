@@ -35,7 +35,8 @@
 namespace android {
 
 auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
-                                   DrmDevice &drm)
+                                   DrmDevice &drm,
+                                   VirtualDisplayType virtual_display_type)
     -> std::shared_ptr<DrmFbIdHandle> {
   ATRACE_NAME("Import dmabufs and register FB");
 
@@ -70,10 +71,13 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
     local.reset();
     return local;
   }
-
+  int NUM = 1;
+  if (virtual_display_type == VirtualDisplayType::SuperFrame)
+    NUM = 2;
   /* Create framebuffer object */
   if (!has_modifiers) {
-    err = drmModeAddFB2(drm.GetFd(), bo->width, bo->height, bo->format,
+    bo->pitches[0] /= NUM;
+    err = drmModeAddFB2(drm.GetFd(), bo->width / NUM, bo->height * NUM, bo->format,
                         local->gem_handles_.data(), &bo->pitches[0],
                         &bo->offsets[0], &local->fb_id_, 0);
   } else {
@@ -125,7 +129,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
   }
 }
 
-auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
+auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo, VirtualDisplayType virtual_display_type)
     -> std::shared_ptr<DrmFbIdHandle> {
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
@@ -153,7 +157,7 @@ auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
   }
 
   /* No DrmFbIdHandle found in cache, create framebuffer object */
-  auto fb_id_handle = DrmFbIdHandle::CreateInstance(bo, first_handle, *drm_);
+  auto fb_id_handle = DrmFbIdHandle::CreateInstance(bo, first_handle, *drm_, virtual_display_type);
   if (fb_id_handle) {
     drm_fb_id_handle_cache_[first_handle] = fb_id_handle;
   }

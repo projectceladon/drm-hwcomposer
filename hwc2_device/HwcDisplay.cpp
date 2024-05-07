@@ -25,6 +25,13 @@
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 #include "utils/properties.h"
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <thread>
+#include <chrono>
+#ifndef DUMP_BUFFER
+// #define DUMP_BUFFER
+#endif
 
 namespace android {
 
@@ -174,14 +181,33 @@ HWC2::Error HwcDisplay::Init() {
   }
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
+  if (virtual_display_type_ == VirtualDisplayType::SuperFrame) {
+    gralloc_handler_.Init();
+    buffer_handle_t superframe_render_buffer;
+    gralloc_handler_.CreateBuffer(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * virtual_display_num_,
+          configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_,
+          &superframe_render_buffer);
+    superframe_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
+    superframe_layer_.SetLayerBuffer(superframe_render_buffer, 0);
+    superframe_layer_.SetLayerDisplayFrame(
+        (hwc_rect_t){.left = 0,
+                     .top = 0,
+                     .right = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display()),
+                     .bottom = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display())});
+    superframe_layer_.SetLayerSourceCrop(
+        (hwc_frect_t){.left = 0.0F,
+                     .top = 0.0F,
+                     .right = static_cast<float>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display()),
+                     .bottom = static_cast<float>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display())});
+  }
+  return HWC2::Error::None;
+}
 
-  gralloc_handler_.Init();
-  buffer_handle_t superframe_render_buffer;
-  gralloc_handler_.CreateBuffer(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * 2,
-        configs_.hwc_configs[staged_mode_config_id_].mode.h_display() / 2,
-        &superframe_render_buffer);
-  superframe_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
-  superframe_layer_.SetLayerBuffer(superframe_render_buffer, 0);
+HWC2::Error HwcDisplay::InitSuperFrameEnv() {
+  std::optional<BufferInfo> bi = BufferInfoGetter::GetInstance()->GetBoInfo(
+    superframe_layer_.GetBufferHandle());
+  glrenderer_.Init(bi->width, bi->height);
+  glrenderer_.InitSuperFrameEnv(bi);
   return HWC2::Error::None;
 }
 
@@ -711,7 +737,7 @@ HWC2::Error HwcDisplay::PresentDisplayLogical(std::map<uint32_t, HwcLayer *> &ma
       commit_ref_num_ = 0;
       *out_present_fence = -1;
       ++total_stats_.failed_kms_present_;
-      std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+      std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
       return HWC2::Error::BadLayer;
     }
     composition_layers.emplace_back(l.second->GetLayerData().Clone());
@@ -728,7 +754,7 @@ HWC2::Error HwcDisplay::PresentDisplayLogical(std::map<uint32_t, HwcLayer *> &ma
     }
     commit_ref_num_ = 0;
     ++total_stats_.failed_kms_present_;
-    std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+    std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
     return HWC2::Error::BadConfig;
   }
 
@@ -741,7 +767,7 @@ HWC2::Error HwcDisplay::PresentDisplayLogical(std::map<uint32_t, HwcLayer *> &ma
       ALOGE("Failed to apply the frame composition ret=%d", ret);
     commit_ref_num_ = 0;
     ++total_stats_.failed_kms_present_;
-    std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+    std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
     return HWC2::Error::BadParameter;
   }
 
@@ -758,7 +784,7 @@ HWC2::Error HwcDisplay::PresentDisplayLogical(std::map<uint32_t, HwcLayer *> &ma
   *out_present_fence = a_args.out_fence.Release();
   commit_ref_num_ = 0;
   ++frame_no_;
-  std::map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+  std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
   return HWC2::Error::None;
 }
 
@@ -768,7 +794,166 @@ HWC2::Error HwcDisplay::PresentDisplaySuperFrame(std::map<uint32_t, HwcLayer *> 
     *out_present_fence = -1;
     return HWC2::Error::None;
   }
-  maps.find(0);
+
+  ++total_stats_.total_frames_;
+  AtomicCommitArgs a_args{};
+  size_t size = layers_zmap_.size();
+  for (std::pair<const uint32_t, HwcLayer *> &m : maps) {
+    layers_zmap_.emplace(std::make_pair(m.first + size, m.second));
+  }
+  if (++commit_ref_num_ < virtual_display_num_) {
+    *out_present_fence = -1;
+    return HWC2::Error::None;
+  }
+#ifdef DUMP_BUFFER
+  static int count = 0;
+  void * data = 0;
+#endif
+
+  std::vector<GLRenderer::GLLayer> gllayers;
+  int i = 0;
+  for (std::pair<const uint32_t, HwcLayer *> &l : layers_zmap_) {
+    if (l.second->GetAcquireFence() > 0) {
+      sync_wait(l.second->GetAcquireFence(), 1000);
+    }
+    std::optional<BufferInfo> bi = BufferInfoGetter::GetInstance()->GetBoInfo(l.second->GetBufferHandle());
+    gllayers.emplace_back();
+    GLRenderer::GLLayer &gllayer = gllayers.back();
+    gllayer.cb_width = bi->width;
+    gllayer.cb_height = bi->height;
+    gllayer.format = bi->format;
+    gllayer.pitch = bi->pitches[0];
+    gllayer.fd = bi->prime_fds[0];
+    gllayer.source_crop = l.second->GetLayerData().pi.source_crop;
+    gllayer.display_frame.left = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * i);
+    gllayer.display_frame.top = 0;
+    gllayer.display_frame.right = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * (i + 1));
+    gllayer.display_frame.bottom = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display()) / virtual_display_num_;
+#ifdef DUMP_BUFFER
+    if (gralloc_handler_.Map(l.second->GetBufferHandle(), 0,0,
+      configs_.hwc_configs[staged_mode_config_id_].mode.h_display(),
+      configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_,0,&data,0)) {
+      char filename[64] = {0};
+      sprintf(filename,"/data/local/traces/gldraw-superframe-%d-display-%d.IMG",
+        count,int(l.second->GetParentVirtualDisplay()->GetDisplayHandle()));
+      FILE *p = fopen(filename, "wb+");
+      if (p) {
+          fwrite(data, 1, configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * (configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_) * 4,p);
+          fclose(p);
+      }
+      gralloc_handler_.UnMap(l.second->GetBufferHandle(), 0);
+    }
+#endif
+    i++;
+  }
+  if (!glrenderer_.CheckFrameBufferStatus()) {
+    std::optional<BufferInfo> bi = BufferInfoGetter::GetInstance()->GetBoInfo(superframe_layer_.GetBufferHandle());
+    glrenderer_.ReInitSuperFrameEnv(bi);
+  }
+  InitSuperFrameEnv();
+  glrenderer_.Draw(gllayers);
+#ifdef DUMP_BUFFER
+  if (gralloc_handler_.Map(superframe_layer_.GetBufferHandle(), 0,0,
+    configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * virtual_display_num_,
+    configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_,0,&data,0)) {
+    char filename[64] = {0};
+    sprintf(filename,"/data/local/traces/gldraw-superframe-%d.IMG", count++);
+    FILE *p = fopen(filename, "wb+");
+    if (p) {
+        fwrite(data, 1, configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * configs_.hwc_configs[staged_mode_config_id_].mode.v_display() * 4, p);
+        fclose(p);
+    }
+    gralloc_handler_.UnMap(superframe_layer_.GetBufferHandle(), 0);
+  }
+#endif
+
+  layers_zmap_.clear();
+  layers_zmap_.emplace(std::make_pair(0, &superframe_layer_));
+  int PrevModeVsyncPeriodNs = static_cast<int>(
+      1E9 / GetPipe().connector->Get()->GetActiveMode().v_refresh());
+
+  auto mode_update_commited_ = false;
+  if (staged_mode_ &&
+      staged_mode_change_time_ <= ResourceManager::GetTimeMonotonicNs()) {
+    configs_.active_config_id = staged_mode_config_id_;
+
+    a_args.display_mode = *staged_mode_;
+    if (!a_args.test_only) {
+      mode_update_commited_ = true;
+    }
+  }
+
+  a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
+
+
+  std::vector<LayerData> composition_layers;
+
+  /* Import & populate */
+  for (std::pair<const uint32_t, HwcLayer *> &l : layers_zmap_) {
+    l.second->PopulateLayerData(a_args.test_only);
+  }
+
+  // now that they're ordered by z, add them to the composition
+  for (std::pair<const uint32_t, HwcLayer *> &l : layers_zmap_) {
+    if (!l.second->IsLayerUsableAsDevice()) {
+      /* This will be normally triggered on validation of the first frame
+       * containing CLIENT layer. At this moment client buffer is not yet
+       * provided by the CLIENT.
+       * This may be triggered once in HwcLayer lifecycle in case FB can't be
+       * imported. For example when non-contiguous buffer is imported into
+       * contiguous-only DRM/KMS driver.
+       */
+      commit_ref_num_ = 0;
+      *out_present_fence = -1;
+      ++total_stats_.failed_kms_present_;
+      std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+      return HWC2::Error::BadLayer;
+    }
+    composition_layers.emplace_back(l.second->GetLayerData().Clone());
+  }
+
+  /* Store plan to ensure shared planes won't be stolen by other display
+   * in between of ValidateDisplay() and PresentDisplay() calls
+   */
+  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
+                                               std::move(composition_layers));
+  if (!current_plan_) {
+    if (!a_args.test_only) {
+      ALOGE("Failed to create DrmKmsPlan");
+    }
+    commit_ref_num_ = 0;
+    ++total_stats_.failed_kms_present_;
+    std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+    return HWC2::Error::BadConfig;
+  }
+
+  a_args.composition = current_plan_;
+
+  int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
+
+  if (ret) {
+    if (!a_args.test_only)
+      ALOGE("Failed to apply the frame composition ret=%d", ret);
+    commit_ref_num_ = 0;
+    ++total_stats_.failed_kms_present_;
+    std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
+    return HWC2::Error::BadParameter;
+  }
+
+  if (mode_update_commited_) {
+    staged_mode_.reset();
+    vsync_tracking_en_ = false;
+    if (last_vsync_ts_ != 0) {
+      hwc2_->SendVsyncPeriodTimingChangedEventToClient(
+          handle_, last_vsync_ts_ + PrevModeVsyncPeriodNs);
+    }
+  }
+
+  this->present_fence_ = UniqueFd::Dup(a_args.out_fence.Get());
+  *out_present_fence = a_args.out_fence.Release();
+  commit_ref_num_ = 0;
+  ++frame_no_;
+  std::unordered_map<uint32_t, HwcLayer *>().swap(layers_zmap_);
   return HWC2::Error::None;
 }
 HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,

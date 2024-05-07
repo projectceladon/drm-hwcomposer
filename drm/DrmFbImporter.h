@@ -25,7 +25,7 @@
 
 #include "bufferinfo/BufferInfo.h"
 #include "drm/DrmDevice.h"
-
+// #include "hwc2_device/HwcDisplay.h"
 #ifndef DRM_FORMAT_INVALID
 #define DRM_FORMAT_INVALID 0
 #endif
@@ -33,11 +33,12 @@
 using GemHandle = uint32_t;
 
 namespace android {
-
+enum class VirtualDisplayType;
 class DrmFbIdHandle {
  public:
   static auto CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
-                             DrmDevice &drm) -> std::shared_ptr<DrmFbIdHandle>;
+                             DrmDevice &drm,
+                             VirtualDisplayType virtual_display_type) -> std::shared_ptr<DrmFbIdHandle>;
 
   ~DrmFbIdHandle();
   DrmFbIdHandle(DrmFbIdHandle &&) = delete;
@@ -67,7 +68,7 @@ class DrmFbImporter {
   auto operator=(const DrmFbImporter &) = delete;
   auto operator=(DrmFbImporter &&) = delete;
 
-  auto GetOrCreateFbId(BufferInfo *bo) -> std::shared_ptr<DrmFbIdHandle>;
+  auto GetOrCreateFbId(BufferInfo *bo,VirtualDisplayType virtual_display_type) -> std::shared_ptr<DrmFbIdHandle>;
 
  private:
   void CleanupEmptyCacheElements() {

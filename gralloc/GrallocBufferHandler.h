@@ -26,6 +26,10 @@ class Gralloc1BufferHandler {
   ~Gralloc1BufferHandler();
   bool Init();
   bool CreateBuffer(uint32_t w, uint32_t h, buffer_handle_t *handle);
+  void *Map(buffer_handle_t handle, uint32_t x, uint32_t y, uint32_t width,
+            uint32_t height, uint32_t *stride, void **map_data,
+            size_t plane);
+  int32_t UnMap(buffer_handle_t handle, void *map_data);
  private:
   const hw_module_t *gralloc_;
   hw_device_t *device_;
@@ -35,6 +39,8 @@ class Gralloc1BufferHandler {
   GRALLOC1_PFN_SET_FORMAT set_format_;
   GRALLOC1_PFN_SET_PRODUCER_USAGE set_producer_usage_;
   GRALLOC1_PFN_ALLOCATE allocate_;
+  GRALLOC1_PFN_LOCK lock_;
+  GRALLOC1_PFN_UNLOCK unlock_;
 };
 
 }  // namespace android

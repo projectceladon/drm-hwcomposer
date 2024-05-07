@@ -240,7 +240,7 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
     }
   }
 
-  if (layer.acquire_fence &&
+  if (layer.acquire_fence.Get() &&
       !in_fence_fd_property_.AtomicSet(pset, layer.acquire_fence.Get())) {
     return -EINVAL;
   }

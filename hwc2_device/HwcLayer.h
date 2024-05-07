@@ -21,7 +21,7 @@
 
 #include "bufferinfo/BufferInfoGetter.h"
 #include "compositor/LayerData.h"
-
+#include <sync/sync.h>
 namespace android {
 
 class HwcDisplay;
@@ -33,6 +33,7 @@ class HwcLayer {
   HWC2::Composition GetSfType() const {
     return sf_type_;
   }
+  VirtualDisplay* GetParentVirtualDisplay() {return vparent_;}
   HWC2::Composition GetValidatedType() const {
     return validated_type_;
   }
@@ -62,6 +63,8 @@ class HwcLayer {
     return layer_data_;
   }
 
+  int GetAcquireFence() {return acquire_fence_.Get();}
+  void SetAcquireFence(int32_t acquire_fence) {acquire_fence_.Set(acquire_fence);}
   // Layer hooks
   HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
   HWC2::Error SetLayerBlendMode(int32_t mode);
@@ -109,7 +112,7 @@ class HwcLayer {
   bool prior_buffer_scanout_flag_{};
 
   HwcDisplay *const parent_;
-  VirtualDisplay *vparent_;
+  VirtualDisplay *vparent_ = nullptr;
   /* Layer state */
  public:
   void PopulateLayerData(bool test);
@@ -117,6 +120,8 @@ class HwcLayer {
   bool IsLayerUsableAsDevice() const {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
+
+  buffer_handle_t GetBufferHandle() {return buffer_handle_;}
 
  private:
   void ImportFb();

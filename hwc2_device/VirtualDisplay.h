@@ -181,6 +181,7 @@ class VirtualDisplay {
 
   bool IsInHeadlessMode() {return headless_mode_;}
   uint32_t GetXOffset() {return x_offset_;}
+  hwc2_display_t GetDisplayHandle() {return handle_;}
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,

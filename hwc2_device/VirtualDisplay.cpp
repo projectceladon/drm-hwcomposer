@@ -151,7 +151,7 @@ HWC2::Error VirtualDisplay::AcceptDisplayChanges() {
 }
 
 HWC2::Error VirtualDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(physical_display_, this));
+  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(physical_display_));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
@@ -342,34 +342,12 @@ HWC2::Error VirtualDisplay::GetHdrCapabilities(uint32_t *num_types,
 HWC2::Error VirtualDisplay::GetReleaseFences(uint32_t *num_elements,
                                          hwc2_layer_t *layers,
                                          int32_t *fences) {
-  if (physical_display_->IsInHeadlessMode()) {
+  if (handle_ == 0) {
     *num_elements = 0;
     return HWC2::Error::None;
+  } else {
+    return physical_display_->GetReleaseFences(num_elements, layers, fences);
   }
-
-  uint32_t num_layers = 0;
-
-  for (auto &l : layers_) {
-    if (!l.second.GetPriorBufferScanOutFlag() || !present_fence_) {
-      continue;
-    }
-
-    ++num_layers;
-
-    if (layers == nullptr || fences == nullptr)
-      continue;
-
-    if (num_layers > *num_elements) {
-      ALOGW("Overflow num_elements %d/%d", num_layers, *num_elements);
-      return HWC2::Error::None;
-    }
-
-    layers[num_layers - 1] = l.first;
-    fences[num_layers - 1] = UniqueFd::Dup(present_fence_.Get()).Release();
-  }
-  *num_elements = num_layers;
-
-  return HWC2::Error::None;
 }
 
 HWC2::Error VirtualDisplay::CreateComposition(AtomicCommitArgs &a_args) {
@@ -387,7 +365,7 @@ HWC2::Error VirtualDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     client_layer_.SetLayerDisplayFrame(
         (hwc_rect_t){.left = 0,
                      .top = 0,
-                     .right = static_cast<int>(x_resolution_),
+                     .right = static_cast<int>(staged_mode_->h_display()),
                      .bottom = static_cast<int>(staged_mode_->v_display())});
 
     configs_.active_config_id = staged_mode_config_id_;
@@ -490,12 +468,19 @@ HWC2::Error VirtualDisplay::PresentDisplay(int32_t *out_present_fence) {
   }
   if (staged_mode_ &&
       staged_mode_change_time_ <= ResourceManager::GetTimeMonotonicNs()) {
-    client_layer_.SetLayerDisplayFrame(
-        (hwc_rect_t){.left = 0,
-                     .top = 0,
-                     .right = static_cast<int>(x_resolution_),
-                     .bottom = static_cast<int>(staged_mode_->v_display())});
-
+    if (vitual_display_type_ == VirtualDisplayType::SuperFrame)
+      client_layer_.SetLayerDisplayFrame(
+          (hwc_rect_t){.left = 0,
+                      .top = 0,
+                      .right = static_cast<int>(staged_mode_->h_display()),
+                      .bottom = static_cast<int>(y_resolution_),});      
+    else {
+      client_layer_.SetLayerDisplayFrame(
+          (hwc_rect_t){.left = 0,
+                      .top = 0,
+                      .right = static_cast<int>(x_resolution_),
+                      .bottom = static_cast<int>(staged_mode_->v_display())});
+    }
     configs_.active_config_id = staged_mode_config_id_;
   }
 

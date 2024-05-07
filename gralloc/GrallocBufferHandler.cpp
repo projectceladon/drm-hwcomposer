@@ -71,6 +71,10 @@ bool Gralloc1BufferHandler::Init() {
                                 GRALLOC1_FUNCTION_SET_PRODUCER_USAGE));
   allocate_ = reinterpret_cast<GRALLOC1_PFN_ALLOCATE>(
       gralloc1_dvc->getFunction(gralloc1_dvc, GRALLOC1_FUNCTION_ALLOCATE));
+  lock_ = reinterpret_cast<GRALLOC1_PFN_LOCK>(
+      gralloc1_dvc->getFunction(gralloc1_dvc, GRALLOC1_FUNCTION_LOCK));
+  unlock_ = reinterpret_cast<GRALLOC1_PFN_UNLOCK>(
+      gralloc1_dvc->getFunction(gralloc1_dvc, GRALLOC1_FUNCTION_UNLOCK));
   return true;
 }
 
@@ -95,4 +99,48 @@ bool Gralloc1BufferHandler::CreateBuffer(uint32_t w, uint32_t h,buffer_handle_t 
 
   return true;
 }
+
+
+void *Gralloc1BufferHandler::Map(buffer_handle_t handle, uint32_t x, uint32_t y,
+                                 uint32_t width, uint32_t height,
+                                 uint32_t * /*stride*/, void **map_data,
+                                 size_t /*plane*/)  {
+  auto gr_handle = (struct cros_gralloc_handle *)handle;
+  if (!gr_handle) {
+    ALOGE("could not find gralloc drm handle");
+    return NULL;
+  }
+
+  int acquireFence = -1;
+  gralloc1_rect_t rect{};
+  rect.left = x;
+  rect.top = y;
+  rect.width = width;
+  rect.height = height;
+
+  gralloc1_device_t *gralloc1_dvc =
+      reinterpret_cast<gralloc1_device_t *>(device_);
+  uint32_t status = lock_(gralloc1_dvc, handle,
+                          GRALLOC1_PRODUCER_USAGE_CPU_WRITE_OFTEN | GRALLOC1_CONSUMER_USAGE_CPU_READ_OFTEN,
+                          GRALLOC1_CONSUMER_USAGE_CPU_READ_OFTEN | GRALLOC1_PRODUCER_USAGE_CPU_WRITE_OFTEN,
+                          &rect,
+                          map_data,
+                          acquireFence);
+  return (GRALLOC1_ERROR_NONE == status) ? *map_data : NULL;
+}
+
+int32_t Gralloc1BufferHandler::UnMap(buffer_handle_t handle,
+                                     void * /*map_data*/)  {
+  auto gr_handle = (struct cros_gralloc_handle *)handle;
+  if (!gr_handle) {
+    ALOGE("could not find gralloc drm handle");
+    return GRALLOC1_ERROR_BAD_HANDLE;
+  }
+
+  int releaseFence = 0;
+  gralloc1_device_t *gralloc1_dvc =
+      reinterpret_cast<gralloc1_device_t *>(device_);
+  return unlock_(gralloc1_dvc, handle, &releaseFence);
+}
+
 }  // namespace android

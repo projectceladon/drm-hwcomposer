@@ -150,7 +150,14 @@ bool DrmHwcTwo::BindVirtualDisplay(DrmDisplayPipeline *pipeline) {
   uint32_t x_offset = 0;
   for (uint32_t j = 0; j < displays_[handle]->GetVirtualDisplayNum(); j++) {
     if ( j > 0 && displays_[handle]->GetVirtualDisplayType() == VirtualDisplayType::Logical)
-        x_offset += x_resolution_vec[j-1];
+      x_offset += x_resolution_vec[j-1];
+    if ( j > 0 && displays_[handle]->GetVirtualDisplayType() == VirtualDisplayType::SuperFrame) {
+      hwc2_config_t config;
+      displays_[handle]->GetActiveConfig(&config);
+      int32_t value = 0;
+      displays_[handle]->GetDisplayAttribute(config,(int32_t)HWC2::Attribute::Width, &value);
+      x_offset += value;
+    }
     if (virtual_displays_.count(disp_handle) == 0) {
       uint32_t x_resolution = 0;
       uint32_t y_resolution = 0;

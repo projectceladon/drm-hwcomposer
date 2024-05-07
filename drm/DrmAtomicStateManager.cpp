@@ -193,7 +193,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   if (nonblock && drm->GetName() == "i915") {
-    flags |= DRM_MODE_ATOMIC_NONBLOCK;
+    // flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
   if (args.color_adjustment == true) {

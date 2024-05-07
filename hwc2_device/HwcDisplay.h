@@ -29,6 +29,8 @@
 #include "hwc2_device/HwcLayer.h"
 #include "gralloc/GrallocBufferHandler.h"
 #include <list>
+#include "gl/GLRenderer.h"
+#include <unordered_map>
 namespace android {
 
 class Backend;
@@ -38,10 +40,7 @@ class DrmHwcTwo;
 #endif
 inline bool RemoveNotPrimaryInVirtualDisplayList(const uint64_t & value) {return value != kPrimaryDisplay;}
 
-enum class VirtualDisplayType : int32_t {
-    Logical,
-    SuperFrame,
-};
+
 class HwcDisplay {
  public:
   HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwcTwo *hwc2);
@@ -234,7 +233,7 @@ class HwcDisplay {
   uint32_t layer_idx_{};
 
   std::map<hwc2_layer_t, HwcLayer> layers_;
-  std::map<uint32_t, HwcLayer *> layers_zmap_;
+  std::unordered_map<uint32_t, HwcLayer *> layers_zmap_;
   HwcLayer client_layer_;
   int32_t color_mode_{};
   std::vector<int32_t> current_color_mode_ = {HAL_COLOR_MODE_NATIVE, HAL_COLOR_MODE_BT2020, HAL_COLOR_MODE_BT2100_PQ, HAL_COLOR_MODE_BT2100_HLG, /*HAL_COLOR_MODE_DISPLAY_BT2020*/};
@@ -260,6 +259,7 @@ class HwcDisplay {
   VirtualDisplayType virtual_display_type_ = VirtualDisplayType::SuperFrame;
   Gralloc1BufferHandler gralloc_handler_;
   HwcLayer superframe_layer_;
+  GLRenderer glrenderer_;
 public:
   uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
   void AddVirtualDisplayHandle(uint32_t virtual_display_handle) {
@@ -272,6 +272,8 @@ public:
   const std::vector<uint32_t> &GetXResolution() {return x_resolution_;}
   const std::vector<uint32_t> &GetYResolution() {return y_resolution_;}
   VirtualDisplayType GetVirtualDisplayType() {return virtual_display_type_;}
+private:
+  HWC2::Error InitSuperFrameEnv();
 };
 
 }  // namespace android
