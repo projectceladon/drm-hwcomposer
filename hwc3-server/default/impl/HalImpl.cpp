@@ -680,7 +680,7 @@ int32_t HalImpl::getSupportedContentTypes(int64_t display, std::vector<ContentTy
 }
 
 int32_t HalImpl::flushDisplayBrightnessChange([[maybe_unused]] int64_t display) {
-    return HWC2_ERROR_UNSUPPORTED;
+    return HWC2_ERROR_NONE;
 }
 
 int32_t HalImpl::presentDisplay(int64_t display, ndk::ScopedFileDescriptor& fence,
