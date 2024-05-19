@@ -421,7 +421,7 @@ ndk::ScopedAStatus ComposerClient::setIdleTimerEnabled(int64_t display, int32_t 
 
 ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(int64_t displayId,
                                                                bool enabled) {
-    return ndk::ScopedAStatus::ok();
+    return TO_BINDER_STATUS(EX_UNSUPPORTED);
 }
 
 void ComposerClient::HalEventCallback::onHotplug(int64_t display, bool connected) {
