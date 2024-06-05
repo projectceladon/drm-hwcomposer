@@ -99,7 +99,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
       type_(type),
       client_layer_(this),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY),
-      superframe_layer_(this) {
+      superframe_layers_{HwcLayer(this), HwcLayer(this), HwcLayer(this)} {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
                              0.0, 1.0, 0.0, 0.0,
@@ -183,31 +183,33 @@ HWC2::Error HwcDisplay::Init() {
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
   if (virtual_display_type_ == VirtualDisplayType::SuperFrame) {
     gralloc_handler_.Init();
-    buffer_handle_t superframe_render_buffer;
-    gralloc_handler_.CreateBuffer(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * virtual_display_num_,
-          configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_,
-          &superframe_render_buffer);
-    superframe_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
-    superframe_layer_.SetLayerBuffer(superframe_render_buffer, 0);
-    superframe_layer_.SetLayerDisplayFrame(
-        (hwc_rect_t){.left = 0,
-                     .top = 0,
-                     .right = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display()),
-                     .bottom = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display())});
-    superframe_layer_.SetLayerSourceCrop(
-        (hwc_frect_t){.left = 0.0F,
-                     .top = 0.0F,
-                     .right = static_cast<float>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display()),
-                     .bottom = static_cast<float>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display())});
+    for (uint16_t i = 0; i < SUPER_FRAME_LAYER_COUNT; i++) {
+      buffer_handle_t superframe_render_buffer;
+      gralloc_handler_.CreateBuffer(configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * virtual_display_num_,
+            configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_,
+            &superframe_render_buffer);
+      superframe_layers_[i].SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
+      superframe_layers_[i].SetLayerBuffer(superframe_render_buffer, 0);
+      superframe_layers_[i].SetLayerDisplayFrame(
+          (hwc_rect_t){.left = 0,
+                      .top = 0,
+                      .right = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display()),
+                      .bottom = static_cast<int>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display())});
+      superframe_layers_[i].SetLayerSourceCrop(
+          (hwc_frect_t){.left = 0.0F,
+                      .top = 0.0F,
+                      .right = static_cast<float>(configs_.hwc_configs[staged_mode_config_id_].mode.h_display()),
+                      .bottom = static_cast<float>(configs_.hwc_configs[staged_mode_config_id_].mode.v_display())});
+    }
   }
   return HWC2::Error::None;
 }
 
 HWC2::Error HwcDisplay::InitSuperFrameEnv() {
   std::optional<BufferInfo> bi = BufferInfoGetter::GetInstance()->GetBoInfo(
-    superframe_layer_.GetBufferHandle());
+    superframe_layers_[superframe_layer_id].GetBufferHandle());
   glrenderer_.Init(bi->width, bi->height);
-  glrenderer_.InitSuperFrameEnv(bi);
+  glrenderer_.InitSuperFrameEnv(bi, superframe_layer_id);
   return HWC2::Error::None;
 }
 
@@ -846,14 +848,16 @@ HWC2::Error HwcDisplay::PresentDisplaySuperFrame(std::map<uint32_t, HwcLayer *> 
 #endif
     i++;
   }
-  if (!glrenderer_.CheckFrameBufferStatus()) {
-    std::optional<BufferInfo> bi = BufferInfoGetter::GetInstance()->GetBoInfo(superframe_layer_.GetBufferHandle());
-    glrenderer_.ReInitSuperFrameEnv(bi);
-  }
+
   InitSuperFrameEnv();
+  if (!glrenderer_.CheckFrameBufferStatus()) {
+    ALOGE("CheckFrameBufferStatus superframe_layer_id %d return false", superframe_layer_id);
+    std::optional<BufferInfo> bi = BufferInfoGetter::GetInstance()->GetBoInfo(superframe_layers_[superframe_layer_id].GetBufferHandle());
+    glrenderer_.ReInitSuperFrameEnv(bi, superframe_layer_id);
+  }
   glrenderer_.Draw(gllayers);
 #ifdef DUMP_BUFFER
-  if (gralloc_handler_.Map(superframe_layer_.GetBufferHandle(), 0,0,
+  if (gralloc_handler_.Map(superframe_layers_[superframe_layer_id].GetBufferHandle(), 0,0,
     configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * virtual_display_num_,
     configs_.hwc_configs[staged_mode_config_id_].mode.v_display() / virtual_display_num_,0,&data,0)) {
     char filename[64] = {0};
@@ -863,12 +867,14 @@ HWC2::Error HwcDisplay::PresentDisplaySuperFrame(std::map<uint32_t, HwcLayer *> 
         fwrite(data, 1, configs_.hwc_configs[staged_mode_config_id_].mode.h_display() * configs_.hwc_configs[staged_mode_config_id_].mode.v_display() * 4, p);
         fclose(p);
     }
-    gralloc_handler_.UnMap(superframe_layer_.GetBufferHandle(), 0);
+    gralloc_handler_.UnMap(superframe_layers_[superframe_layer_id].GetBufferHandle(), 0);
   }
 #endif
 
   layers_zmap_.clear();
-  layers_zmap_.emplace(std::make_pair(0, &superframe_layer_));
+  layers_zmap_.emplace(std::make_pair(0, &superframe_layers_[superframe_layer_id]));
+  if (++superframe_layer_id >= SUPER_FRAME_LAYER_COUNT)
+    superframe_layer_id = 0;
   int PrevModeVsyncPeriodNs = static_cast<int>(
       1E9 / GetPipe().connector->Get()->GetActiveMode().v_refresh());
 

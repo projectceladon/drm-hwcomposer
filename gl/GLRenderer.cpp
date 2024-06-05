@@ -20,9 +20,7 @@ GLRenderer::GLRenderer() {
 }
 
 bool GLRenderer::Init(uint32_t w, uint32_t h) {
-    if (init_) {
-        return true;
-    }
+    if (init_[superframe_layer_id_]) return true;
     cb_width_ = w;
     cb_height_ = h;
     EGLint num_configs;
@@ -223,7 +221,9 @@ bool GLRenderer::Init(uint32_t w, uint32_t h) {
 }
 
 bool GLRenderer::Draw(const std::vector<GLLayer> &layers) {
-    if (!init_) return false;
+    if (!init_[superframe_layer_id_]) {
+      return false;
+    }
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     int index = 0;
@@ -299,10 +299,18 @@ bool GLRenderer::Draw(const std::vector<GLLayer> &layers) {
     return true;
 }
 
-bool GLRenderer::InitSuperFrameEnv(std::optional<BufferInfo> bi) {
-  if (init_) {
+bool GLRenderer::InitSuperFrameEnv(std::optional<BufferInfo> bi, uint16_t id) {
+  superframe_layer_id_ = id;
+  if (init_[superframe_layer_id_] && SUPER_FRAME_LAYER_COUNT == 1) {
     return true;
   }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  if (fb_[superframe_layer_id_]) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fb_[superframe_layer_id_]);
+    glViewport(0, 0, cb_width_, cb_height_);
+    return true;
+  }
+
   const EGLAttrib attr_list[] = {EGL_WIDTH, (GLint)bi->width,
                               EGL_HEIGHT,(GLint) bi->height,
                               EGL_LINUX_DRM_FOURCC_EXT, (GLint)bi->format,
@@ -310,31 +318,33 @@ bool GLRenderer::InitSuperFrameEnv(std::optional<BufferInfo> bi) {
                               EGL_DMA_BUF_PLANE0_PITCH_EXT, (GLint)bi->pitches[0],
                               EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
                               EGL_NONE,  0};
-  if (image_ == EGL_NO_IMAGE) 
-    image_ = eglCreateImage(egl_display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
+  if (image_[superframe_layer_id_] == EGL_NO_IMAGE)
+    image_[superframe_layer_id_] = eglCreateImage(egl_display_, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
                             static_cast<EGLClientBuffer>(nullptr), attr_list);
-  if (image_ == EGL_NO_IMAGE) {
+  if (image_[superframe_layer_id_] == EGL_NO_IMAGE) {
     ALOGE("eglCreateImage failed, glGetError() = %d@%d", glGetError(), __LINE__);
     return false;
   }
-  if (!texture_)
-    glGenTextures(1, &texture_);
+  if (!texture_[superframe_layer_id_])
+    glGenTextures(1, &texture_[superframe_layer_id_]);
   DEBUG1;
-  glBindTexture(GL_TEXTURE_2D, texture_);
+  glBindTexture(GL_TEXTURE_2D, texture_[superframe_layer_id_]);
   DEBUG1;
 
-  glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image_);
+  glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image_[superframe_layer_id_]);
   DEBUG1;
   glBindTexture(GL_TEXTURE_2D, 0);
   DEBUG1;
 
-  if (!fb_)
-    glGenFramebuffers(1, &fb_);
+  if (!fb_[superframe_layer_id_]) {
+    glGenFramebuffers(1, &fb_[superframe_layer_id_]);
+  }
   DEBUG1;
-  glBindFramebuffer(GL_FRAMEBUFFER, fb_);
+  glBindFramebuffer(GL_FRAMEBUFFER, fb_[superframe_layer_id_]);
+
   DEBUG1;
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         texture_, 0);
+                         texture_[superframe_layer_id_], 0);
   DEBUG1;
   GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -349,23 +359,29 @@ bool GLRenderer::InitSuperFrameEnv(std::optional<BufferInfo> bi) {
         ALOGE("GL_FRAMEBUFFER_UNSUPPORTED.");
         break;
       default:
+        ALOGE("glCheckFramebufferStatus return %d.", status);
         break;
     }
     return false;
   }
-  init_ = true;
+  init_[superframe_layer_id_] = true;
   return true;
 }
 
-bool GLRenderer::ReInitSuperFrameEnv(std::optional<BufferInfo> bi) {
-  eglDestroyImage(egl_display_,image_);
-  glDeleteTextures(1, &texture_);
-  glDeleteFramebuffers(1, &fb_);
-  image_ = EGL_NO_IMAGE;
-  texture_ = 0;
-  fb_ = 0;
-  init_ = false;
-  return InitSuperFrameEnv(bi);
+bool GLRenderer::ReInitSuperFrameEnv(std::optional<BufferInfo> bi, uint16_t id) {
+  superframe_layer_id_ = id;
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  // if (image_[superframe_layer_id_] != EGL_NO_IMAGE)
+  //   eglDestroyImage(egl_display_,image_[superframe_layer_id_]);
+  // if (texture_[superframe_layer_id_] != 0)
+  //   glDeleteTextures(1, &texture_[superframe_layer_id_]);
+  // if (fb_[superframe_layer_id_] != 0)
+  //   glDeleteFramebuffers(1, &fb_[superframe_layer_id_]);
+  // image_[superframe_layer_id_] = EGL_NO_IMAGE;
+  // texture_[superframe_layer_id_] = 0;
+  // fb_[superframe_layer_id_] = 0;
+  // init_[superframe_layer_id_] = false;
+  return InitSuperFrameEnv(bi, superframe_layer_id_);
 }
 
 bool GLRenderer::CheckFrameBufferStatus() {

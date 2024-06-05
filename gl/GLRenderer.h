@@ -12,6 +12,7 @@
 #include <GLES2/gl2ext.h>
 #include "hwcomposer_defs.h"
 #include "bufferinfo/BufferInfo.h"
+#define SUPER_FRAME_LAYER_COUNT 3
 namespace android {
 
 class GLRenderer {
@@ -30,8 +31,8 @@ public:
   ~GLRenderer() = default;
   bool Init(uint32_t w, uint32_t height);
   bool Draw(const std::vector<GLLayer> &layers);
-  bool InitSuperFrameEnv(const std::optional<BufferInfo> bi);
-  bool ReInitSuperFrameEnv(const std::optional<BufferInfo> bi);
+  bool InitSuperFrameEnv(const std::optional<BufferInfo> bi, uint16_t id);
+  bool ReInitSuperFrameEnv(const std::optional<BufferInfo> bi, uint16_t id);
   bool CheckFrameBufferStatus();
 private:
   EGLDisplay egl_display_;
@@ -45,10 +46,11 @@ private:
   GLuint textures_[2];
   uint32_t cb_width_;
   uint32_t cb_height_;
-  bool init_ = false;
-  EGLImage image_ = EGL_NO_IMAGE;
-  GLuint texture_ = 0;
-  GLuint fb_ = 0;
+  bool init_[SUPER_FRAME_LAYER_COUNT] = {false};
+  EGLImage image_[SUPER_FRAME_LAYER_COUNT] = {EGL_NO_IMAGE};
+  GLuint texture_[SUPER_FRAME_LAYER_COUNT] = {0};
+  GLuint fb_[SUPER_FRAME_LAYER_COUNT] = {0};
+  uint16_t  superframe_layer_id_ = 0;
 };
 }
 #endif

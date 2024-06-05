@@ -38,6 +38,7 @@ class DrmHwcTwo;
 #ifndef kPrimaryDisplay
 #define kPrimaryDisplay 0
 #endif
+
 inline bool RemoveNotPrimaryInVirtualDisplayList(const uint64_t & value) {return value != kPrimaryDisplay;}
 
 
@@ -258,7 +259,8 @@ class HwcDisplay {
   std::vector<uint32_t> y_resolution_;
   VirtualDisplayType virtual_display_type_ = VirtualDisplayType::SuperFrame;
   Gralloc1BufferHandler gralloc_handler_;
-  HwcLayer superframe_layer_;
+  HwcLayer superframe_layers_[SUPER_FRAME_LAYER_COUNT];
+  uint16_t  superframe_layer_id = 0;
   GLRenderer glrenderer_;
 public:
   uint32_t GetVirtualDisplayNum() {return virtual_display_num_;}
