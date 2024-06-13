@@ -136,6 +136,12 @@ public:
     ndk::ScopedAStatus setIdleTimerEnabled(int64_t display, int32_t timeout) override;
     ndk::ScopedAStatus setRefreshRateChangedCallbackDebugEnabled(int64_t displayId,
                                                                bool enabled) override;
+    ndk::ScopedAStatus getDisplayConfigurations(int64_t displayId, int32_t maxFrameIntervalNs,
+                                                std::vector<DisplayConfiguration>*) override;
+    ndk::ScopedAStatus notifyExpectedPresent(int64_t displayId,
+                                             const ClockMonotonicTimestamp& expectedPresentTime,
+                                             int32_t maxFrameIntervalNs) override;
+
 protected:
     ::ndk::SpAIBinder createBinder() override;
 

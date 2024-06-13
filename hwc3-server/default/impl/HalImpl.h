@@ -62,6 +62,11 @@ class HalImpl : public IComposerHal {
     int32_t getDisplayBrightnessSupport(int64_t display, bool& outSupport) override;
     int32_t getDisplayCapabilities(int64_t display, std::vector<DisplayCapability>* caps) override;
     int32_t getDisplayConfigs(int64_t display, std::vector<int32_t>* configs) override;
+    int32_t getDisplayConfigurations(int64_t display, int32_t maxFrameIntervalNs,
+                                     std::vector<DisplayConfiguration>* outConfigs) override;
+    int32_t notifyExpectedPresent(int64_t display,
+                                  const ClockMonotonicTimestamp& expectedPresentTime,
+                                  int32_t frameIntervalNs) override;
     int32_t getDisplayConnectionType(int64_t display, DisplayConnectionType* outType) override;
     int32_t getDisplayIdentificationData(int64_t display, DisplayIdentification* id) override;
     int32_t getDisplayName(int64_t display, std::string* outName) override;
