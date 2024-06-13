@@ -39,19 +39,24 @@ struct HwcsContext {
 HWCSHANDLE HwcService_Connect() {
   ProcessState::self()
       ->startThreadPool();  // Required for starting binder threads
-
+  ALOGE("%s start",__FUNCTION__);
   HwcsContext context;
   context.mHwcService = interface_cast<IService>(
-      defaultServiceManager()->getService(String16(IA_HWC_SERVICE_NAME)));
+      defaultServiceManager()->waitForService(String16(IA_HWC_SERVICE_NAME)));
   if (context.mHwcService == NULL) {
+    printf("%d\n", __LINE__);
+    ALOGE("%s context.mHwcService == NULL",__FUNCTION__);
     return NULL;
   }
 
   context.mControls = context.mHwcService->GetControls();
   if (context.mControls == NULL) {
+    printf("%d\n", __LINE__);
+    ALOGE("%s context.mControls == NULL",__FUNCTION__);
     return NULL;
   }
-
+  printf("%d\n", __LINE__);
+  ALOGE("%s ok",__FUNCTION__);
   return new HwcsContext(context);
 }
 

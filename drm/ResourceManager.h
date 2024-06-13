@@ -23,7 +23,7 @@
 #include "DrmDisplayPipeline.h"
 #include "DrmFbImporter.h"
 #include "UEventListener.h"
-
+#include "hwc2_device/hwcservice.h"
 namespace android {
 class HwcDisplay;
 class PipelineToFrontendBindingInterface {
@@ -78,6 +78,7 @@ class ResourceManager {
   PipelineToFrontendBindingInterface *const frontend_interface_;
 
   bool initialized_{};
+  android::HwcService hwcService_;
 };
 }  // namespace android
 

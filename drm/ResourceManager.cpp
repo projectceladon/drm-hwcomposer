@@ -128,7 +128,7 @@ void ResourceManager::Init() {
   });
 
   UpdateFrontendDisplays();
-
+  hwcService_.Start((DrmHwcTwo*)frontend_interface_);
   initialized_ = true;
 }
 
