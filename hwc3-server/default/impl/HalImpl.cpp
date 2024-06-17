@@ -148,6 +148,18 @@ bool HalImpl::initDispatch(hwc2_function_descriptor_t desc, T* outPfn) {
 }
 
 template <typename T>
+bool HalImpl::initDispatch(HWC3::hwc3_function_descriptor_t desc, T* outPfn) {
+    auto pfn = mDevice->getFunction(mDevice, desc);
+    if (pfn) {
+        *outPfn = reinterpret_cast<T>(pfn);
+        return true;
+    } else {
+        ALOGE("failed to get hwcomposer2 function %d", desc);
+        return false;
+    }
+}
+
+template <typename T>
 bool HalImpl::initOptionalDispatch(hwc2_function_descriptor_t desc, T* outPfn) {
     auto pfn = mDevice->getFunction(mDevice, desc);
     if (pfn) {
@@ -192,7 +204,8 @@ bool HalImpl::initDispatch() {
         !initDispatch(HWC2_FUNCTION_SET_LAYER_COMPOSITION_TYPE, &mDispatch.setLayerCompositionType) ||
         !initDispatch(HWC2_FUNCTION_SET_LAYER_DATASPACE, &mDispatch.setLayerDataspace) ||
         !initDispatch(HWC2_FUNCTION_SET_LAYER_DISPLAY_FRAME, &mDispatch.setLayerDisplayFrame) ||
-        !initDispatch(HWC2_FUNCTION_SET_LAYER_PLANE_ALPHA, &mDispatch.setLayerPlaneAlpha)
+        !initDispatch(HWC2_FUNCTION_SET_LAYER_PLANE_ALPHA, &mDispatch.setLayerPlaneAlpha) ||
+        !initDispatch(HWC3::HWC3_FUNCTION_SET_EXPECTED_PRESENT_TIME, &mDispatch.setExpectedPresentTime)
         ) {
         return false;
     }
@@ -1177,7 +1190,10 @@ int32_t HalImpl::validateDisplay(int64_t display, std::vector<int64_t>* outChang
 int HalImpl::setExpectedPresentTime([[maybe_unused]] int64_t display, 
                                     [[maybe_unused]] const std::optional<ClockMonotonicTimestamp> expectedPresentTime) {
 
-    return HWC2_ERROR_NONE;
+    if (!mDispatch.setExpectedPresentTime) {
+        return HWC2_ERROR_UNSUPPORTED;
+    }
+    return mDispatch.setExpectedPresentTime(mDevice, display, expectedPresentTime);
 }
 
 int32_t HalImpl::getRCDLayerSupport([[maybe_unused]] int64_t display, 

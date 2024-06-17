@@ -27,6 +27,8 @@
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "hwc2_device/HwcLayer.h"
+#include "utils/hwc3.h"
+using namespace aidl::android::hardware::graphics::composer3;
 
 namespace android {
 
@@ -118,6 +120,8 @@ class HwcDisplay {
   HWC2::Error SetPowerMode(int32_t mode);
   HWC2::Error SetVsyncEnabled(int32_t enabled);
   HWC2::Error ValidateDisplay(uint32_t *num_types, uint32_t *num_requests);
+  HWC3::Error setExpectedPresentTime(
+      const std::optional<ClockMonotonicTimestamp>& expectedPresentTime);
   HwcLayer *get_layer(hwc2_layer_t layer) {
     auto it = layers_.find(layer);
     if (it == layers_.end())
@@ -230,6 +234,7 @@ class HwcDisplay {
 
   std::shared_ptr<DrmKmsPlan> current_plan_;
 
+  std::optional<ClockMonotonicTimestamp> expectedPresentTime_ = std::nullopt;
   uint32_t frame_no_ = 0;
   Stats total_stats_;
   Stats prev_stats_;

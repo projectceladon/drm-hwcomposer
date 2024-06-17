@@ -25,6 +25,8 @@
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 #include "utils/properties.h"
+#include <sync/sync.h>
+#include <cinttypes>
 
 namespace android {
 
@@ -616,6 +618,18 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
 HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
+  if (expectedPresentTime_.has_value()) {
+    static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
+    struct timespec vsync {};
+    clock_gettime(CLOCK_MONOTONIC, &vsync);
+    int64_t timestamp = (int64_t)vsync.tv_sec * kOneSecondNs + (int64_t)vsync.tv_nsec;
+    int64_t half_period = (1E9 / staged_mode_->v_refresh()) / 2;
+    if ((expectedPresentTime_->timestampNanos - timestamp) > half_period) {
+      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - half_period) / (1000 * 1000);
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+    }
+    expectedPresentTime_ = std::nullopt;
+  }
   if (IsInHeadlessMode()) {
     *out_present_fence = -1;
     return HWC2::Error::None;
@@ -786,6 +800,13 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
     vsync_worker_.VSyncControl(true);
   }
   return HWC2::Error::None;
+}
+
+HWC3::Error HwcDisplay::setExpectedPresentTime(
+    const std::optional<ClockMonotonicTimestamp>& expectedPresentTime) {
+  if (expectedPresentTime.has_value())
+    expectedPresentTime_ = expectedPresentTime;
+  return HWC3::Error::None;
 }
 
 HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
@@ -961,8 +982,7 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
 
-  if (NULL == outNumIntents) {
-    ALOGE("Null pointer error, outNumIntents: %p", outNumIntents);
+  if (NULL == outNumIntents || mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_P3) {
     return HWC2::Error::BadParameter;
   }
 

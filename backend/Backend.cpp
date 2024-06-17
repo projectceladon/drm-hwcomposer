@@ -18,6 +18,7 @@
 
 #include <climits>
 
+#include <aidl/android/hardware/graphics/composer3/Composition.h>
 #include "BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
 
@@ -30,6 +31,10 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
 
   auto layers = display->GetOrderLayersByZPos();
 
+  for (auto l : layers) {
+    if ((uint32_t)l->GetSfType() == (uint32_t)aidl::android::hardware::graphics::composer3::Composition::DISPLAY_DECORATION)
+      return HWC2::Error::Unsupported;
+  }
   int client_start = -1;
   size_t client_size = 0;
 

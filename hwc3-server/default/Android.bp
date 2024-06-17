@@ -43,6 +43,7 @@ cc_binary {
         "impl",
     ],
     include_dirs: [ 
+	"vendor/intel/external/drm-hwcomposer",
     ],
     header_libs: [
         "android.hardware.graphics.composer3-command-buffer",
