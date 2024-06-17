@@ -375,7 +375,12 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                     const int32_t *, const float *>);
     case HWC2::FunctionDescriptor::Invalid:
     default:
-      return nullptr;
+      if (descriptor == HWC3::HWC3_FUNCTION_SET_EXPECTED_PRESENT_TIME)
+        return ToHook<HWC3::HWC3_PFN_SET_EXPECTED_PRESENT_TIME>(
+            DisplayHook<decltype(&HwcDisplay::setExpectedPresentTime),
+                        &HwcDisplay::setExpectedPresentTime, const std::optional<ClockMonotonicTimestamp>&>);
+      else
+        return nullptr;
   }
 }
 

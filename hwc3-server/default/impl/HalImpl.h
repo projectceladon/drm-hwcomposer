@@ -27,6 +27,7 @@
 #undef HWC2_INCLUDE_STRINGIFICATION
 #undef HWC2_USE_CPP11
 
+#include "utils/hwc3.h"
 namespace aidl::android::hardware::graphics::composer3::impl {
 
 // Forward aidl call to HWC
@@ -160,6 +161,8 @@ private:
     template <typename T>
     bool initDispatch(hwc2_function_descriptor_t desc, T* outPfn);
 
+    template <typename T>
+    bool initDispatch(HWC3::hwc3_function_descriptor_t desc, T* outPfn);
     bool initDispatch();
     void initCaps();
 
@@ -243,6 +246,7 @@ private:
         HWC2_PFN_GET_CLIENT_TARGET_PROPERTY getClientTargetProperty;
         HWC2_PFN_SET_LAYER_GENERIC_METADATA setLayerGenericMetadata;
         HWC2_PFN_GET_LAYER_GENERIC_METADATA_KEY getLayerGenericMetadataKey;
+        HWC3::HWC3_PFN_SET_EXPECTED_PRESENT_TIME setExpectedPresentTime;
     } mDispatch = {};
 
     hwc2_device_t* mDevice;
