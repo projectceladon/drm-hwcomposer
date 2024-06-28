@@ -20,6 +20,7 @@ cc_library_shared {
          "idiagnostic.cpp",
          "iservice.cpp",
          "hwcserviceapi.cpp",
+         "callstack1.cpp",
      ],
      name: "libhwcservice",
      cflags: ["-fvisibility=default"] + ["-DENABLE_PANORAMA"], // ANDROIDMK TRANSLATION ERROR: unsupported conditional
@@ -32,6 +33,7 @@ cc_library_shared {
          "libutils",
          "libbinder",
          "liblog",
+         "libutilscallstack",
      ],
      compile_multilib: "both",
      export_include_dirs: ["."],

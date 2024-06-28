@@ -48,6 +48,7 @@ cc_defaults {
         "libutils",
         "libbinder",
         "libhwcservice",
+        "libutilscallstack",
     ],
 
     include_dirs: [
@@ -115,6 +116,7 @@ filegroup {
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
         "hwc2_device/hwcservice.cpp",
+        "hwc2_device/callstack.cpp",
     ],
 }
 

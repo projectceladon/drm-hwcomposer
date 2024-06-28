@@ -31,6 +31,7 @@
 #include "DrmUnique.h"
 #include "utils/hdr_metadata_defs.h"
 #include "utils/cta_hdr_defs.h"
+#include "utils/hwcdefs.h"
 
 namespace android {
 
@@ -114,6 +115,13 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return hdr_metadata_;
   }
 
+  auto &GetHdcpProperty() const {
+    return hdcp_id_property_;
+  }
+
+  auto &GetHdcpTypeProperty() const {
+    return hdcp_type_property_;
+  }
 
   auto IsConnected() const {
     return connector_->connection == DRM_MODE_CONNECTED;
@@ -144,7 +152,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   void PrepareHdrMetadata(hdr_md *layer_hdr_metadata,
                           struct hdr_output_metadata *final_hdr_metadata);
-
+  void SetHDCPState(hwcomposer::HWCContentProtection state,
+                    hwcomposer::HWCContentType content_type);
   const DrmProperty &link_status_property() const;
  private:
   DrmConnector(DrmModeConnectorUnique connector, DrmDevice *drm, uint32_t index)
@@ -167,6 +176,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;
   DrmProperty link_status_property_;
+  DrmProperty hdcp_id_property_;
+  DrmProperty hdcp_type_property_;
 
   uint32_t preferred_mode_id_{};
   //hdr_output_metadata property

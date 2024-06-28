@@ -24,6 +24,7 @@
 
 #include <utils/RefBase.h>
 #include <utils/String8.h>
+#include "callstack1.h"
 
 using namespace std;
 using namespace android;
@@ -39,7 +40,7 @@ struct HwcsContext {
 HWCSHANDLE HwcService_Connect() {
   ProcessState::self()
       ->startThreadPool();  // Required for starting binder threads
-  ALOGE("%s start",__FUNCTION__);
+  ALOGD("%s start",__FUNCTION__);
   HwcsContext context;
   context.mHwcService = interface_cast<IService>(
       defaultServiceManager()->waitForService(String16(IA_HWC_SERVICE_NAME)));
@@ -49,14 +50,16 @@ HWCSHANDLE HwcService_Connect() {
     return NULL;
   }
 
+  ALOGD("%s IService ok",__FUNCTION__);
   context.mControls = context.mHwcService->GetControls();
+  ALOGD("%s context.mControls",__FUNCTION__);
   if (context.mControls == NULL) {
     printf("%d\n", __LINE__);
     ALOGE("%s context.mControls == NULL",__FUNCTION__);
     return NULL;
   }
   printf("%d\n", __LINE__);
-  ALOGE("%s ok",__FUNCTION__);
+  ALOGD("HDcPD_ %s ok",__FUNCTION__);
   return new HwcsContext(context);
 }
 
@@ -232,6 +235,7 @@ status_t HwcService_Video_EnableHDCPSession_ForDisplay(
   if (!pContext) {
     return android::BAD_VALUE;
   }
+  ALOGD("%s content_type %d",__FUNCTION__, content_type);
 
   return pContext->mControls->EnableHDCPSessionForDisplay(connector,
                                                           content_type);
@@ -243,6 +247,7 @@ status_t HwcService_Video_EnableHDCPSession_AllDisplays(
   if (!pContext) {
     return android::BAD_VALUE;
   }
+  ALOGD("%s content_type %d",__FUNCTION__, content_type);
 
   return pContext->mControls->EnableHDCPSessionForAllDisplays(content_type);
 }

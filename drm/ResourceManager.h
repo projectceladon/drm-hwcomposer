@@ -63,6 +63,7 @@ class ResourceManager {
   auto GetOrderedConnectors() -> std::vector<DrmConnector *>;
   void UpdateFrontendDisplays();
   void DetachAllFrontendDisplays();
+  void HwcServiceThread();
 
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
@@ -79,6 +80,7 @@ class ResourceManager {
 
   bool initialized_{};
   android::HwcService hwcService_;
+  std::thread pt_;
 };
 }  // namespace android
 

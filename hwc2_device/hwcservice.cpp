@@ -21,6 +21,7 @@
 #include <binder/ProcessState.h>
 #include "utils/hwcdefs.h"
 #include "DrmHwcTwo.h"
+
 #ifdef LOG_TAG
 #undef LOG_TAG
 #define LOG_TAG "hwc-service"
@@ -83,19 +84,13 @@ bool HwcService::Start(DrmHwcTwo *hwc) {
     ALOGE("Failed to start %s service", IA_HWC_SERVICE_NAME);
     return false;
   }
-  // HWCSHANDLE hwcs = HwcService_Connect();
+
   initialized_ = true;
-  ALOGE("success to start %s service", IA_HWC_SERVICE_NAME);
-  // if (hwcs == NULL) {
-  //   ALOGE("HwcService_Connect to %s service, failed", IA_HWC_SERVICE_NAME);
-  // } else {
-  //   ALOGE("HwcService_Connect to %s service, ok", IA_HWC_SERVICE_NAME);
-  // }
+  ALOGD("success to start %s service", IA_HWC_SERVICE_NAME);
   return true;
 }
 
 String8 HwcService::GetHwcVersion() {
-  // return String8((HWC_VERSION_STRING));
   return String8("");
 }
 
@@ -237,25 +232,13 @@ status_t HwcService::Controls::DisplayEnableBlank(uint32_t display,
 
 status_t HwcService::Controls::DisplayRestoreDefaultColorParam(
     uint32_t display, EHwcsColorControl color) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // phyDisplay->RestoreVideoDefaultColor(HWCS2HWC(color));
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::DisplayRestoreDefaultDeinterlaceParam(
     uint32_t display) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // phyDisplay->RestoreVideoDefaultDeinterlace();
+  // TO DO
   return OK;
 }
 
@@ -264,183 +247,108 @@ status_t HwcService::Controls::DisplayGetColorParam(uint32_t display,
                                                     float *value,
                                                     float *startvalue,
                                                     float *endvalue) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // phyDisplay->GetVideoColor(HWCS2HWC(color), value, startvalue, endvalue);
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::DisplaySetColorParam(uint32_t display,
                                                     EHwcsColorControl color,
                                                     float value) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // phyDisplay->SetVideoColor(HWCS2HWC(color), value);
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::DisplaySetDeinterlaceParam(
     uint32_t display, EHwcsDeinterlaceControl mode) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // phyDisplay->SetVideoDeinterlace(HWCDeinterlaceFlag::kDeinterlaceFlagForce,
-  //                                 HWCS2HWCDeinterlace(mode));
+  // TO DO
   return OK;
 }
 
 std::vector<HwcsDisplayModeInfo>
 HwcService::Controls::DisplayModeGetAvailableModes(uint32_t display) {
   std::vector<HwcsDisplayModeInfo> modes;
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // uint32_t numConfigs;
-  // int32_t tempValue;
-  // phyDisplay->GetDisplayConfigs(&numConfigs, NULL);
-  // for (uint32_t i = 0; i < numConfigs; i++) {
-  //   HwcsDisplayModeInfo mode;
-  //   phyDisplay->GetDisplayAttribute(i, hwcomposer::HWCDisplayAttribute::kWidth,
-  //                                   &tempValue);
-  //   mode.width = tempValue;
-  //   phyDisplay->GetDisplayAttribute(i, hwcomposer::HWCDisplayAttribute::kHeight,
-  //                                   &tempValue);
-  //   mode.height = tempValue;
-  //   phyDisplay->GetDisplayAttribute(
-  //       i, hwcomposer::HWCDisplayAttribute::kRefreshRate, &tempValue);
-  //   mode.refresh = tempValue;
-  //   phyDisplay->GetDisplayAttribute(i, hwcomposer::HWCDisplayAttribute::kDpiX,
-  //                                   &tempValue);
-  //   mode.xdpi = tempValue;
-  //   phyDisplay->GetDisplayAttribute(i, hwcomposer::HWCDisplayAttribute::kDpiY,
-  //                                   &tempValue);
-  //   mode.ydpi = tempValue;
-  //   modes.push_back(mode);
-  // }
+  // TO DO
   return modes;
 }
 
 status_t HwcService::Controls::DisplayModeGetMode(uint32_t display,
                                                   HwcsDisplayModeInfo *pMode) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // uint32_t config;
-  // int32_t tempValue;
-  // phyDisplay->GetActiveConfig(&config);
-  // phyDisplay->GetDisplayAttribute(
-  //     config, hwcomposer::HWCDisplayAttribute::kWidth, &tempValue);
-  // pMode->width = tempValue;
-  // phyDisplay->GetDisplayAttribute(
-  //     config, hwcomposer::HWCDisplayAttribute::kHeight, &tempValue);
-  // pMode->height = tempValue;
-  // phyDisplay->GetDisplayAttribute(
-  //     config, hwcomposer::HWCDisplayAttribute::kRefreshRate, &tempValue);
-  // pMode->refresh = tempValue;
-  // phyDisplay->GetDisplayAttribute(
-  //     config, hwcomposer::HWCDisplayAttribute::kDpiX, &tempValue);
-  // pMode->xdpi = tempValue;
-  // phyDisplay->GetDisplayAttribute(
-  //     config, hwcomposer::HWCDisplayAttribute::kDpiY, &tempValue);
-  // pMode->ydpi = tempValue;
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::DisplayModeSetMode(uint32_t display,
                                                   const uint32_t config) {
-  // hwcomposer::NativeDisplay *phyDisplay;
-  // if (!display) {
-  //   phyDisplay = mHwc.GetPrimaryDisplay();
-  // } else {
-  //   phyDisplay = mHwc.GetExtendedDisplay(display - 1);
-  // }
-  // phyDisplay->SetActiveConfig(config);
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::EnableHDCPSessionForDisplay(
     uint32_t connector, EHwcsContentType content_type) {
-  // mHwc.EnableHDCPSessionForDisplay(connector, content_type);
+   mHwc.EnableHDCPSessionForDisplay(connector, content_type);
   return OK;
 }
 
 status_t HwcService::Controls::EnableHDCPSessionForAllDisplays(
     EHwcsContentType content_type) {
-  // mHwc.EnableHDCPSessionForAllDisplays(content_type);
+   mHwc.EnableHDCPSessionForAllDisplays(content_type);
   return OK;
 }
 
 status_t HwcService::Controls::DisableHDCPSessionForDisplay(
     uint32_t connector) {
-  // mHwc.DisableHDCPSessionForDisplay(connector);
+   mHwc.DisableHDCPSessionForDisplay(connector);
   return OK;
 }
 
 status_t HwcService::Controls::DisableHDCPSessionForAllDisplays() {
-  // mHwc.DisableHDCPSessionForAllDisplays();
+   mHwc.DisableHDCPSessionForAllDisplays();
   return OK;
 }
 
 status_t HwcService::Controls::SetHDCPSRMForAllDisplays(const int8_t *SRM,
                                                         uint32_t SRMLength) {
-  // mHwc.SetHDCPSRMForAllDisplays(SRM, SRMLength);
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::SetHDCPSRMForDisplay(uint32_t connector,
                                                     const int8_t *SRM,
                                                     uint32_t SRMLength) {
-  // mHwc.SetHDCPSRMForDisplay(connector, SRM, SRMLength);
+  // TO DO
   return OK;
 }
 
 uint32_t HwcService::Controls::GetDisplayIDFromConnectorID(
     uint32_t connector_id) {
-  // return mHwc.GetDisplayIDFromConnectorID(connector_id);
+  // TO DO
   return 0;
 }
 
 bool HwcService::Controls::EnableDRMCommit(bool enable, uint32_t display_id) {
-  // return mHwc.EnableDRMCommit(enable, display_id);
+  // TO DO
   return true;
 }
 
 bool HwcService::Controls::ResetDrmMaster(bool drop_master) {
-  // return mHwc.ResetDrmMaster(drop_master);
+  // TO DO
   return true;
 }
 
 status_t HwcService::Controls::VideoEnableEncryptedSession(
     uint32_t sessionID, uint32_t instanceID) {
-  // mHwc.SetPAVPSessionStatus(true, sessionID, instanceID);
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::VideoDisableAllEncryptedSessions(
     uint32_t sessionID) {
-  // mHwc.SetPAVPSessionStatus(false, -1, -1);
+  // TO DO
   return OK;
 }
 
 status_t HwcService::Controls::VideoDisableAllEncryptedSessions() {
-  // mHwc.SetPAVPSessionStatus(false, -1, -1);
+  // TO DO
   return OK;
 }
 

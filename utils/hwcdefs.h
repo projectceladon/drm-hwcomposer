@@ -46,9 +46,9 @@ enum HWCContentProtection {
 };
 
 enum HWCContentType {
-  kInvalid,        // Used when disabling HDCP.
   kCONTENT_TYPE0,  // Can support any HDCP specifiction.
   kCONTENT_TYPE1,  // Can support only HDCP 2.2 and higher specification.
+  kInvalid,        // Used when disabling HDCP.
 };
 
 enum HWCTransform : uint32_t {
