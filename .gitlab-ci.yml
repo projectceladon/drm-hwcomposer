@@ -7,6 +7,7 @@ workflow:
 
 variables:
   DEBIAN_FRONTEND: noninteractive
+  DOCKER_IMAGE_TAG: $CI_REGISTRY_IMAGE:latest
 
 before_script:
   - apt-get --quiet update --yes >/dev/null
@@ -15,9 +16,25 @@ before_script:
   - apt-get --quiet install --yes python3-mako python3-jinja2 python3-ply python3-yaml >/dev/null
 
 stages:
+  - build-container
   - build
   - tidy
   - style
+
+build-container:
+  stage: build-container
+  image: docker:27.0.3
+  services:
+    - docker:27.0.3-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - echo "$CI_JOB_TOKEN" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+  script:
+    - docker build -t $DOCKER_IMAGE_TAG -f .ci/Dockerfile .
+    - docker push $DOCKER_IMAGE_TAG
+  after_script:
+    - docker logout
 
 build:
   stage: build
