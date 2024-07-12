@@ -1017,12 +1017,6 @@ HWC2::Error HwcDisplay::GetRenderIntents(
 
     *(outIntents) = HAL_RENDER_INTENT_COLORIMETRIC;
     *(outIntents + 1) = HAL_RENDER_INTENT_ENHANCE;
-    if (mode > HAL_COLOR_MODE_DISPLAY_P3) {
-      if (conn && conn->GetRenderIntents(outNumIntents, outIntents))
-        return HWC2::Error::None;
-      else
-        return HWC2::Error::BadParameter;
-    }
   }
 
   return HWC2::Error::None;

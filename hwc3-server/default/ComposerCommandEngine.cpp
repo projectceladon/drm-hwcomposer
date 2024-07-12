@@ -139,7 +139,7 @@ int32_t ComposerCommandEngine::executeValidateDisplayInternal(int64_t display) {
     std::vector<int32_t> requestMasks;
     ClientTargetProperty clientTargetProperty{common::PixelFormat::RGBA_8888,
                                               common::Dataspace::UNKNOWN};
-    DimmingStage dimmingStage;
+    DimmingStage dimmingStage = DimmingStage::NONE;
     auto err =
             mHal->validateDisplay(display, &changedLayers, &compositionTypes, &displayRequestMask,
                                   &requestedLayers, &requestMasks, &clientTargetProperty,

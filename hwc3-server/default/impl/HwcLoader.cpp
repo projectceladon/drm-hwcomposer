@@ -59,6 +59,7 @@ hwc2_device_t* HwcLoader::openDeviceWithAdapter(const hw_module_t* module, bool*
     int error = module->methods->open(module, HWC_HARDWARE_COMPOSER, &device);
     if (error) {
         ALOGE("failed to open hwcomposer device: %s", strerror(-error));
+        device->close(device);
         return nullptr;
     }
 
@@ -77,6 +78,8 @@ hwc2_device_t* HwcLoader::adaptGrallocModule(const hw_module_t* module) {
     int error = framebuffer_open(module, &device);
     if (error) {
         ALOGE("failed to open framebuffer device: %s", strerror(-error));
+        hw_device_t**dev = TO_HW_DEVICE_T_OPEN(&device);
+        (*dev)->close(*dev);
         return nullptr;
     }
 

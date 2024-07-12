@@ -34,7 +34,7 @@ std::unique_ptr<IBufferReleaser> ResourceManager::createReleaser(bool isBuffer) 
 }
 
 void ResourceManager::clear(RemoveDisplay removeDisplay) {
-    mResources->clear([removeDisplay](Display hwcDisplay, bool isVirtual,
+    mResources->clear([&removeDisplay](Display hwcDisplay, bool isVirtual,
                                       const std::vector<Layer> hwcLayers) {
         int64_t display;
         std::vector<int64_t> layers;
