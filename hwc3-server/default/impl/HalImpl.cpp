@@ -988,7 +988,7 @@ int32_t HalImpl::setLayerPerFrameMetadataBlobs(int64_t display, int64_t layer,
     std::vector<int32_t> keys;
     std::vector<uint32_t> sizes;
     std::vector<uint8_t> values;
-    for(auto b: blobs){
+    for(auto &b: blobs){
         if(b){
             int32_t key;
             a2h::translate(b->key, key);

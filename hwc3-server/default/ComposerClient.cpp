@@ -46,13 +46,10 @@ bool ComposerClient::init() {
 }
 
 ComposerClient::~ComposerClient() {
-    DEBUG_FUNC();
     // not initialized
     if (!mCommandEngine) {
         return;
     }
-
-    LOG(DEBUG) << "destroying composer client";
 
     mHal->unregisterEventCallback();
     destroyResources();
@@ -60,8 +57,6 @@ ComposerClient::~ComposerClient() {
     if (mOnClientDestroyed) {
         mOnClientDestroyed();
     }
-
-    LOG(DEBUG) << "removed composer client";
 }
 
 // no need to check nullptr for output parameter, the aidl stub code won't pass nullptr
@@ -544,7 +539,6 @@ void ComposerClient::HalEventCallback::cleanDisplayResources(int64_t display) {
 }
 
 void ComposerClient::destroyResources() {
-    DEBUG_FUNC();
     // We want to call hwc2_close here (and move hwc2_open to the
     // constructor), with the assumption that hwc2_close would
     //

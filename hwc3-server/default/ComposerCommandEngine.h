@@ -99,7 +99,7 @@ class ComposerCommandEngine {
       IComposerHal* mHal;
       IResourceManager* mResources;
       std::unique_ptr<ComposerServiceWriter> mWriter;
-      int32_t mCommandIndex;
+      int32_t mCommandIndex = 0;
 };
 
 template <typename InputType, typename Functor>

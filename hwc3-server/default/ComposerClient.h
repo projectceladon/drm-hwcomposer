@@ -31,10 +31,12 @@ namespace aidl::android::hardware::graphics::composer3::impl {
 class ComposerClient : public BnComposerClient {
 public:
     ComposerClient(IComposerHal* hal) : mHal(hal) {}
+    ComposerClient(const ComposerClient &) = delete;
+    ComposerClient &operator=(const ComposerClient &) = delete;
     virtual ~ComposerClient();
     bool init();
     void setOnClientDestroyed(std::function<void()> onClientDestroyed) {
-        mOnClientDestroyed = onClientDestroyed;
+        mOnClientDestroyed = std::move(onClientDestroyed);
     }
 
     class HalEventCallback : public IComposerHal::EventCallback {
