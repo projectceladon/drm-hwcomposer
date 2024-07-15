@@ -244,8 +244,8 @@ void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
      * handler. This is the reason we're using recursive mutex.
      */
     hc.first(hc.second, displayid,
-             connected == DRM_MODE_CONNECTED ? HWC2_CONNECTION_CONNECTED
-                                             : HWC2_CONNECTION_DISCONNECTED);
+             connected ? HWC2_CONNECTION_CONNECTED
+                       : HWC2_CONNECTION_DISCONNECTED);
   }
 }
 
