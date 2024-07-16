@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-vsync-worker"
+#define LOG_TAG "drmhwc"
 
 #include "VSyncWorker.h"
 

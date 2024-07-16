@@ -17,7 +17,7 @@
 #undef NDEBUG /* Required for assert to work */
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
-#define LOG_TAG "hwc-drm-atomic-state-manager"
+#define LOG_TAG "drmhwc"
 
 #include "DrmAtomicStateManager.h"
 

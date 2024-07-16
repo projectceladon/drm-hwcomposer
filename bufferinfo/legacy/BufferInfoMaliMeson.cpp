@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-bufferinfo-mali-meson"
+#define LOG_TAG "drmhwc"
 
 #include "BufferInfoMaliMeson.h"
 

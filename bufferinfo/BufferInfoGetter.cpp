@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-buffer-info-getter"
+#define LOG_TAG "drmhwc"
 
 #include "BufferInfoGetter.h"
 

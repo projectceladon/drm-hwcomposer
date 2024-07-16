@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-drm-display-pipeline"
+#define LOG_TAG "drmhwc"
 
 #include "DrmDisplayPipeline.h"
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-resource-manager"
+#define LOG_TAG "drmhwc"
 
 #include "ResourceManager.h"
 

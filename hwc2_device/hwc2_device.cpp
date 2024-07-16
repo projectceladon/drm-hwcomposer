@@ -17,7 +17,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 // #define LOG_NDEBUG 0 // Uncomment to see HWC2 API calls in logcat
 
-#define LOG_TAG "hwc2-device"
+#define LOG_TAG "drmhwc"
 
 #include <cinttypes>
 

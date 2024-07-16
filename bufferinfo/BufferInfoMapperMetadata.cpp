@@ -16,7 +16,7 @@
 
 #if __ANDROID_API__ >= 30
 
-#define LOG_TAG "hwc-bufferinfo-mappermetadata"
+#define LOG_TAG "drmhwc"
 
 #include "BufferInfoMapperMetadata.h"
 

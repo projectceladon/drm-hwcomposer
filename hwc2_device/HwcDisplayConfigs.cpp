@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-display-configs"
+#define LOG_TAG "drmhwc"
 
 #include "HwcDisplayConfigs.h"
 

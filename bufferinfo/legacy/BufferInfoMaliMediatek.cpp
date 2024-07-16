@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-bufferinfo-mali-mediatek"
+#define LOG_TAG "drmhwc"
 
 #include "BufferInfoMaliMediatek.h"
 

@@ -29,7 +29,7 @@
  * composed by the client into a single framebuffer using GPU.
  */
 
-#define LOG_TAG "hwc-flatcon"
+#define LOG_TAG "drmhwc"
 
 #include "FlatteningController.h"
 

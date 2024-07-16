@@ -15,7 +15,7 @@
  */
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LOG_TAG "hwc-drm-property"
+#define LOG_TAG "drmhwc"
 
 #include "DrmProperty.h"
 

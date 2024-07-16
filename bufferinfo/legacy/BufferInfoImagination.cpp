@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-bufferinfo-imagination"
+#define LOG_TAG "drmhwc"
 
 #include "BufferInfoImagination.h"
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-backend"
+#define LOG_TAG "drmhwc"
 
 #include "BackendManager.h"
 

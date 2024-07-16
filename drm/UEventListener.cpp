@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-uevent-listener"
+#define LOG_TAG "drmhwc"
 
 #include "UEventListener.h"
 

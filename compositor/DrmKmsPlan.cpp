@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-composition-drm-kms-plan"
+#define LOG_TAG "drmhwc"
 
 #include "DrmKmsPlan.h"
 

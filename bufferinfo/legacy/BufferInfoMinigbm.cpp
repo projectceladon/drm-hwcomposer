@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-bufferinfo-minigbm"
+#define LOG_TAG "drmhwc"
 
 #include "BufferInfoMinigbm.h"
 

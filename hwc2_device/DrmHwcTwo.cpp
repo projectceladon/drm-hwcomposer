@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-drm-two"
+#define LOG_TAG "drmhwc"
 
 #include "DrmHwcTwo.h"
 

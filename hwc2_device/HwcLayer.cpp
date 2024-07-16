@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-layer"
+#define LOG_TAG "drmhwc"
 
 #include "HwcLayer.h"
 

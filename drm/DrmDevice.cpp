@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "hwc-drm-device"
+#define LOG_TAG "drmhwc"
 
 #include "DrmDevice.h"
 

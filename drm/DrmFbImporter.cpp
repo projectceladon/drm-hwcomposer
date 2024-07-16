@@ -17,7 +17,7 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LOG_TAG "hwc-platform-drm-generic"
+#define LOG_TAG "drmhwc"
 
 #include "DrmFbImporter.h"
 
