@@ -149,6 +149,48 @@ cc_library_shared {
     ],
 }
 
+cc_binary {
+    name: "android.hardware.composer.hwc3-service.drm",
+
+    srcs: [
+      ":drm_hwcomposer_hwc3",
+      ":drm_hwcomposer_service",
+      ":drm_hwcomposer_common",
+      "bufferinfo/legacy/BufferInfoLibdrm.cpp",
+    ],
+
+    defaults: [
+        "hwcomposer.drm_defaults",
+    ],
+
+    shared_libs: [
+        "android.hardware.graphics.composer3-V1-ndk",
+        "libbase",
+        "libbinder",
+        "libbinder_ndk",
+        "liblog",
+        "libutils",
+    ],
+
+    cflags: [
+        "-Wall",
+        "-Werror",
+
+        "-DUSE_IMAPPER4_METADATA_API",
+    ],
+
+    cppflags: [
+        "-DHWC2_INCLUDE_STRINGIFICATION",
+        "-DHWC2_USE_CPP11",
+    ],
+
+    relative_install_path: "hw",
+    vendor: true,
+
+    vintf_fragments: [":drm_hwcomposer_vintf_manifest"],
+    init_rc: [":drm_hwcomposer_init_rc"],
+}
+
 // Used by hwcomposer.drm_imagination
 filegroup {
     name: "drm_hwcomposer_platformimagination",
