@@ -618,7 +618,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
 HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
-  if (expectedPresentTime_.has_value()) {
+  if (expectedPresentTime_.has_value() && expectedPresentTime_->timestampNanos > 0) {
     static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
     struct timespec vsync {};
     clock_gettime(CLOCK_MONOTONIC, &vsync);
@@ -629,6 +629,8 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
     }
     expectedPresentTime_ = std::nullopt;
+  } else {
+    std::this_thread::sleep_for(std::chrono::nanoseconds((int64_t)(1E9 / staged_mode_->v_refresh()) / 2));
   }
   if (IsInHeadlessMode()) {
     *out_present_fence = -1;
