@@ -55,7 +55,7 @@ hwc2_device_t* HwcLoader::openDeviceWithAdapter(const hw_module_t* module, bool*
         return adaptGrallocModule(module);
     }
 
-    hw_device_t* device;
+    hw_device_t* device = nullptr;
     int error = module->methods->open(module, HWC_HARDWARE_COMPOSER, &device);
     if (error) {
         ALOGE("failed to open hwcomposer device: %s", strerror(-error));
@@ -73,12 +73,13 @@ hwc2_device_t* HwcLoader::openDeviceWithAdapter(const hw_module_t* module, bool*
 }
 
 hwc2_device_t* HwcLoader::adaptGrallocModule(const hw_module_t* module) {
-    framebuffer_device_t* device;
+    framebuffer_device_t* device = nullptr;
     int error = framebuffer_open(module, &device);
     if (error) {
         ALOGE("failed to open framebuffer device: %s", strerror(-error));
         return nullptr;
     }
+
 
     return new ::android::HWC2OnFbAdapter(device);
 }
