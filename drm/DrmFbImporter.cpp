@@ -93,7 +93,7 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   return local;
 }
 
-DrmFbIdHandle::~DrmFbIdHandle() {
+DrmFbIdHandle::~DrmFbIdHandle() noexcept {
   ATRACE_NAME("Close FB and dmabufs");
 
   /* Destroy framebuffer object */

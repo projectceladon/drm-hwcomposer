@@ -80,7 +80,6 @@ hwc2_device_t* HwcLoader::adaptGrallocModule(const hw_module_t* module) {
         return nullptr;
     }
 
-
     return new ::android::HWC2OnFbAdapter(device);
 }
 
