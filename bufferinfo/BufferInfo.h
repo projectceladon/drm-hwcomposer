@@ -46,6 +46,7 @@ struct BufferInfo {
   uint32_t format; /* DRM_FORMAT_* from drm_fourcc.h */
   uint32_t pitches[kBufferMaxPlanes];
   uint32_t offsets[kBufferMaxPlanes];
+  uint64_t usage;
   /* sizes[] is used only by mapper@4 metadata getter for internal purposes */
   uint32_t sizes[kBufferMaxPlanes];
   int prime_fds[kBufferMaxPlanes];
