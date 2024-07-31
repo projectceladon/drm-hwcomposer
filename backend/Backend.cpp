@@ -22,6 +22,11 @@
 #include "BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
 
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
+#define LOG_TAG "hwc-backend"
+
 namespace android {
 
 HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
@@ -71,19 +76,47 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
 }
 
 std::tuple<int, size_t> Backend::GetClientLayers(
-    HwcDisplay *display, const std::vector<HwcLayer *> &layers) {
+    HwcDisplay *display, std::vector<HwcLayer *> &layers) {
   int client_start = -1;
   size_t client_size = 0;
 
+  int device_start = -1;
+  size_t device_size = 0;
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (IsClientLayer(display, layers[z_order])) {
       if (client_start < 0)
         client_start = (int)z_order;
       client_size = (z_order - client_start) + 1;
     }
+    if (IsVideoLayer(layers[z_order])) {
+      if (device_start < 0)
+        device_start = (int)z_order;
+      device_size = (z_order - device_start) + 1;
+    }
+  }
+  if (device_size == 0)
+    return GetExtraClientRange(display, layers, client_start, client_size);
+  else {
+    bool status = true;
+    MarkValidated(layers, client_start, client_size);
+    for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
+      if (z_order >= client_start &&
+          z_order <= (client_start + client_size - 1) &&
+          IsVideoLayer(layers[z_order]))
+        status = false;
+
+      if (z_order >= device_start &&
+          z_order <= (device_start + device_size - 1) &&
+          layers[z_order]->GetValidatedType() == HWC2::Composition::Client)
+        status = false;
+    }
+    if (!status) {
+      ALOGE("status is abnormal");
+      return GetExtraClientRange(display, layers, client_start, client_size);
+    }
+    return GetExtraClientRange2(display, layers, client_start, client_size, device_start, device_size);
   }
 
-  return GetExtraClientRange(display, layers, client_start, client_size);
 }
 
 bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
@@ -92,6 +125,13 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
           display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
+}
+
+bool Backend::IsVideoLayer(HwcLayer *layer) {
+  std::optional<BufferInfo> bi;
+  if (layer->GetBufferHandle())
+    bi = BufferInfoGetter::GetInstance()->GetBoInfo(layer->GetBufferHandle());
+  return bi && bi->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;
 }
 
 bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
@@ -166,6 +206,97 @@ std::tuple<int, int> Backend::GetExtraClientRange(
   return std::make_tuple(client_start, client_size);
 }
 
+std::tuple<int, int> Backend::GetExtraClientRange2(
+    HwcDisplay *display, const std::vector<HwcLayer *> &layers,
+    int client_start, size_t client_size, int device_start, size_t device_size) {
+  auto planes = display->GetPipe().GetUsablePlanes();
+  size_t avail_planes = planes.size();
+
+  /*
+   * If more layers then planes, save one plane
+   * for client composited layers
+   */
+  if (avail_planes < display->layers().size())
+    avail_planes--;
+
+  if (avail_planes < device_size) {
+    ALOGE("too many device video layers(%zd), no enough planes(%zd) to use", device_size, avail_planes);
+    return GetExtraClientRange(display, layers, client_start, client_size);
+  } else if (avail_planes == device_size) {
+    if (device_start != 0 && (device_start +  device_size) != layers.size()) {
+      ALOGE("status is abnormal");
+      return GetExtraClientRange(display, layers, client_start, client_size);
+    }
+
+    if (device_start == 0)
+      return std::make_tuple(device_start + device_size, layers.size() - device_size);
+    else
+      return std::make_tuple(0, layers.size() - device_size);
+  } else {
+    if (client_start == -1) {
+      int extra_device = std::min(layers.size() - device_size - client_size, avail_planes - device_size);
+      int prepend = device_start;
+      int append = layers.size() - (device_start + device_size);
+      if (std::min(prepend, append) > extra_device) {
+        ALOGE("status is abnormal");
+        return GetExtraClientRange(display, layers, client_start, client_size);
+      }
+
+      if (prepend == std::min(prepend, append)) {
+        int remain = extra_device - prepend;
+        return std::make_tuple(device_start + device_size + remain, layers.size() - extra_device - device_size);
+      }
+      if (append == std::min(prepend, append)) {
+        return std::make_tuple(0, layers.size() - extra_device - device_size);
+      }
+    } else {
+      int extra_device = std::min(layers.size() - device_size - client_size, avail_planes - device_size);
+      if (client_start > device_start) {
+        int prepend = device_start;
+        int midpend = client_start - (device_start + device_size);
+        int append = layers.size() - (client_start + client_size);
+        if (prepend > extra_device) {
+          ALOGE("status is abnormal");
+          return GetExtraClientRange(display, layers, client_start, client_size);
+        }
+        int remain = extra_device - prepend;
+        if (remain == 0) {
+          return std::make_tuple(device_start + device_size, layers.size() - extra_device - device_size);
+        } else {
+          midpend = std::min(midpend, remain);
+          if (midpend == remain) {
+            return std::make_tuple(device_start + device_size + midpend,
+                                    layers.size() - prepend - midpend - device_size);
+          } else {
+            return std::make_tuple(device_start + device_size + midpend,
+                                  layers.size() - prepend - midpend - std::min(remain - midpend, append) - device_size);
+          }
+        }
+      } else {
+        int prepend = client_start;
+        int midpend = device_start - (client_start + client_size);
+        int append = layers.size() - (device_start + device_size);
+        if (append > extra_device) {
+          ALOGE("status is abnormal");
+          return GetExtraClientRange(display, layers, client_start, client_size);
+        }
+        int remain = extra_device - append;
+        if (remain == 0)
+          return std::make_tuple(0, layers.size() - extra_device - device_size);
+        else {
+          midpend = std::min(midpend, remain);
+          if (midpend == remain) {
+            return std::make_tuple(0, layers.size() - append - midpend - device_size);
+          } else {
+            return std::make_tuple(std::min(remain - midpend, prepend),
+                    layers.size() - append - midpend - std::min(remain - midpend, prepend) - device_size);
+          }
+        }
+      }
+    }
+  }
+  return GetExtraClientRange(display, layers, client_start, client_size);
+}
 // clang-format off
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables, cert-err58-cpp)
 REGISTER_BACKEND("generic", Backend);
