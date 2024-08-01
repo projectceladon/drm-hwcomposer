@@ -73,7 +73,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     return -ENOMEM;
   }
 
-  int out_fence = -1;
+  int out_fence = 0;
   if (!crtc->GetOutFencePtrProperty().AtomicSet(*pset, uint64_t(&out_fence))) {
     return -EINVAL;
   }
@@ -135,7 +135,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     hdr_md& hdr_metadata =  connector->GetHdrMatedata();
     if (has_hdr_layer && hdr_metadata.valid) {
       struct hdr_output_metadata final_hdr_metadata;
-      uint32_t id;
+      uint32_t id = 0;
       connector->PrepareHdrMetadata(&hdr_metadata, &final_hdr_metadata);
       drmModeCreatePropertyBlob(drm->GetFd(), (void *)&final_hdr_metadata,
                                 sizeof(final_hdr_metadata), &id);
@@ -234,8 +234,8 @@ PresentTrackerThread::PresentTrackerThread(DrmAtomicStateManager *st_man)
   pt_ = std::thread(&PresentTrackerThread::PresentTrackerThreadFn, this);
 }
 
-PresentTrackerThread::~PresentTrackerThread() {
-  ALOGI("PresentTrackerThread successfully destroyed");
+PresentTrackerThread::~PresentTrackerThread() noexcept {
+	ALOGI("PresentTrackerThread successfully destroyed");
 }
 
 void PresentTrackerThread::PresentTrackerThreadFn() {

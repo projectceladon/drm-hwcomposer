@@ -93,7 +93,7 @@ class DrmAtomicStateManager {
         ptt_(std::make_unique<PresentTrackerThread>(this).release()){};
 
   DrmAtomicStateManager(const DrmAtomicStateManager &) = delete;
-  ~DrmAtomicStateManager() {
+  ~DrmAtomicStateManager() noexcept {
     ptt_->Stop();
   }
 

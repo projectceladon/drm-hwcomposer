@@ -25,7 +25,7 @@ Worker::Worker(const char *name, int priority)
     : name_(name), priority_(priority), exit_(false), initialized_(false) {
 }
 
-Worker::~Worker() {
+Worker::~Worker() noexcept {
   Exit();
 }
 

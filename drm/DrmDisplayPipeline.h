@@ -48,7 +48,7 @@ class PipelineBindable {
       -> std::shared_ptr<BindingOwner<O>>;
 
  private:
-  DrmDisplayPipeline *bound_pipeline_;
+  DrmDisplayPipeline *bound_pipeline_ = NULL;
   std::weak_ptr<BindingOwner<O>> owner_object_;
 };
 

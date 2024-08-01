@@ -139,7 +139,7 @@ auto DrmMode::CreateModeBlob(const DrmDevice &drm)
       .flags = flags_,
       .type = type_,
   };
-  strncpy(drm_mode.name, name_.c_str(), DRM_DISPLAY_MODE_LEN);
+  strncpy(drm_mode.name, name_.c_str(), DRM_DISPLAY_MODE_LEN - 1);
 
   return drm.RegisterUserPropertyBlob(&drm_mode,
                                        sizeof(struct drm_mode_modeinfo));

@@ -49,7 +49,7 @@ auto DrmDevice::CreateInstance(std::string const &path,
   return device;
 }
 
-DrmDevice::DrmDevice(ResourceManager *res_man) : res_man_(res_man) {
+DrmDevice::DrmDevice(ResourceManager *res_man) : res_man_(res_man), preferred_mode_limit_(false), planes_enabling_(false), planes_num_(0), color_adjustment_enabling_(false) {
   drm_fb_importer_ = std::make_unique<DrmFbImporter>(*this);
 }
 

@@ -178,7 +178,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   struct cta_display_color_primaries primaries_ = {};
 
   /* Display's static HDR metadata */
-  struct cta_edid_hdr_metadata_static *display_hdrMd_;
+  struct cta_edid_hdr_metadata_static *display_hdrMd_ = nullptr;
 
   hdr_md hdr_metadata_;
 };

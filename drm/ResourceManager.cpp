@@ -41,7 +41,7 @@ ResourceManager::ResourceManager(
   }
 }
 
-ResourceManager::~ResourceManager() {
+ResourceManager::~ResourceManager() noexcept {
   uevent_listener_.Exit();
 }
 
@@ -115,8 +115,17 @@ void ResourceManager::Init() {
       std::ostringstream path;
       path << path_pattern << card_id;
       auto dev = DrmDevice::CreateInstance(path.str(), this);
-      if (dev) {
-        drms_.emplace_back(std::move(dev));
+      if (dev && dev->GetName() == "i915") { // iGPU+dGPU, use iGPU(card0) for display
+        std::ostringstream path;
+        path << path_pattern << 0;
+        auto dev = DrmDevice::CreateInstance(path.str(), this);
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+      } else { // SR-IOV, use virtio-gpu(card1) for display
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
       }
     }
     // is SRI-IOV + dGPU, use virtio-gpu for display

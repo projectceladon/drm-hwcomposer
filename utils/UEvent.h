@@ -57,7 +57,7 @@ class UEvent {
 
   auto ReadNext() -> std::optional<std::string> {
     constexpr int kUEventBufferSize = 1024;
-    char buffer[kUEventBufferSize];
+    char buffer[kUEventBufferSize + 1];
     ssize_t ret = 0;
     ret = read(fd_.Get(), &buffer, sizeof(buffer));
     if (ret == 0)
@@ -66,6 +66,12 @@ class UEvent {
     if (ret < 0) {
       ALOGE("Got error reading uevent %zd", ret);
       return {};
+    }
+
+    if(ret < kUEventBufferSize){
+	    buffer[ret] = '\0';
+    } else {
+	    buffer[kUEventBufferSize] = '\0';
     }
 
     for (int i = 0; i < ret - 1; i++) {
