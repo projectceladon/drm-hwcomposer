@@ -18,7 +18,25 @@
 
 #include <cinttypes>
 
+#include "Utils.h"
+#include "aidl/android/hardware/graphics/common/Dataspace.h"
+
 namespace aidl::android::hardware::graphics::composer3::impl {
+
+using ::android::HwcDisplay;
+
+// NOLINTNEXTLINE(bugprone-exception-escape)
+DrmHwcThree::~DrmHwcThree() {
+  std::vector<uint64_t> display_ids;
+  display_ids.reserve(Displays().size());
+  for (auto& [display_id, display] : Displays()) {
+    display_ids.push_back(display_id);
+  }
+
+  for (auto display_id : display_ids) {
+    RemoveAndDestroyDisplay(display_id);
+  }
+}
 
 void DrmHwcThree::Init(std::shared_ptr<IComposerCallback> callback) {
   composer_callback_ = std::move(callback);
@@ -38,6 +56,7 @@ void DrmHwcThree::SendVsyncPeriodTimingChangedEventToClient(
 }
 
 void DrmHwcThree::SendRefreshEventToClient(uint64_t display_id) {
+  composer_resources_->SetDisplayMustValidateState(display_id, true);
   composer_callback_->onRefresh(static_cast<int64_t>(display_id));
 }
 
@@ -49,7 +68,83 @@ void DrmHwcThree::SendVsyncEventToClient(uint64_t display_id, int64_t timestamp,
 
 void DrmHwcThree::SendHotplugEventToClient(hwc2_display_t display_id,
                                            bool connected) {
+  HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), connected);
   composer_callback_->onHotplug(static_cast<int64_t>(display_id), connected);
+}
+
+void DrmHwcThree::RemoveAndDestroyDisplay(uint64_t display_id) {
+  DEBUG_FUNC();
+  HwcDisplay* display = GetDisplay(display_id);
+  if (display == nullptr) {
+    return;
+  }
+
+  display->SetPowerMode(static_cast<int32_t>(HWC2::PowerMode::Off));
+  display->Deinit();
+
+  composer_resources_->RemoveDisplay(static_cast<int64_t>(display_id));
+  Displays().erase(display_id);
+}
+
+void DrmHwcThree::CleanDisplayResources(uint64_t display_id) {
+  DEBUG_FUNC();
+  HwcDisplay* display = GetDisplay(display_id);
+  if (display == nullptr) {
+    return;
+  }
+
+  display->SetPowerMode(static_cast<int32_t>(PowerMode::OFF));
+
+  size_t cache_size = 0;
+  auto err = composer_resources_->GetDisplayClientTargetCacheSize(display_id,
+                                                                  &cache_size);
+  if (err != hwc3::Error::kNone) {
+    ALOGE("%s: Could not clear target buffer cache for display: %" PRIu64,
+          __func__, display_id);
+    return;
+  }
+
+  for (size_t slot = 0; slot < cache_size; slot++) {
+    buffer_handle_t buffer_handle = nullptr;
+    auto buf_releaser = ComposerResources::CreateResourceReleaser(true);
+
+    Buffer buf{};
+    buf.slot = static_cast<int32_t>(slot);
+    err = composer_resources_->GetDisplayClientTarget(display_id, buf,
+                                                      &buffer_handle,
+                                                      buf_releaser.get());
+    if (err != hwc3::Error::kNone) {
+      continue;
+    }
+
+    err = Hwc2toHwc3Error(
+        display->SetClientTarget(buffer_handle, -1,
+                                 static_cast<int32_t>(
+                                     common::Dataspace::UNKNOWN),
+                                 {}));
+    if (err != hwc3::Error::kNone) {
+      ALOGE(
+          "%s: Could not clear slot %zu of the target buffer cache for "
+          "display %" PRIu64,
+          __func__, slot, display_id);
+    }
+  }
+}
+
+void DrmHwcThree::HandleDisplayHotplugEvent(uint64_t display_id,
+                                            bool connected) {
+  DEBUG_FUNC();
+  if (!connected) {
+    composer_resources_->RemoveDisplay(display_id);
+    return;
+  }
+
+  if (composer_resources_->HasDisplay(display_id)) {
+    /* Cleanup existing display resources */
+    CleanDisplayResources(display_id);
+    composer_resources_->RemoveDisplay(display_id);
+  }
+  composer_resources_->AddPhysicalDisplay(display_id);
 }
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl

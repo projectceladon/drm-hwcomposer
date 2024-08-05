@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "drmhwc"
 #define ATRACE_TAG (ATRACE_TAG_GRAPHICS | ATRACE_TAG_HAL)
 
 #include "Composer.h"
@@ -21,38 +22,51 @@
 #include <android-base/logging.h>
 #include <android/binder_ibinder_platform.h>
 
+#include "hwc3/ComposerClient.h"
+#include "hwc3/Utils.h"
 #include "utils/log.h"
 
 namespace aidl::android::hardware::graphics::composer3::impl {
-
-// NOLINTNEXTLINE
-#define DEBUG_FUNC() ALOGV("%s", __func__)
 
 ndk::ScopedAStatus Composer::createClient(
     std::shared_ptr<IComposerClient>* out_client) {
   DEBUG_FUNC();
 
   auto client = ndk::SharedRefBase::make<ComposerClient>();
-  if (!client) {
+  if (!client || !client->Init()) {
     *out_client = nullptr;
-    return ndk::ScopedAStatus::fromServiceSpecificError(EX_NO_RESOURCES);
+    return ToBinderStatus(hwc3::Error::kNoResources);
   }
 
   *out_client = client;
+  client_ = client;
 
   return ndk::ScopedAStatus::ok();
 }
 
 binder_status_t Composer::dump(int fd, const char** /*args*/,
                                uint32_t /*numArgs*/) {
-  auto output = std::string("hwc3-drm");
-  write(fd, output.c_str(), output.size());
+  std::stringstream output;
+  output << "hwc3-drm\n\n";
+
+  auto client_instance = client_.lock();
+  if (!client_instance) {
+    return STATUS_OK;
+  }
+
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
+  auto* client = static_cast<ComposerClient*>(client_instance.get());
+  output << client->Dump();
+
+  auto output_str = output.str();
+  write(fd, output_str.c_str(), output_str.size());
   return STATUS_OK;
 }
 
-ndk::ScopedAStatus Composer::getCapabilities(
-    std::vector<Capability>* /*caps*/) {
+ndk::ScopedAStatus Composer::getCapabilities(std::vector<Capability>* caps) {
   DEBUG_FUNC();
+  /* No capabilities advertised */
+  caps->clear();
   return ndk::ScopedAStatus::ok();
 }
 

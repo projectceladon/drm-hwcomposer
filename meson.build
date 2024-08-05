@@ -35,6 +35,9 @@ deps = [
     dependency('sync'),
     dependency('ui'),
     dependency('utils'),
+    dependency('aidlcommonsupport'),
+    dependency('android.hardware.graphics.composer@2.1-resources'),
+    dependency('android.hardware.graphics.composer@2.2-resources'),
 ]
 
 common_cpp_flags = [

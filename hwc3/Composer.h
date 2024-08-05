@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include <aidl/android/hardware/graphics/composer3/BnComposer.h>
 #include <utils/Mutex.h>
 
-#include "ComposerClient.h"
+#include <memory>
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
@@ -36,6 +36,9 @@ class Composer : public BnComposer {
 
  protected:
   ::ndk::SpAIBinder createBinder() override;
+
+ private:
+  std::weak_ptr<IComposerClient> client_;
 };
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl

@@ -19,13 +19,16 @@
 #include <aidl/android/hardware/graphics/composer3/IComposerCallback.h>
 
 #include "drm/DrmHwc.h"
+#include "hwc3/ComposerResources.h"
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
 class DrmHwcThree : public ::android::DrmHwc {
  public:
-  DrmHwcThree() = default;
-  ~DrmHwcThree() override = default;
+  explicit DrmHwcThree(ComposerResources* composer_resources)
+      : composer_resources_(composer_resources) {
+  }
+  ~DrmHwcThree() override;
 
   void Init(std::shared_ptr<IComposerCallback> callback);
 
@@ -39,6 +42,11 @@ class DrmHwcThree : public ::android::DrmHwc {
                                 bool connected) override;
 
  private:
+  void RemoveAndDestroyDisplay(uint64_t display_id);
+  void CleanDisplayResources(uint64_t display_id);
+  void HandleDisplayHotplugEvent(uint64_t display_id, bool connected);
+
   std::shared_ptr<IComposerCallback> composer_callback_;
+  ComposerResources* composer_resources_;
 };
 }  // namespace aidl::android::hardware::graphics::composer3::impl

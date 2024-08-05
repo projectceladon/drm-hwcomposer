@@ -4,15 +4,17 @@ src_hwc3 = files(
     'Composer.cpp',
     'DrmHwcThree.cpp',
     'service.cpp',
+    'ComposerResources.cpp',
+    'Utils.cpp',
 )
 
 executable(
     'android.hardware.composer.hwc3-service.drm',
     src_hwc3,
-    cpp_args : common_cpp_flags,
+    cpp_args : common_cpp_flags + hwc2_cpp_flags,
     dependencies : deps,
     install : true,
-    link_with: drmhwc_common,
+    link_with: [drmhwc_common, drmhwc_hwc2_common],
     install_dir : get_option('bindir') / 'hw',
     include_directories: inc_include,
 )

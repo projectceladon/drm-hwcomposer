@@ -25,6 +25,8 @@ cc_defaults {
     name: "hwcomposer.drm_defaults",
 
     shared_libs: [
+        "android.hardware.graphics.composer@2.1-resources",
+        "android.hardware.graphics.composer@2.2-resources",
         "libcutils",
         "libdrm",
         "libhardware",
@@ -35,7 +37,13 @@ cc_defaults {
         "libutils",
     ],
 
-    header_libs: ["drm_hwcomposer_headers"],
+    static_libs: [
+        "libaidlcommonsupport",
+    ],
+
+    header_libs: [
+        "drm_hwcomposer_headers",
+    ],
 
     cflags: [
         "-Wall",
@@ -99,6 +107,9 @@ filegroup {
     srcs: [
         "hwc3/Composer.cpp",
         "hwc3/ComposerClient.cpp",
+        "hwc3/ComposerResources.cpp",
+        "hwc3/DrmHwcThree.cpp",
+        "hwc3/Utils.cpp",
         "hwc3/DrmHwcThree.cpp",
     ],
 }

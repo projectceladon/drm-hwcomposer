@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,41 @@
 
 #pragma once
 
-#include <aidl/android/hardware/graphics/common/DisplayDecorationSupport.h>
-#include <aidl/android/hardware/graphics/composer3/BnComposerClient.h>
-#include <utils/Mutex.h>
-
 #include <memory>
+
+#include "aidl/android/hardware/graphics/composer3/BnComposerClient.h"
+#include "aidl/android/hardware/graphics/composer3/LayerCommand.h"
+#include "hwc3/CommandResultWriter.h"
+#include "hwc3/ComposerResources.h"
+#include "hwc3/Utils.h"
+#include "utils/Mutex.h"
 
 using AidlPixelFormat = aidl::android::hardware::graphics::common::PixelFormat;
 using AidlNativeHandle = aidl::android::hardware::common::NativeHandle;
 
+namespace android {
+
+class HwcDisplay;
+class HwcLayer;
+
+}  // namespace android
+
 namespace aidl::android::hardware::graphics::composer3::impl {
+
+class DrmHwcThree;
+
+struct HwcLayerWrapper {
+  int64_t layer_id;
+  ::android::HwcLayer* layer;
+};
 
 class ComposerClient : public BnComposerClient {
  public:
-  ComposerClient() = default;
+  ComposerClient();
   ~ComposerClient() override;
+
+  bool Init();
+  std::string Dump();
 
   // composer3 interface
   ndk::ScopedAStatus createLayer(int64_t display, int32_t buffer_slot_count,
@@ -119,6 +139,71 @@ class ComposerClient : public BnComposerClient {
 
  protected:
   ::ndk::SpAIBinder createBinder() override;
+
+ private:
+  // Layer commands
+  void DispatchLayerCommand(int64_t display_id, const LayerCommand& command);
+  void ExecuteSetLayerBuffer(int64_t display_id, HwcLayerWrapper& layer_id,
+                             const Buffer& buffer);
+  void ExecuteSetLayerBlendMode(int64_t display_id, HwcLayerWrapper& layer,
+                                const ParcelableBlendMode& blend_mode);
+  void ExecuteSetLayerComposition(int64_t display_id, HwcLayerWrapper& layer,
+                                  const ParcelableComposition& composition);
+  void ExecuteSetLayerDataspace(int64_t display_id, HwcLayerWrapper& layer,
+                                const ParcelableDataspace& dataspace);
+  void ExecuteSetLayerDisplayFrame(int64_t display_id, HwcLayerWrapper& layer,
+                                   const common::Rect& rect);
+  void ExecuteSetLayerPlaneAlpha(int64_t display_id, HwcLayerWrapper& layer,
+                                 const PlaneAlpha& plane_alpha);
+  void ExecuteSetLayerSourceCrop(int64_t display_id, HwcLayerWrapper& layer,
+                                 const common::FRect& source_crop);
+  void ExecuteSetLayerTransform(int64_t display_id, HwcLayerWrapper& layer,
+                                const ParcelableTransform& transform);
+  void ExecuteSetLayerZOrder(int64_t display_id, HwcLayerWrapper& layer,
+                             const ZOrder& z_order);
+  void ExecuteSetLayerBrightness(int64_t display_id, HwcLayerWrapper& layer,
+                                 const LayerBrightness& brightness);
+
+  // Display commands
+  void ExecuteDisplayCommand(const DisplayCommand& command);
+  void ExecuteSetDisplayBrightness(uint64_t display_id,
+                                   const DisplayBrightness& command);
+  void ExecuteSetDisplayColorTransform(uint64_t display_id,
+                                       const std::vector<float>& matrix);
+  void ExecuteSetDisplayClientTarget(uint64_t display_id,
+                                     const ClientTarget& command);
+  void ExecuteSetDisplayOutputBuffer(uint64_t display_id, const Buffer& buffer);
+  void ExecuteValidateDisplay(
+      int64_t display_id,
+      std::optional<ClockMonotonicTimestamp> expected_present_time);
+  void ExecuteAcceptDisplayChanges(int64_t display_id);
+  void ExecutePresentDisplay(int64_t display_id);
+  void ExecutePresentOrValidateDisplay(
+      int64_t display_id,
+      std::optional<ClockMonotonicTimestamp> expected_present_time);
+
+  static hwc3::Error ValidateDisplayInternal(
+      ::android::HwcDisplay& display, std::vector<int64_t>* out_changed_layers,
+      std::vector<Composition>* out_composition_types,
+      int32_t* out_display_request_mask,
+      std::vector<int64_t>* out_requested_layers,
+      std::vector<int32_t>* out_request_masks,
+      ClientTargetProperty* out_client_target_property,
+      DimmingStage* out_dimming_stage);
+
+  hwc3::Error PresentDisplayInternal(
+      uint64_t display_id, ::android::base::unique_fd& out_display_fence,
+      std::unordered_map<int64_t, ::android::base::unique_fd>&
+          out_release_fences);
+
+  ::android::HwcDisplay* GetDisplay(uint64_t display_id);
+
+  std::unique_ptr<CommandResultWriter> cmd_result_writer_;
+
+  // Manages importing and caching gralloc buffers for displays and layers.
+  std::unique_ptr<ComposerResources> composer_resources_;
+
+  std::unique_ptr<DrmHwcThree> hwc_;
 };
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl
