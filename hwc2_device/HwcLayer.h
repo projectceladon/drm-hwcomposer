@@ -114,6 +114,7 @@ class HwcLayer {
  public:
   void PopulateLayerData(bool test);
 
+  buffer_handle_t GetBufferHandle() {return buffer_handle_;}
   bool IsLayerUsableAsDevice() const {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
