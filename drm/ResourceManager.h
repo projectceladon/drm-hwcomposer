@@ -63,8 +63,11 @@ class ResourceManager {
   auto GetOrderedConnectors() -> std::vector<DrmConnector *>;
   void UpdateFrontendDisplays();
   void DetachAllFrontendDisplays();
+  void ReloadNode();
 
   std::vector<std::unique_ptr<DrmDevice>> drms_;
+
+  int card_num;
 
   bool scale_with_gpu_{};
 
