@@ -101,14 +101,14 @@ class UniqueFd {
   UniqueFd(const UniqueFd &) = delete;
   auto operator=(const UniqueFd &) = delete;
 
- private:
+
   void Set(int new_fd) {
     if (fd_ != kEmptyFd) {
       close(fd_);
     }
     fd_ = new_fd;
   }
-
+ private:
   int fd_ = kEmptyFd;
 };
 

@@ -19,6 +19,7 @@
 #include "HwcLayer.h"
 
 #include "HwcDisplay.h"
+#include "VirtualDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 
@@ -104,7 +105,12 @@ HWC2::Error HwcLayer::SetLayerDataspace(int32_t dataspace) {
 }
 
 HWC2::Error HwcLayer::SetLayerDisplayFrame(hwc_rect_t frame) {
+
   layer_data_.pi.display_frame = frame;
+  if (vparent_) {
+    layer_data_.pi.display_frame.right += vparent_->GetXOffset();
+    layer_data_.pi.display_frame.left += vparent_->GetXOffset();
+  }
   return HWC2::Error::None;
 }
 
@@ -254,7 +260,7 @@ void HwcLayer::ImportFb() {
 
   layer_data_
       .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
-      &layer_data_.bi.value());
+      &layer_data_.bi.value(), parent_->GetVirtualDisplayType());
 
   if (!layer_data_.fb) {
     ALOGV("Unable to create framebuffer object for buffer 0x%p",

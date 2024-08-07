@@ -44,8 +44,10 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
     auto *pipe = display_handles_.begin()->first;
     ALOGI("Primary display was disconnected, reattaching '%s' as new primary",
           pipe->connector->Get()->GetName().c_str());
+    UnbindVirtualDisplay(pipe);
     UnbindDisplay(pipe);
     BindDisplay(pipe);
+    BindVirtualDisplay(pipe);
   }
 
   // Finally, send hotplug events to the client
@@ -62,14 +64,22 @@ void DrmHwcTwo::FinalizeDisplayBinding() {
   usleep(kTimeForSFToDisposeDisplayUs);
   mutex.lock();
   std::vector<std::unique_ptr<HwcDisplay>> for_disposal;
+  std::vector<std::unique_ptr<VirtualDisplay>> virtual_for_disposal;
   for (auto handle : displays_for_removal_list_) {
     for_disposal.emplace_back(
         std::unique_ptr<HwcDisplay>(displays_[handle].release()));
     displays_.erase(handle);
   }
+  for (auto handle : virtual_displays_for_removal_list_) {
+    virtual_for_disposal.emplace_back(
+        std::unique_ptr<VirtualDisplay>(virtual_displays_[handle].release()));
+    virtual_displays_.erase(handle);
+  }
   /* Destroy HwcDisplays while unlocked to avoid vsyncworker deadlocks */
   mutex.unlock();
   for_disposal.clear();
+  virtual_for_disposal.clear();
+  virtual_displays_for_removal_list_.clear();
   mutex.lock();
 }
 
@@ -112,7 +122,69 @@ bool DrmHwcTwo::BindDisplay(DrmDisplayPipeline *pipeline) {
 
   displays_[disp_handle]->SetPipeline(pipeline);
   display_handles_[pipeline] = disp_handle;
+  return true;
+}
 
+bool DrmHwcTwo::BindVirtualDisplay(DrmDisplayPipeline *pipeline) {
+  uint32_t disp_handle = kPrimaryDisplay;
+
+  if (displays_.count(kPrimaryDisplay) != 0 &&
+      virtual_displays_.count(kPrimaryDisplay) != 0 &&
+      !virtual_displays_[kPrimaryDisplay]->IsInHeadlessMode()) {
+    disp_handle = last_virtual_display_handle_;
+  }
+
+  if (virtual_displays_.count(kPrimaryDisplay) != 0 &&
+      virtual_displays_[kPrimaryDisplay]->IsInHeadlessMode())
+    virtual_displays_[kPrimaryDisplay]->SetHeadLessMode(false);
+
+  if (display_handles_.count(pipeline) == 0) {
+    ALOGE("%s, can't find the display, pipeline: %p", __func__, pipeline);
+    return false;
+  }
+
+  auto handle = display_handles_[pipeline];
+  auto x_resolution_vec = displays_[handle]->GetXResolution();
+  auto y_resolution_vec = displays_[handle]->GetYResolution();
+
+  uint32_t x_offset = 0;
+  for (uint32_t j = 0; j < displays_[handle]->GetVirtualDisplayNum(); j++) {
+    if ( j > 0 && displays_[handle]->GetVirtualDisplayType() == VirtualDisplayType::Logical)
+      x_offset += x_resolution_vec[j-1];
+    if ( j > 0 && displays_[handle]->GetVirtualDisplayType() == VirtualDisplayType::SuperFrame) {
+      hwc2_config_t config;
+      displays_[handle]->GetActiveConfig(&config);
+      int32_t value = 0;
+      displays_[handle]->GetDisplayAttribute(config,(int32_t)HWC2::Attribute::Width, &value);
+      x_offset += value;
+    }
+    if (virtual_displays_.count(disp_handle) == 0) {
+      uint32_t x_resolution = 0;
+      uint32_t y_resolution = 0;
+      if (displays_[handle]->GetVirtualDisplayType() == VirtualDisplayType::SuperFrame)
+        y_resolution = y_resolution_vec[j];
+      else
+        x_resolution = x_resolution_vec[j];
+
+      auto disp = std::make_unique<VirtualDisplay>(disp_handle,
+                                              HWC2::DisplayType::Virtual,
+                                              displays_[handle]->GetVirtualDisplayType(),
+                                              this,
+                                              displays_[handle].get(),
+                                              x_offset,
+                                              x_resolution,
+                                              y_resolution);
+      virtual_displays_[disp_handle] = std::move(disp);
+      displays_[handle]->AddVirtualDisplayHandle(disp_handle);
+      ALOGI("Attaching pipeline '%s' to the VirtualDisplay #%d%s",
+            pipeline->connector->Get()->GetName().c_str(), (int)disp_handle,
+            disp_handle == kPrimaryDisplay ? " (Primary)" : "");
+      last_virtual_display_handle_ = ++disp_handle;
+    } else {
+      if (!pipeline || disp_handle == kPrimaryDisplay)
+        ScheduleHotplugEvent(disp_handle++, true);
+    }
+  }
   return true;
 }
 
@@ -133,7 +205,8 @@ bool DrmHwcTwo::UnbindDisplay(DrmDisplayPipeline *pipeline) {
     return false;
   }
   displays_[handle]->SetPipeline(nullptr);
-
+  if (handle == kPrimaryDisplay && virtual_displays_.count(kPrimaryDisplay) != 0)
+    virtual_displays_[kPrimaryDisplay]->SetHeadLessMode(true);
   /* We must defer display disposal and removal, since it may still have pending
    * HWC_API calls scheduled and waiting until ueventlistener thread releases
    * main lock, otherwise transaction may fail and SF may crash
@@ -141,6 +214,24 @@ bool DrmHwcTwo::UnbindDisplay(DrmDisplayPipeline *pipeline) {
   if (handle != kPrimaryDisplay) {
     displays_for_removal_list_.emplace_back(handle);
   }
+  return true;
+}
+
+bool DrmHwcTwo::UnbindVirtualDisplay(DrmDisplayPipeline *pipeline) {
+  if (display_handles_.count(pipeline) == 0) {
+    ALOGE("%s, can't find the display, pipeline: %p", __func__, pipeline);
+    return false;
+  }
+  auto handle = display_handles_[pipeline];
+  auto handles = displays_[handle]->GetVirtualDisplayHandle();
+  for (auto h : handles) {
+    if (h != kPrimaryDisplay) {
+      ScheduleHotplugEvent(h, false);
+      virtual_displays_for_removal_list_.emplace_back(h);
+    }
+  }
+  displays_[handle]->ClearVirtualDisplayHandle();
+
   return true;
 }
 
