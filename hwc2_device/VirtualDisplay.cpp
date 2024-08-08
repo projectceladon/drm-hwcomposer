@@ -26,6 +26,8 @@
 #include "utils/log.h"
 #include "utils/properties.h"
 #include <numeric>
+#include <sync/sync.h>
+#include <cinttypes>
 namespace android {
 
 std::string VirtualDisplay::DumpDelta(VirtualDisplay::Stats delta) {
@@ -517,6 +519,11 @@ HWC2::Error VirtualDisplay::PresentDisplay(int32_t *out_present_fence) {
     z_map.emplace(std::make_pair(client_z_order, &client_layer_));
   physical_display_->PresentDisplay(z_map, out_present_fence);
   return HWC2::Error::None;
+}
+
+HWC3::Error VirtualDisplay::setExpectedPresentTime(
+    const std::optional<ClockMonotonicTimestamp>& /*expectedPresentTime*/) {
+  return HWC3::Error::None;
 }
 
 HWC2::Error VirtualDisplay::SetActiveConfigInternal(uint32_t config,

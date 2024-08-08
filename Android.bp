@@ -36,7 +36,9 @@ cc_library_static {
 // =====================
 cc_defaults {
     name: "hwcomposer.drm_defaults",
-
+    defaults: [
+        "android.hardware.graphics.composer3-ndk_shared",
+    ],
     shared_libs: [
         "libcutils",
         "libdrm",
@@ -49,7 +51,9 @@ cc_defaults {
     ],
 
     include_dirs: ["vendor/intel/external/drm-hwcomposer"],
-
+    header_libs: [
+        "android.hardware.graphics.composer3-command-buffer",
+    ],
     static_libs: ["libdrmhwc_utils"],
 
     cflags: [
