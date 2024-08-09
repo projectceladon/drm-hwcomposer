@@ -66,6 +66,36 @@ static int find_virtio_gpu_card(ResourceManager *res_man, char* path_pattern, in
   }
 }
 
+void ResourceManager::ReloadNode() {
+  char path_pattern[PROPERTY_VALUE_MAX];
+  // Could be a valid path or it can have at the end of it the wildcard %
+  // which means that it will try open all devices until an error is met.
+  int path_len = property_get("vendor.hwc.drm.device", path_pattern,
+                              "/dev/dri/card%");
+  int node_num = 0;
+  path_pattern[path_len - 1] = '\0';
+  for (int idx = 0;; ++idx) {
+    std::ostringstream path;
+    path << path_pattern << idx;
+
+    struct stat buf {};
+    if (stat(path.str().c_str(), &buf) != 0)
+      break;
+
+    node_num++;
+  }
+  if (node_num > card_num) {
+    card_num = node_num;
+    std::ostringstream path;
+    path << path_pattern << (node_num - 1);
+    auto dev = DrmDevice::CreateInstance(path.str(), this);
+    if (dev) {
+      ALOGE("create ivshmem node card\n");
+      drms_.emplace_back(std::move(dev));
+    }
+  }
+}
+
 void ResourceManager::Init() {
   if (initialized_) {
     ALOGE("Already initialized");
@@ -95,6 +125,8 @@ void ResourceManager::Init() {
 
       node_num++;
     }
+
+    card_num = node_num;
 
     // only have card0, is BM/GVT-d/Virtio
     if (node_num == 1) {
@@ -178,6 +210,7 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
 #define DRM_MODE_LINK_STATUS_GOOD       0
 #define DRM_MODE_LINK_STATUS_BAD        1
 void ResourceManager::UpdateFrontendDisplays() {
+  ReloadNode();
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
