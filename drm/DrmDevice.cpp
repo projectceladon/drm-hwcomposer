@@ -28,6 +28,7 @@
 #include "drm/DrmAtomicStateManager.h"
 #include "drm/DrmPlane.h"
 #include "drm/ResourceManager.h"
+#include "drm/DrmVirtgpu.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 
@@ -241,6 +242,22 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
 
   drmModeFreeObjectProperties(props);
   return found ? 0 : -ENOENT;
+}
+
+auto DrmDevice::IsIvshmDev(int fd) -> bool {
+  for (uint32_t i = 0; i < ARRAY_SIZE(params); i++) {
+    struct drm_virtgpu_getparam get_param = {.param = 0, .value = 0};
+
+    get_param.param = params[i].param;
+    get_param.value = (uint64_t)(uintptr_t)&params[i].value;
+    int ret = drmIoctl(fd, DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
+    if (ret == 0) {
+      if ((strcmp(params[i].name, "VIRTGPU_PARAM_QUERY_DEV") == 0) && (params[i].value != 1)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 std::string DrmDevice::GetName() const {

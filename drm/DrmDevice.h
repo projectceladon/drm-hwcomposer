@@ -105,6 +105,8 @@ class DrmDevice {
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
 
+  static auto IsIvshmDev(int fd) -> bool;
+
  private:
   explicit DrmDevice(ResourceManager *res_man);
   auto Init(const char *path) -> int;
