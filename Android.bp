@@ -36,7 +36,9 @@ cc_library_static {
 // =====================
 cc_defaults {
     name: "hwcomposer.drm_defaults",
-
+    defaults: [
+        "android.hardware.graphics.composer3-ndk_shared",
+    ],
     shared_libs: [
         "libcutils",
         "libdrm",
@@ -49,7 +51,9 @@ cc_defaults {
     ],
 
     include_dirs: ["vendor/intel/external/drm-hwcomposer"],
-
+    header_libs: [
+        "android.hardware.graphics.composer3-command-buffer",
+    ],
     static_libs: ["libdrmhwc_utils"],
 
     cflags: [
@@ -97,6 +101,7 @@ filegroup {
         "drm/VSyncWorker.cpp",
 
         "backend/Backend.cpp",
+        "backend/VirtualBackend.cpp",
         "backend/BackendClient.cpp",
         "backend/BackendManager.cpp",
 
@@ -105,6 +110,7 @@ filegroup {
         "hwc2_device/HwcDisplayConfigs.cpp",
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
+        "hwc2_device/VirtualDisplay.cpp",
     ],
 }
 

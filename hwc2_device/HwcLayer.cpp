@@ -19,6 +19,7 @@
 #include "HwcLayer.h"
 
 #include "HwcDisplay.h"
+#include "VirtualDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
 
@@ -105,6 +106,10 @@ HWC2::Error HwcLayer::SetLayerDataspace(int32_t dataspace) {
 
 HWC2::Error HwcLayer::SetLayerDisplayFrame(hwc_rect_t frame) {
   layer_data_.pi.display_frame = frame;
+
+  layer_data_.pi.display_frame.left += vparent_->GetXOffset();
+  layer_data_.pi.display_frame.right += vparent_->GetXOffset();
+
   return HWC2::Error::None;
 }
 

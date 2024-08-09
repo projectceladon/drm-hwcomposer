@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "Backend.h"
+#include "VirtualBackend.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define REGISTER_BACKEND(name_str_, backend_)                               \
@@ -33,15 +34,27 @@
                                        return std::make_unique<backend_>(); \
                                      });
 
+#define REGISTER_VIRTUALBACKEND(name_str_, backend_)                               \
+  static int                                                                \
+      backend = BackendManager::GetInstance()                               \
+                    .RegisterBackend(name_str_,                             \
+                                     []() -> std::unique_ptr<VirtualBackend> {     \
+                                       return std::make_unique<backend_>(); \
+                                     });
+
 namespace android {
 
 class BackendManager {
  public:
   using BackendConstructorT = std::function<std::unique_ptr<Backend>()>;
+  using VirtualBackendConstructorT = std::function<std::unique_ptr<VirtualBackend>()>;
   static BackendManager &GetInstance();
   int RegisterBackend(const std::string &name,
                       BackendConstructorT backend_constructor);
+  int RegisterBackend(const std::string &name,
+                      VirtualBackendConstructorT backend_constructor);
   int SetBackendForDisplay(HwcDisplay *display);
+  int SetBackendForDisplay(VirtualDisplay *display);
   std::unique_ptr<Backend> GetBackendByName(std::string &name);
   HWC2::Error ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
                               uint32_t *num_requests);
@@ -52,6 +65,7 @@ class BackendManager {
   static const std::vector<std::string> kClientDevices;
 
   std::map<std::string, BackendConstructorT> available_backends_;
+  std::map<std::string, VirtualBackendConstructorT> available_virtual_backends_;
 };
 }  // namespace android
 

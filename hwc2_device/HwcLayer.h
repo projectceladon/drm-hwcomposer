@@ -25,11 +25,11 @@
 namespace android {
 
 class HwcDisplay;
-
+class VirtualDisplay;
 class HwcLayer {
  public:
   explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};
-
+  explicit HwcLayer(HwcDisplay *parent_display, VirtualDisplay* vparent_display) : parent_(parent_display),vparent_(vparent_display){};
   HWC2::Composition GetSfType() const {
     return sf_type_;
   }
@@ -109,7 +109,7 @@ class HwcLayer {
   bool prior_buffer_scanout_flag_{};
 
   HwcDisplay *const parent_;
-
+  VirtualDisplay *vparent_;
   /* Layer state */
  public:
   void PopulateLayerData(bool test);

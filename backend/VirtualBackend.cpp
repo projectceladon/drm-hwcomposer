@@ -14,25 +14,22 @@
  * limitations under the License.
  */
 
-#include "Backend.h"
+#include "VirtualBackend.h"
 
 #include <climits>
-#include <aidl/android/hardware/graphics/composer3/Composition.h>
+
 #include "BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
 
 namespace android {
 
-HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
+HWC2::Error VirtualBackend::ValidateDisplay(VirtualDisplay *display, uint32_t *num_types,
                                      uint32_t *num_requests) {
   *num_types = 0;
   *num_requests = 0;
 
   auto layers = display->GetOrderLayersByZPos();
-  for (auto l : layers) {
-    if ((uint32_t)l->GetSfType() == (uint32_t)aidl::android::hardware::graphics::composer3::Composition::DISPLAY_DECORATION)
-      return HWC2::Error::Unsupported;
-  }
+
   int client_start = -1;
   size_t client_size = 0;
 
@@ -68,8 +65,8 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
   return *num_types != 0 ? HWC2::Error::HasChanges : HWC2::Error::None;
 }
 
-std::tuple<int, size_t> Backend::GetClientLayers(
-    HwcDisplay *display, const std::vector<HwcLayer *> &layers) {
+std::tuple<int, size_t> VirtualBackend::GetClientLayers(
+    VirtualDisplay *display, const std::vector<HwcLayer *> &layers) {
   int client_start = -1;
   size_t client_size = 0;
 
@@ -84,20 +81,20 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   return GetExtraClientRange(display, layers, client_start, client_size);
 }
 
-bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
-  return !HardwareSupportsLayerType(layer->GetSfType()) ||
+bool VirtualBackend::IsClientLayer(VirtualDisplay *display, HwcLayer *layer) {
+  return true || !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
           display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
 }
 
-bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
+bool VirtualBackend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
   return comp_type == HWC2::Composition::Device ||
          comp_type == HWC2::Composition::Cursor;
 }
 
-uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
+uint32_t VirtualBackend::CalcPixOps(const std::vector<HwcLayer *> &layers,
                              size_t first_z, size_t size) {
   uint32_t pixops = 0;
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
@@ -109,7 +106,7 @@ uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
   return pixops;
 }
 
-void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
+void VirtualBackend::MarkValidated(std::vector<HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size) {
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= client_first_z && z_order < client_first_z + client_size)
@@ -119,8 +116,8 @@ void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
   }
 }
 
-std::tuple<int, int> Backend::GetExtraClientRange(
-    HwcDisplay *display, const std::vector<HwcLayer *> &layers,
+std::tuple<int, int> VirtualBackend::GetExtraClientRange(
+    VirtualDisplay *display, const std::vector<HwcLayer *> &layers,
     int client_start, size_t client_size) {
   auto planes = display->GetPipe().GetUsablePlanes();
   size_t avail_planes = planes.size();
@@ -166,7 +163,7 @@ std::tuple<int, int> Backend::GetExtraClientRange(
 
 // clang-format off
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables, cert-err58-cpp)
-REGISTER_BACKEND("generic", Backend);
+REGISTER_VIRTUALBACKEND("virtual", VirtualBackend);
 // clang-format on
 
 }  // namespace android

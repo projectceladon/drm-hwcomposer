@@ -30,7 +30,9 @@ class PipelineToFrontendBindingInterface {
  public:
   virtual ~PipelineToFrontendBindingInterface() = default;
   virtual bool BindDisplay(DrmDisplayPipeline *);
+  virtual bool BindVirtualDisplay(DrmDisplayPipeline *);
   virtual bool UnbindDisplay(DrmDisplayPipeline *);
+  virtual bool UnbindVirtualDisplay(DrmDisplayPipeline *);
   virtual HwcDisplay * GetDisplay(DrmDisplayPipeline *pipeline);
   virtual void FinalizeDisplayBinding();
 };
