@@ -26,6 +26,7 @@
 #include "DrmEncoder.h"
 #include "DrmFbImporter.h"
 #include "utils/UniqueFd.h"
+#include "utils/hwcdefs.h"
 
 #define DRM_FORMAT_NV12_Y_TILED_INTEL fourcc_code('9', '9', '9', '6')
 namespace android {
@@ -104,7 +105,31 @@ class DrmDevice {
   void ResetModeId();
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
+#if 0
+  // Enables the usage of HDCP for all planes supporting this feature
+  // on display. Some displays can support latest HDCP specification and also
+  // have ability to fallback to older specifications i.e. HDCP 2.2 and 1.4
+  // in case latest speicification cannot be supported for some reason.
+  // Content type is defined by content_type.
+  void EnableHDCPSessionForDisplay(uint32_t connector,
+                                   hwcomposer::HWCContentType content_type);
 
+  // Enables the usage of HDCP for all planes supporting this feature
+  // on all connected displays. Some displays can support latest HDCP
+  // specification and also have ability to fallback to older
+  // specifications i.e. HDCP 2.2 and 1.4 in case latest speicification
+  // cannot be supported for some reason. Content type is defined by
+  // content_type.
+  void EnableHDCPSessionForAllDisplays(hwcomposer::HWCContentType content_type);
+
+  // The control disables the usage of HDCP for all planes supporting this
+  // feature on display.
+  void DisableHDCPSessionForDisplay(uint32_t connector);
+
+  // The control disables the usage of HDCP for all planes supporting this
+  // feature on all connected displays.
+  void DisableHDCPSessionForAllDisplays();
+#endif
  private:
   explicit DrmDevice(ResourceManager *res_man);
   auto Init(const char *path) -> int;

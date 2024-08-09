@@ -111,6 +111,8 @@ class DrmAtomicStateManager {
                                     uint32_t brightness_c) ->int;
   auto ApplyPendingLUT(struct drm_color_lut *lut,  uint64_t lut_size) -> int;
 
+  void SetHDCPState(HWCContentProtection state,
+                    HWCContentType content_type);
  private:
   auto CommitFrame(AtomicCommitArgs &args) -> int;
 
@@ -156,6 +158,12 @@ class DrmAtomicStateManager {
   int frames_staged_{};
   int frames_tracked_{};
   bool hdr_mdata_set_ = false;
+
+  hwcomposer::HWCContentProtection current_protection_support_ =
+      hwcomposer::HWCContentProtection::kUnSupported;
+  hwcomposer::HWCContentProtection desired_protection_support_ =
+      hwcomposer::HWCContentProtection::kUnSupported;
+  hwcomposer::HWCContentType content_type_ = hwcomposer::kCONTENT_TYPE0;
 };
 
 }  // namespace android

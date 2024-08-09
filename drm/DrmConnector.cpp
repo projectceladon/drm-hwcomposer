@@ -73,6 +73,16 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
   auto c = std::unique_ptr<DrmConnector>(
       new DrmConnector(std::move(conn), &dev, index));
 
+  if (!GetConnectorProperty(dev, *c, "Content Protection", &c->hdcp_id_property_)) {
+      ALOGE("%s GetHDCPConnectorProperty check failed!", __FUNCTION__);
+      return {};
+  }
+
+  if (!GetConnectorProperty(dev, *c, "HDCP Content Type", &c->hdcp_type_property_)) {
+      ALOGE("%s GetHDCPTypeProperty check failed!", __FUNCTION__);
+      return {};
+  }
+
   if (!GetConnectorProperty(dev, *c, "DPMS", &c->dpms_property_) ||
       !GetConnectorProperty(dev, *c, "CRTC_ID", &c->crtc_id_property_) ||
       (dev.IsHdrSupportedDevice() && !GetConnectorProperty(dev, *c, "HDR_OUTPUT_METADATA", &c->hdr_op_metadata_prop_))) {
@@ -601,4 +611,31 @@ void DrmConnector::PrepareHdrMetadata(hdr_md *layer_hdr_metadata,
 const DrmProperty &DrmConnector::link_status_property() const {
   return link_status_property_;
 }
+#if 0
+void DrmConnector::SetHDCPState(HWCContentProtection state,
+                              HWCContentType content_type) {
+  desired_protection_support_ = state;
+  content_type_ = content_type;
+  if (desired_protection_support_ == current_protection_support_)
+    return;
+
+  if (hdcp_id_prop_ <= 0) {
+    ETRACE("Cannot set HDCP state as Connector property is not supported \n");
+    return;
+  }
+
+  if (!(connection_state_ & kConnected)) {
+    return;
+  }
+
+  current_protection_support_ = desired_protection_support_;
+  uint32_t value = 0;
+  if (current_protection_support_ == kDesired) {
+    value = 1;
+  }
+
+  drmModeConnectorSetProperty(gpu_fd_, connector_, hdcp_id_prop_, value);
+  ITRACE("Ignored Content type. \n");
+}
+#endif
 }  // namespace android

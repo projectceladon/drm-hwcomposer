@@ -675,4 +675,84 @@ auto DrmAtomicStateManager::SetColorBrightnessContrast(void) ->int{
 
   return 0;
 }
+
+void DrmAtomicStateManager::SetHDCPState(HWCContentProtection state,
+                              HWCContentType content_type) {
+  uint64_t value = 3;
+  uint64_t type = 3;
+  int ret =0;
+
+  auto *connector = pipe_->connector->Get();
+
+  if (!connector->IsConnected())
+    return;
+
+  desired_protection_support_ = state;
+  ALOGD("SetHDCPState desired_protection_support_ %d\n",desired_protection_support_);
+  ALOGD("SetHDCPState current_protection_support_ %d\n",current_protection_support_);
+
+  if (desired_protection_support_ == current_protection_support_)
+    return;
+
+  if (pipe_->connector->Get()->GetHdcpTypeProperty().id() <= 0) {
+    ALOGE("Cannot set HDCP state as Type property is not supported \n");
+    return;
+  }
+
+  std::tie(ret, type) = pipe_->connector->Get()->GetHdcpTypeProperty().value();
+  ALOGD("Get Content type %lu \n", type);
+  ALOGD("Get Content content_type %u \n", content_type);
+
+  if ((content_type < 2) && (content_type_ != content_type)) {
+    content_type_ = content_type;
+
+    ALOGD("Set Content type %u \n", content_type);
+    drmModeConnectorSetProperty(pipe_->device->GetFd(),
+		  pipe_->connector->Get()->GetId(),
+		  pipe_->connector->Get()->GetHdcpTypeProperty().id(),
+		  content_type);
+
+  }
+
+  if (pipe_->connector->Get()->GetHdcpProperty().id() <= 0) {
+    ALOGE("Cannot set HDCP state as Connector property is not supported \n");
+    return;
+  }
+
+  std::tie(ret, value) = pipe_->connector->Get()->GetHdcpProperty().value();
+  ALOGD("Get Content Protection value %lu \n", value);
+
+  if (value < 3) {
+    switch (value) {
+      case 0:
+        //current_protection_support_ = HWCContentProtection::kUnDesired;
+        current_protection_support_ = hwcomposer::HWCContentProtection::kUnDesired;
+        ALOGD("%s GetHDCPConnectorProperty value 0", __FUNCTION__);
+        break;
+      case 1:
+        //current_protection_support_ = HWCContentProtection::kDesired;
+        current_protection_support_ = hwcomposer::HWCContentProtection::kDesired;
+        ALOGD("%s GetHDCPConnectorProperty value 1", __FUNCTION__);
+        break;
+      default:
+        ALOGE("%s GetHDCPConnectorProperty default", __FUNCTION__);
+        break;
+    }
+  }
+
+  if (desired_protection_support_ == HWCContentProtection::kUnSupported) {
+    desired_protection_support_ = current_protection_support_;
+  }
+
+  current_protection_support_ = desired_protection_support_;
+  if (current_protection_support_ == kDesired) {
+    value = 1;
+  }
+
+  ALOGD("Set Content Protection %lu \n", value);
+  drmModeConnectorSetProperty(pipe_->device->GetFd(),
+		  pipe_->connector->Get()->GetId(),
+		  pipe_->connector->Get()->GetHdcpProperty().id(),
+		  value);
+}
 }  // namespace android

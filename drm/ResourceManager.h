@@ -23,7 +23,7 @@
 #include "DrmDisplayPipeline.h"
 #include "DrmFbImporter.h"
 #include "UEventListener.h"
-
+#include "hwc2_device/hwcservice.h"
 namespace android {
 class HwcDisplay;
 class PipelineToFrontendBindingInterface {
@@ -63,6 +63,7 @@ class ResourceManager {
   auto GetOrderedConnectors() -> std::vector<DrmConnector *>;
   void UpdateFrontendDisplays();
   void DetachAllFrontendDisplays();
+  void HwcServiceThread();
 
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
@@ -78,6 +79,8 @@ class ResourceManager {
   PipelineToFrontendBindingInterface *const frontend_interface_;
 
   bool initialized_{};
+  android::HwcService hwcService_;
+  std::thread pt_;
 };
 }  // namespace android
 

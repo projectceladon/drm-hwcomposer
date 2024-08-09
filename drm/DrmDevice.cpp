@@ -276,7 +276,60 @@ bool DrmDevice::IsHdrSupportedDevice() {
 
   return is_hdr_supported_;
 }
+#if 0
+void DrmDevice::EnableHDCPSessionForDisplay(
+    uint32_t connector, HWCContentType content_type) {
+  GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kDesired,
+                                               content_type);
+#if 0
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    if (displays_.at(i)->GetConnectorID() == connector) {
+      displays_.at(i)->SetHDCPState(HWCContentProtection::kDesired,
+                                    content_type);
+    }
+  }
+#endif  
+}
 
+void DrmDevice::EnableHDCPSessionForAllDisplays(
+    HWCContentType content_type) {
+  GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kDesired,
+                                               content_type);
+#if 0
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    displays_.at(i)->SetHDCPState(HWCContentProtection::kDesired, content_type);
+  }
+#endif
+}
+
+void DrmDevice::DisableHDCPSessionForDisplay(uint32_t connector) {
+  GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kDesired,
+                                               content_type);
+#if 0
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    if (displays_.at(i)->GetConnectorID() == connector) {
+      displays_.at(i)->SetHDCPState(HWCContentProtection::kUnDesired,
+                                    HWCContentType::kInvalid);
+    }
+  }
+#endif  
+}
+
+void DrmDevice::DisableHDCPSessionForAllDisplays() {
+  GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kDesired,
+                                               content_type);
+#if 0
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    displays_.at(i)->SetHDCPState(HWCContentProtection::kUnDesired,
+                                  HWCContentType::kInvalid);
+  }
+#endif
+}
+#endif
 auto DrmDevice::IsKMSDev(const char *path) -> bool {
   auto fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
   if (!fd) {
