@@ -78,6 +78,8 @@ class ResourceManager {
   PipelineToFrontendBindingInterface *const frontend_interface_;
 
   bool initialized_{};
+  bool hotplug_event_init = false;
+  bool boot_event = true;
 };
 }  // namespace android
 
