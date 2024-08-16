@@ -51,7 +51,10 @@ cc_defaults {
         "libutils",
     ],
 
-    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+    include_dirs: [
+        "vendor/intel/external/drm-hwcomposer",
+        "hardware/intel/external/minigbm-intel/cros_gralloc",
+    ],
 
     header_libs: [
         "android.hardware.graphics.composer3-command-buffer",
@@ -140,6 +143,7 @@ cc_library_shared {
     ],
     cppflags: [
         "-DHEADLESS_RESOLUTION_2560_1600",
+        "-DHWC_DUMP_BUFFER",
     ],
 }
 
