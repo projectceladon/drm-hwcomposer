@@ -51,7 +51,10 @@ cc_defaults {
         "libutils",
     ],
 
-    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+    include_dirs: [
+        "vendor/intel/external/drm-hwcomposer",
+        "hardware/intel/external/minigbm-intel/cros_gralloc",
+    ],
 
     header_libs: [
         "android.hardware.graphics.composer3-command-buffer",
@@ -111,6 +114,7 @@ filegroup {
         "hwc2_device/HwcDisplayConfigs.cpp",
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
+        "GrallocBufferHandler.cpp",
     ],
 }
 

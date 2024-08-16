@@ -21,7 +21,8 @@
 #include <aidl/android/hardware/graphics/composer3/Composition.h>
 #include "BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
-
+#include <cros_gralloc_helpers.h>
+#include <i915_private_android_types.h>
 namespace android {
 
 HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
@@ -76,6 +77,27 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   size_t client_size = 0;
 
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
+    static int count = 0;
+    void* data = 0;
+    cros_gralloc_handle *gr_handle = (cros_gralloc_handle *)layers[z_order]->GetBufferHandle();
+
+    if (gr_handle && gr_handle->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER && ++count == 3000 &&
+        gralloc_handler_.Map(layers[z_order]->GetBufferHandle(), 0,0,
+        gr_handle->width,
+        gr_handle->height,0,&data,0)) {
+        char filename[64] = {0};
+        sprintf(filename,"/data/local/traces/hdcp-%d-%d-%zd-%d.yuv",gr_handle->width, gr_handle->height, z_order, count);
+        FILE *p = fopen(filename, "wb+");
+        if (p) {
+            fwrite(data, gr_handle->width * gr_handle->height * 1.5, 1, p);
+            fclose(p);
+        } else {
+          ALOGE("fopen %s fail", filename);
+        }
+        gralloc_handler_.UnMap(layers[z_order]->GetBufferHandle(), 0);
+      break;
+    }
+
     if (IsClientLayer(display, layers[z_order])) {
       if (client_start < 0)
         client_start = (int)z_order;
