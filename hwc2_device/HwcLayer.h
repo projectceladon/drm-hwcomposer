@@ -117,7 +117,7 @@ class HwcLayer {
   bool IsLayerUsableAsDevice() const {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
-
+  buffer_handle_t GetBufferHandle() {return buffer_handle_;}
  private:
   void ImportFb();
   bool bi_get_failed_{};

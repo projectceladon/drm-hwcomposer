@@ -18,7 +18,7 @@
 #define ANDROID_BACKEND_H
 
 #include "hwc2_device/DrmHwcTwo.h"
-
+#include "GrallocBufferHandler.h"
 namespace android {
 
 class Backend {
@@ -29,6 +29,7 @@ class Backend {
   virtual std::tuple<int, size_t> GetClientLayers(
       HwcDisplay *display, const std::vector<HwcLayer *> &layers);
   virtual bool IsClientLayer(HwcDisplay *display, HwcLayer *layer);
+  Backend() {gralloc_handler_.Init();};
 
  protected:
   static bool HardwareSupportsLayerType(HWC2::Composition comp_type);
@@ -39,6 +40,7 @@ class Backend {
   static std::tuple<int, int> GetExtraClientRange(
       HwcDisplay *display, const std::vector<HwcLayer *> &layers,
       int client_start, size_t client_size);
+  Gralloc1BufferHandler gralloc_handler_;
 };
 }  // namespace android
 
