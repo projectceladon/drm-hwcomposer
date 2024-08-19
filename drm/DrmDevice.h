@@ -136,6 +136,7 @@ class DrmDevice {
   bool planes_enabling_;
   uint32_t planes_num_;
   bool color_adjustment_enabling_;
+  void *dri_drm_;
 };
 }  // namespace android
 

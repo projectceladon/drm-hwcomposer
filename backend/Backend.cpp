@@ -21,7 +21,10 @@
 #include <aidl/android/hardware/graphics/composer3/Composition.h>
 #include "BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
-
+#ifdef HWC_DUMP_BUFFER
+#include "bufferinfo/legacy/BufferInfoMinigbm.h"
+#include "utils/properties.h"
+#endif
 namespace android {
 
 HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
@@ -35,6 +38,15 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
     if ((uint32_t)l->GetSfType() == (uint32_t)aidl::android::hardware::graphics::composer3::Composition::DISPLAY_DECORATION)
       return HWC2::Error::Unsupported;
   }
+
+#ifdef HWC_DUMP_BUFFER
+  char status[PROPERTY_VALUE_MAX] = {0};
+  property_get("drm.dumpbuffer.on", status, "1");
+  for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
+    if (status[0] != '0')
+      BufferInfoMinigbm::DumpBuffer(display->GetPipe().device, layers[z_order]->GetBufferHandle(), z_order);
+  }
+#endif
   int client_start = -1;
   size_t client_size = 0;
 

@@ -27,7 +27,9 @@
 #include "utils/properties.h"
 #include <sync/sync.h>
 #include <cinttypes>
-
+#ifdef HWC_DUMP_BUFFER
+#include "bufferinfo/legacy/BufferInfoMinigbm.h"
+#endif
 namespace android {
 
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
@@ -168,7 +170,9 @@ HWC2::Error HwcDisplay::Init() {
   }
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
-
+#ifdef HWC_DUMP_BUFFER
+  BufferInfoMinigbm::InitializeGralloc1(pipeline_->device);
+#endif
   return HWC2::Error::None;
 }
 
