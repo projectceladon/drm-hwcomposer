@@ -931,6 +931,39 @@ ndk::ScopedAStatus ComposerClient::setIdleTimerEnabled(int64_t /*display_id*/,
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
+ndk::ScopedAStatus ComposerClient::getOverlaySupport(
+    OverlayProperties* /*out_overlay_properties*/) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::getHdrConversionCapabilities(
+    std::vector<common::HdrConversionCapability>* /*out_capabilities*/) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::setHdrConversionStrategy(
+    const common::HdrConversionStrategy& /*conversion_strategy*/,
+    common::Hdr* /*out_hdr*/) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(
+    int64_t /*display*/, bool /*enabled*/) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
+    int64_t display, int32_t max_frame_interval_ns,
+    std::vector<DisplayConfiguration>* configurations) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::notifyExpectedPresent(
+    int64_t /*display*/, const ClockMonotonicTimestamp& /*expected_present_time*/,
+    int32_t /*frame_interval_ns*/) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
 std::string ComposerClient::Dump() {
   uint32_t size = 0;
   hwc_->Dump(&size, nullptr);

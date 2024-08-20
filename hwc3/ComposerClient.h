@@ -136,6 +136,21 @@ class ComposerClient : public BnComposerClient {
   ndk::ScopedAStatus setVsyncEnabled(int64_t display, bool enabled) override;
   ndk::ScopedAStatus setIdleTimerEnabled(int64_t display,
                                          int32_t timeout) override;
+  ndk::ScopedAStatus getOverlaySupport(
+      OverlayProperties* out_overlay_properties) override;
+  ndk::ScopedAStatus getHdrConversionCapabilities(
+      std::vector<common::HdrConversionCapability>* out_capabilities) override;
+  ndk::ScopedAStatus setHdrConversionStrategy(
+      const common::HdrConversionStrategy& conversion_strategy,
+      common::Hdr* out_hdr) override;
+  ndk::ScopedAStatus setRefreshRateChangedCallbackDebugEnabled(
+      int64_t display, bool enabled) override;
+  ndk::ScopedAStatus getDisplayConfigurations(
+      int64_t display, int32_t max_frame_interval_ns,
+      std::vector<DisplayConfiguration>* configurations) override;
+  ndk::ScopedAStatus notifyExpectedPresent(
+      int64_t display, const ClockMonotonicTimestamp& expected_present_time,
+      int32_t frame_interval_ns) override;
 
  protected:
   ::ndk::SpAIBinder createBinder() override;
