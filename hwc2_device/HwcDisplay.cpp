@@ -306,7 +306,6 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
 
   static const int32_t kUmPerInch = 25400;
   auto mm_width = configs_.mm_width;
-  auto mm_height = configs_.mm_height;
   auto attribute = static_cast<HWC2::Attribute>(attribute_in);
   switch (attribute) {
     case HWC2::Attribute::Width:
@@ -319,17 +318,16 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
       // in nanoseconds
       *value = static_cast<int>(1E9 / hwc_config.mode.GetVRefresh());
       break;
+    case HWC2::Attribute::DpiY:
+      // ideally this should be vdisplay/mm_heigth, however mm_height
+      // comes from edid parsing and is highly unreliable. Viewing the
+      // rarity of anisotropic displays, falling back to a single value
+      // for dpi yield more correct output.
     case HWC2::Attribute::DpiX:
       // Dots per 1000 inches
       *value = mm_width ? int(hwc_config.mode.GetRawMode().hdisplay *
                               kUmPerInch / mm_width)
                         : -1;
-      break;
-    case HWC2::Attribute::DpiY:
-      // Dots per 1000 inches
-      *value = mm_height ? int(hwc_config.mode.GetRawMode().vdisplay *
-                               kUmPerInch / mm_height)
-                         : -1;
       break;
 #if __ANDROID_API__ > 29
     case HWC2::Attribute::ConfigGroup:
