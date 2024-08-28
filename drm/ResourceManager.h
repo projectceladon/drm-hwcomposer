@@ -47,7 +47,7 @@ class ResourceManager {
   ResourceManager &operator=(const ResourceManager &) = delete;
   ResourceManager(const ResourceManager &&) = delete;
   ResourceManager &&operator=(const ResourceManager &&) = delete;
-  ~ResourceManager() = default;
+  ~ResourceManager();
 
   void Init();
 

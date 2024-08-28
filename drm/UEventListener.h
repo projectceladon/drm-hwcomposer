@@ -32,6 +32,8 @@ class UEventListener {
     hotplug_handler_ = std::move(hotplug_handler);
   }
 
+  void StopThread();
+
  private:
   UEventListener() = default;
 

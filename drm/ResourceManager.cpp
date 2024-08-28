@@ -39,6 +39,10 @@ ResourceManager::ResourceManager(
   uevent_listener_ = UEventListener::CreateInstance();
 }
 
+ResourceManager::~ResourceManager() {
+  uevent_listener_->StopThread();
+}
+
 void ResourceManager::Init() {
   if (initialized_) {
     ALOGE("Already initialized");

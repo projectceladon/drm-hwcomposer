@@ -17,6 +17,8 @@
 #pragma once
 
 #include <linux/netlink.h>
+#include <poll.h>
+#include <sys/eventfd.h>
 #include <sys/socket.h>
 
 #include <cerrno>
@@ -52,12 +54,23 @@ class UEvent {
       return {};
     }
 
-    return std::unique_ptr<UEvent>(new UEvent(fd));
+    auto stop_event_fd = MakeUniqueFd(eventfd(0, EFD_CLOEXEC));
+    if (!stop_event_fd) {
+      ALOGE("Failed to create eventfd: errno=%i", errno);
+      return {};
+    }
+
+    return std::unique_ptr<UEvent>(new UEvent(fd, stop_event_fd));
   }
 
   auto ReadNext() -> std::optional<std::string> {
     constexpr int kUEventBufferSize = 1024;
     char buffer[kUEventBufferSize];
+
+    if (!WaitForData()) {
+      return {};
+    }
+
     ssize_t ret = 0;
     ret = read(*fd_, &buffer, sizeof(buffer));
     if (ret == 0)
@@ -77,9 +90,57 @@ class UEvent {
     return std::string(buffer);
   }
 
+  void Stop() {
+    // Increment the eventfd by writing 1. All subsequent calls to ReadNext will
+    // return false.
+    const uint64_t value = 1;
+    const ssize_t ret = write(*stop_event_fd_, &value, sizeof(value));
+    if (ret == -1) {
+      ALOGE("Error writing to eventfd. errno: %d", errno);
+    } else if (ret != sizeof(value)) {
+      ALOGE("Wrote fewer bytes to eventfd than expected: %zd vs %zd", ret,
+            sizeof(value));
+    }
+  }
+
  private:
-  explicit UEvent(UniqueFd &fd) : fd_(std::move(fd)){};
+  enum { kFdIdx = 0, kStopEventFdIdx, kNumFds };
+
+  UEvent(UniqueFd &fd, UniqueFd &stop_event_fd)
+      : fd_(std::move(fd)), stop_event_fd_(std::move(stop_event_fd)) {};
+
+  // Returns true if there is data to be read off of fd_.
+  bool WaitForData() {
+    struct pollfd poll_fds[kNumFds];
+    poll_fds[kFdIdx].fd = *fd_;
+    poll_fds[kFdIdx].events = POLLIN;
+    poll_fds[kStopEventFdIdx].fd = *stop_event_fd_;
+    poll_fds[kStopEventFdIdx].events = POLLIN;
+
+    const int ret = poll(poll_fds, kNumFds, -1);
+    if (ret == 0) {
+      // Timeout shouldn't happen, but return here anyways.
+      ALOGE("Timed out polling uevent.");
+      return false;
+    }
+    if (ret < 1) {
+      ALOGE("Error polling uevent. errno: %d", errno);
+      return false;
+    }
+
+    if ((poll_fds[kStopEventFdIdx].revents & POLLIN) != 0) {
+      // Stop event has been signalled. Return without reading from the fd to
+      // ensure that this fd stays in a readable state.
+      ALOGI("Stop event signalled.");
+      return false;
+    }
+
+    // Return true if there is data to read.
+    return (poll_fds[kFdIdx].revents & POLLIN) != 0;
+  }
+
   UniqueFd fd_;
+  UniqueFd stop_event_fd_;
 };
 
 }  // namespace android

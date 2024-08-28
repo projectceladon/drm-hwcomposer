@@ -24,6 +24,10 @@
 
 namespace android {
 
+void UEventListener::StopThread() {
+  uevent_->Stop();
+}
+
 auto UEventListener::CreateInstance() -> std::shared_ptr<UEventListener> {
   auto uel = std::shared_ptr<UEventListener>(new UEventListener());
 
@@ -61,4 +65,5 @@ void UEventListener::ThreadFn(const std::shared_ptr<UEventListener> &uel) {
 
   ALOGI("UEvent thread exit");
 }
+
 }  // namespace android
