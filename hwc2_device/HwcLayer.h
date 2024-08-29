@@ -92,6 +92,7 @@ class HwcLayer {
 
   /* Should be populated to layer_data_.acquire_fence only before presenting */
   UniqueFd acquire_fence_;
+  UniqueFd dgpu_fd_;
 
   /* The following buffer data can have 2 sources:
    * 1 - Mapper@4 metadata API
