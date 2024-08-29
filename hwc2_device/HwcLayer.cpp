@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <xf86drm.h>
 #define LOG_TAG "hwc-layer"
 
 #include "HwcLayer.h"
@@ -21,6 +22,7 @@
 #include "HwcDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
+#include "utils/intel_blit.h"
 
 namespace android {
 
@@ -250,6 +252,26 @@ void HwcLayer::ImportFb() {
     ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
     bi_get_failed_ = true;
     return;
+  }
+
+  layer_data_.bi->use_shadow_fds = (intel_i915_fd() >= 0);
+  if (layer_data_.bi->use_shadow_fds) {
+    uint32_t handle;
+    int ret = intel_create_buffer(layer_data_.bi->width, layer_data_.bi->height,
+                                  layer_data_.bi->format, layer_data_.bi->modifiers[0],
+                                  &handle);
+    if (ret) {
+      ALOGE("Failed to create buffer as shadow buffer\n");
+      layer_data_.bi->use_shadow_fds = false;
+    } else {
+      layer_data_.bi->shadow_buffer_handles[0] = handle;
+      ret = drmPrimeHandleToFD(intel_i915_fd(), handle, 0, &layer_data_.bi->shadow_fds[0]);
+      if (ret) {
+        ALOGE("Failed to export shadow buffer\n");
+        layer_data_.bi->use_shadow_fds = false;
+        drmCloseBufferHandle(intel_i915_fd(), handle);
+      }
+    }
   }
 
   layer_data_

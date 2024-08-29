@@ -28,6 +28,7 @@
 #include <cinttypes>
 
 #include "utils/log.h"
+#include "utils/intel_blit.h"
 
 namespace android {
 
@@ -80,6 +81,15 @@ BufferInfoMapperMetadata::GetFds(buffer_handle_t handle, BufferInfo *bo) {
     if (bo->prime_fds[i] <= 0) {
       ALOGE("Invalid prime fd");
       return android::BAD_VALUE;
+    }
+
+    int i915_fd = intel_i915_fd();
+    if (i915_fd >= 0) {
+      int ret = drmPrimeFDToHandle(i915_fd, bo->prime_fds[i], &bo->prime_buffer_handles[i]);
+      if (ret) {
+        ALOGE("Cannot convert prime fd to handle\n");
+        return android::BAD_VALUE;
+      }
     }
   }
 
