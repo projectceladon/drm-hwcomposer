@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <drm/drm_fourcc.h>
+#include <cmath>
 #undef NDEBUG /* Required for assert to work */
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
@@ -26,6 +28,7 @@
 #include <sched.h>
 #include <sync/sync.h>
 #include <utils/Trace.h>
+#include "utils/intel_blit.h"
 
 #include <array>
 #include <cassert>
@@ -112,6 +115,29 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     for (auto &joining : args.composition->plan) {
       DrmPlane *plane = joining.plane->Get();
       LayerData &layer = joining.layer;
+
+      if (layer.bi->use_shadow_fds) {
+        int ret = 0;
+        struct intel_info info;
+        intel_blit_init(&info);
+        int out_handle;
+        uint32_t tiling = I915_TILING_NONE;
+        switch (layer.bi->modifiers[0]) {
+        case I915_FORMAT_MOD_X_TILED:
+          tiling = I915_TILING_X;
+          break;
+        }
+        ret = intel_blit(&info, layer.bi->shadow_buffer_handles[0],
+                          layer.bi->prime_buffer_handles[0],
+                          layer.bi->pitches[0], 4, I915_TILING_NONE,
+                          layer.bi->width, layer.bi->height,
+                          layer.acquire_fence.Get(), &out_handle);
+        if (ret) {
+          ALOGE("failed to blit scanout buffer\n");
+        }
+        intel_blit_destroy(&info);
+        layer.blit_fence = android::UniqueFd(out_handle);
+      }
 
       if (layer.bi->color_space >= BufferColorSpace::kItuRec2020) {
         has_hdr_layer = true;

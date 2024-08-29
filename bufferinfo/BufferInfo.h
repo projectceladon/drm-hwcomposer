@@ -50,6 +50,15 @@ struct BufferInfo {
   /* sizes[] is used only by mapper@4 metadata getter for internal purposes */
   uint32_t sizes[kBufferMaxPlanes];
   int prime_fds[kBufferMaxPlanes];
+  uint32_t prime_buffer_handles[kBufferMaxPlanes];
+  bool use_shadow_fds;
+  /*
+   * Shadow buffers in system memory. We will blit content of prime_fds to
+   * shadow_fds right before atomic commit and use the shadow buffers as frame
+   * buffers.
+   **/
+  int shadow_fds[kBufferMaxPlanes];
+  uint32_t shadow_buffer_handles[kBufferMaxPlanes];
   uint64_t modifiers[kBufferMaxPlanes];
 
   BufferColorSpace color_space;

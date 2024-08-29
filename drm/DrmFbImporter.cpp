@@ -45,15 +45,15 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   local->gem_handles_[0] = first_gem_handle;
   int32_t err = 0;
 
+  int *fds = bo->use_shadow_fds ? bo->shadow_fds : bo->prime_fds;
   /* Framebuffer object creation require gem handle for every used plane */
   for (size_t i = 1; i < local->gem_handles_.size(); i++) {
-    if (bo->prime_fds[i] > 0) {
-      if (bo->prime_fds[i] != bo->prime_fds[0]) {
-        err = drmPrimeFDToHandle(drm.GetFd(), bo->prime_fds[i],
+    if (fds[i] > 0) {
+      if (fds[i] != fds[0]) {
+        err = drmPrimeFDToHandle(drm.GetFd(), fds[i],
                                  &local->gem_handles_.at(i));
         if (err != 0) {
-          ALOGE("failed to import prime fd %d errno=%d", bo->prime_fds[i],
-                errno);
+          ALOGE("failed to import prime fd %d errno=%d", fds[i], errno);
         }
       } else {
         local->gem_handles_.at(i) = local->gem_handles_[0];
@@ -129,11 +129,12 @@ auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
     -> std::shared_ptr<DrmFbIdHandle> {
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
-  int32_t err = drmPrimeFDToHandle(drm_->GetFd(), bo->prime_fds[0],
-                                   &first_handle);
+  int *fds = bo->use_shadow_fds ? bo->shadow_fds : bo->prime_fds;
+
+  int32_t err = drmPrimeFDToHandle(drm_->GetFd(), fds[0], &first_handle);
 
   if (err != 0) {
-    ALOGE("Failed to import prime fd %d ret=%d", bo->prime_fds[0], err);
+    ALOGE("Failed to import prime fd %d ret=%d", fds[0], err);
     return {};
   }
 
