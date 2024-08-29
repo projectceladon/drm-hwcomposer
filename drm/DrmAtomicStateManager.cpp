@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <drm/drm_fourcc.h>
+#include <cmath>
 #undef NDEBUG /* Required for assert to work */
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
@@ -26,6 +28,7 @@
 #include <sched.h>
 #include <sync/sync.h>
 #include <utils/Trace.h>
+#include "utils/intel_blit.h"
 
 #include <array>
 #include <cassert>
@@ -105,13 +108,26 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   auto unused_planes = new_frame_state.used_planes;
 
   bool has_hdr_layer = false;
-
   if (args.composition) {
     new_frame_state.used_planes.clear();
 
     for (auto &joining : args.composition->plan) {
       DrmPlane *plane = joining.plane->Get();
       LayerData &layer = joining.layer;
+
+      if (!args.test_only && layer.bi->use_shadow_fds) {
+        int out_handle;
+	// TODO: handle multi-plane buffer
+        bool success = layer.bi->blitter->Blit(layer.bi->shadow_buffer_handles[0],
+                         layer.bi->prime_buffer_handles[0],
+                         layer.bi->pitches[0], 4,
+                         layer.bi->width, layer.bi->height,
+                         layer.acquire_fence.Get(), &out_handle);
+        if (!success) {
+          ALOGE("failed to blit scan-out buffer\n");
+        }
+        layer.blit_fence = android::UniqueFd(out_handle);
+      }
 
       if (layer.bi->color_space >= BufferColorSpace::kItuRec2020) {
         has_hdr_layer = true;
