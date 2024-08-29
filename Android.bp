@@ -18,9 +18,17 @@
 cc_library_static {
     name: "libdrmhwc_utils",
 
-    srcs: ["utils/Worker.cpp"],
+    srcs: [
+        "utils/Worker.cpp",
+        "utils/intel_blit.cpp"
+    ],
 
     include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+
+    shared_libs: [
+        "libdrm",
+        "libutils",
+    ],
 
     cflags: [
         "-Wall",
