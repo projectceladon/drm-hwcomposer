@@ -46,18 +46,31 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   local->gem_handles_[0] = first_gem_handle;
   int32_t err = 0;
 
+  int *fds = bo->use_shadow_fds ? bo->shadow_fds : bo->prime_fds;
+  local->use_shadow_buffers_ = bo->use_shadow_fds;
+  if (local->use_shadow_buffers_) {
+    local->intel_fd_ = bo->blitter->GetFd();
+  }
+
   /* Framebuffer object creation require gem handle for every used plane */
   for (size_t i = 1; i < local->gem_handles_.size(); i++) {
-    if (bo->prime_fds[i] > 0) {
-      if (bo->prime_fds[i] != bo->prime_fds[0]) {
-        err = drmPrimeFDToHandle(drm.GetFd(), bo->prime_fds[i],
+    if (fds[i] > 0) {
+      if (fds[i] != fds[0]) {
+        err = drmPrimeFDToHandle(drm.GetFd(), fds[i],
                                  &local->gem_handles_.at(i));
         if (err != 0) {
-          ALOGE("failed to import prime fd %d errno=%d", bo->prime_fds[i],
-                errno);
+          ALOGE("failed to import prime fd %d errno=%d", fds[i], errno);
+        }
+        if (bo->use_shadow_fds) {
+          local->shadow_fds_[i] = bo->shadow_fds[i];
+          local->shadow_handles_[i] = bo->shadow_buffer_handles[i];
         }
       } else {
         local->gem_handles_.at(i) = local->gem_handles_[0];
+        if (bo->use_shadow_fds) {
+          local->shadow_fds_[i] = bo->shadow_fds[0];
+          local->shadow_handles_[i] = bo->shadow_buffer_handles[0];
+        }
       }
     }
   }
@@ -119,6 +132,7 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
 }
 
 DrmFbIdHandle::~DrmFbIdHandle() {
+  static int destroy_count = 0;
   ATRACE_NAME("Close FB and dmabufs");
 
   /* Destroy framebuffer object */
@@ -136,6 +150,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
    */
   struct drm_gem_close gem_close {};
   for (size_t i = 0; i < gem_handles_.size(); i++) {
+    int32_t err;
     /* Don't close invalid handle. Close handle only once in cases
      * where several YUV planes located in the single buffer. */
     if (gem_handles_[i] == 0 ||
@@ -143,10 +158,22 @@ DrmFbIdHandle::~DrmFbIdHandle() {
       continue;
     }
     gem_close.handle = gem_handles_[i];
-    int32_t err = drmIoctl(drm_->GetFd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
+    err = drmIoctl(drm_->GetFd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
     if (err != 0) {
       ALOGE("Failed to close gem handle %d, errno: %d", gem_handles_[i], errno);
     }
+    if (use_shadow_buffers_) {
+      gem_close.handle = shadow_handles_[i];
+      err = drmIoctl(intel_fd_, DRM_IOCTL_GEM_CLOSE, &gem_close);
+      if (err != 0) {
+        ALOGE("Failed to close shadow handle %d, errno: %d", gem_handles_[i], errno);
+      }
+      close(shadow_fds_[i]);
+    }
+  }
+
+  if (use_shadow_buffers_) {
+    ATRACE_INT("Destroy shadow buffer count", ++destroy_count);
   }
 }
 
@@ -154,11 +181,12 @@ auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo, bool is_pixel_blend_mode_sup
     -> std::shared_ptr<DrmFbIdHandle> {
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
-  int32_t err = drmPrimeFDToHandle(drm_->GetFd(), bo->prime_fds[0],
-                                   &first_handle);
+  int *fds = bo->use_shadow_fds ? bo->shadow_fds : bo->prime_fds;
+
+  int32_t err = drmPrimeFDToHandle(drm_->GetFd(), fds[0], &first_handle);
 
   if (err != 0) {
-    ALOGE("Failed to import prime fd %d ret=%d", bo->prime_fds[0], err);
+    ALOGE("Failed to import prime fd %d ret=%d", fds[0], err);
     return {};
   }
 
