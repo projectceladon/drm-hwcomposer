@@ -49,7 +49,7 @@ tidy:
   script:
     - rm ${HOME}/aospless/src
     - ln -s ${PWD} ${HOME}/aospless/src
-    - BASE_DIR=${HOME}/aospless make -f .ci/Makefile
+    - BASE_DIR=${HOME}/aospless make -k -f .ci/Makefile
   timeout: 2h
 
 checkstyle:
