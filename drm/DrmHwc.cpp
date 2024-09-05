@@ -193,4 +193,10 @@ uint32_t DrmHwc::GetMaxVirtualDisplayCount() {
   return writeback_count;
 }
 
+void DrmHwc::DeinitDisplays() {
+  for (auto &pair : Displays()) {
+    pair.second->SetPipeline(nullptr);
+  }
+}
+
 }  // namespace android

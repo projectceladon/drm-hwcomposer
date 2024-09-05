@@ -133,6 +133,8 @@ void HwcDisplay::Deinit() {
   }
 
   if (vsync_worker_) {
+    // TODO: There should be a mechanism to wait for this worker to complete,
+    // otherwise there is a race condition while destructing the HwcDisplay.
     vsync_worker_->StopThread();
     vsync_worker_ = {};
   }

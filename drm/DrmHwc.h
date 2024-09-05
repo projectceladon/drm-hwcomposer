@@ -57,6 +57,8 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
     deferred_hotplug_events_[displayid] = connected;
   }
 
+  void DeinitDisplays();
+
   // PipelineToFrontendBindingInterface
   bool BindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) override;
   bool UnbindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) override;
