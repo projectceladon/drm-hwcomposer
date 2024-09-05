@@ -376,6 +376,8 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
 ndk::ScopedAStatus ComposerClient::executeCommands(
     const std::vector<DisplayCommand>& commands,
     std::vector<CommandResultPayload>* results) {
+  const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
+  DEBUG_FUNC();
   cmd_result_writer_ = std::make_unique<CommandResultWriter>(results);
   for (const auto& cmd : commands) {
     ExecuteDisplayCommand(cmd);
