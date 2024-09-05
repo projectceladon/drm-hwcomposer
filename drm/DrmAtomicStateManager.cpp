@@ -80,6 +80,10 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
 
   bool nonblock = true;
 
+  if (args.commit_block == true) {
+    nonblock = false;
+  }
+
   if (args.active) {
     nonblock = false;
     new_frame_state.crtc_active_state = *args.active;
