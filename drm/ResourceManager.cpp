@@ -122,6 +122,7 @@ void ResourceManager::Init() {
     // is SRI-IOV + dGPU, use virtio-gpu for display
     // if not find virtio_gpu, we choose igpu
     if (node_num == 3) {
+#if 1
       int card_id = find_virtio_gpu_card(this, path_pattern, 0, 2);
       if (card_id < 0) {
          card_id = 0;
@@ -132,7 +133,17 @@ void ResourceManager::Init() {
       if (dev) {
         drms_.emplace_back(std::move(dev));
       }
-    }
+#endif
+	  {
+		std::ostringstream path;
+		  path << path_pattern << 2;
+		  auto dev = DrmDevice::CreateInstance(path.str(), this);
+			ALOGI("kanli open path %s ",path.str().c_str());
+		  if (dev) {
+			  drms_.emplace_back(std::move(dev));
+		  }
+	  }
+	}
   }
 
   char scale_with_gpu[PROPERTY_VALUE_MAX];
