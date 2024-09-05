@@ -62,6 +62,7 @@ void ResourceManager::Init() {
       drms_.emplace_back(std::move(dev));
     }
   } else {
+    int node_num = 0;
     path_pattern[path_len - 1] = '\0';
     for (int idx = 0;; ++idx) {
       std::ostringstream path;
@@ -71,6 +72,40 @@ void ResourceManager::Init() {
       if (stat(path.str().c_str(), &buf) != 0)
         break;
 
+      node_num++;
+    }
+
+    // only have card0, is BM/GVT-d/Virtio
+    if (node_num == 1) {
+      std::ostringstream path;
+      path << path_pattern << 0;
+      auto dev = DrmDevice::CreateInstance(path.str(), this);
+      if (dev) {
+        drms_.emplace_back(std::move(dev));
+      }
+    }
+    // is SR-IOV or iGPU + dGPU
+    if (node_num == 2) {
+      std::ostringstream path;
+      path << path_pattern << 1;
+      auto dev = DrmDevice::CreateInstance(path.str(), this);
+      if (dev->GetName() == "i915") { // iGPU+dGPU, use iGPU(card0) for display
+        std::ostringstream path;
+        path << path_pattern << 0;
+        auto dev = DrmDevice::CreateInstance(path.str(), this);
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+      } else { // SR-IOV, use virtio-gpu(card1) for display
+        if (dev) {
+          drms_.emplace_back(std::move(dev));
+        }
+      }
+    }
+    // is SRI-IOV + dGPU, use virtio-gpu(card2) for display
+    if (node_num == 3) {
+      std::ostringstream path;
+      path << path_pattern << 2;
       auto dev = DrmDevice::CreateInstance(path.str(), this);
       if (dev) {
         drms_.emplace_back(std::move(dev));

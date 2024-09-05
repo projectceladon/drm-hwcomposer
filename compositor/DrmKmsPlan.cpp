@@ -24,11 +24,12 @@
 
 namespace android {
 auto DrmKmsPlan::CreateDrmKmsPlan(DrmDisplayPipeline &pipe,
-                                  std::vector<LayerData> composition)
+                                  std::vector<LayerData> composition,
+                                  uint32_t video_layer_number)
     -> std::unique_ptr<DrmKmsPlan> {
   auto plan = std::make_unique<DrmKmsPlan>();
 
-  auto avail_planes = pipe.GetUsablePlanes();
+  auto avail_planes = pipe.GetUsablePlanes(video_layer_number);
 
   int z_pos = 0;
   for (auto &dhl : composition) {
