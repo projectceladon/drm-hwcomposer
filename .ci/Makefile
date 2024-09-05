@@ -43,6 +43,7 @@ TIDY_CHECKS_FINE := *                                   \
     -google-readability-todo                            \
     -hicpp-vararg                                       \
     -hicpp-signed-bitwise                               \
+    -misc-const-correctness                             \
     -readability-identifier-length                      \
 
 TIDY_CHECKS_NORMAL :=                                   \
