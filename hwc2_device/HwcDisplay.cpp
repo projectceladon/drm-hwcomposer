@@ -347,8 +347,8 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayConfigs(uint32_t *num_configs,
-                                          hwc2_config_t *configs) {
+HWC2::Error HwcDisplay::LegacyGetDisplayConfigs(uint32_t *num_configs,
+                                                hwc2_config_t *configs) {
   uint32_t idx = 0;
   for (auto &hwc_config : configs_.hwc_configs) {
     if (hwc_config.second.disabled) {

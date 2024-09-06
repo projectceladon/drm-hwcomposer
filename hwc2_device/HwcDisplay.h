@@ -54,6 +54,10 @@ class HwcDisplay {
 
   std::string Dump();
 
+  const HwcDisplayConfigs &GetDisplayConfigs() const {
+    return configs_;
+  }
+
   // HWC Hooks
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);
@@ -66,7 +70,8 @@ class HwcDisplay {
   HWC2::Error GetColorModes(uint32_t *num_modes, int32_t *modes);
   HWC2::Error GetDisplayAttribute(hwc2_config_t config, int32_t attribute,
                                   int32_t *value);
-  HWC2::Error GetDisplayConfigs(uint32_t *num_configs, hwc2_config_t *configs);
+  HWC2::Error LegacyGetDisplayConfigs(uint32_t *num_configs,
+                                      hwc2_config_t *configs);
   HWC2::Error GetDisplayName(uint32_t *size, char *name);
   HWC2::Error GetDisplayRequests(int32_t *display_requests,
                                  uint32_t *num_elements, hwc2_layer_t *layers,

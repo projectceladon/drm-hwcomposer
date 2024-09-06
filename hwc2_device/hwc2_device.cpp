@@ -177,8 +177,8 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                       int32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayConfigs:
       return ToHook<HWC2_PFN_GET_DISPLAY_CONFIGS>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayConfigs),
-                      &HwcDisplay::GetDisplayConfigs, uint32_t *,
+          DisplayHook<decltype(&HwcDisplay::LegacyGetDisplayConfigs),
+                      &HwcDisplay::LegacyGetDisplayConfigs, uint32_t *,
                       hwc2_config_t *>);
     case HWC2::FunctionDescriptor::GetDisplayName:
       return ToHook<HWC2_PFN_GET_DISPLAY_NAME>(
