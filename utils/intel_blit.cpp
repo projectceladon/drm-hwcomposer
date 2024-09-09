@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 
 #include <drm_fourcc.h>
+#include <virtgpu_drm.h>
 #include <xf86drm.h>
 #include <log/log.h>
 #include <cstdint>
@@ -561,4 +562,18 @@ int intel_create_buffer(uint32_t width, uint32_t height,
   }
   *out_handle = gem_create_ext.handle;
   return 0;
+}
+
+#define VIRTGPU_PARAM_ALLOW_P2P		12
+
+bool virtio_gpu_allow_p2p(int virtgpu_fd) {
+  struct drm_virtgpu_getparam get_param = { 0, 0 };
+  uint64_t value = 0;
+  get_param.param = VIRTGPU_PARAM_ALLOW_P2P;
+  get_param.value = (__u64) &value;
+  int ret = drmIoctl(virtgpu_fd, DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
+  if (ret || value == 0) {
+    return false;
+  }
+  return true;
 }

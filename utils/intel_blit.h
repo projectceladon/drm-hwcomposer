@@ -27,5 +27,6 @@ int intel_blit(struct intel_info *info, uint32_t dst, uint32_t src,
 int intel_create_buffer(uint32_t width, uint32_t height, uint32_t format,
                         uint64_t modifier, uint32_t *out_handle);
 int intel_i915_fd();
+bool virtio_gpu_allow_p2p(int virtgpu_fd);
 
 #endif  // __INTEL_BLIT_H__
