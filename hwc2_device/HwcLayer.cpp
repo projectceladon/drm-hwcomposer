@@ -254,7 +254,8 @@ void HwcLayer::ImportFb() {
     return;
   }
 
-  layer_data_.bi->use_shadow_fds = (intel_i915_fd() >= 0);
+  int kms_fd = parent_->GetPipe().device->GetFd();
+  layer_data_.bi->use_shadow_fds = (intel_i915_fd() >= 0) && virtio_gpu_allow_p2p(kms_fd);
   if (layer_data_.bi->use_shadow_fds) {
     uint32_t handle;
     int ret = intel_create_buffer(layer_data_.bi->width, layer_data_.bi->height,
