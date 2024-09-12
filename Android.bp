@@ -110,7 +110,6 @@ filegroup {
         "hwc3/ComposerResources.cpp",
         "hwc3/DrmHwcThree.cpp",
         "hwc3/Utils.cpp",
-        "hwc3/DrmHwcThree.cpp",
     ],
 }
 
@@ -165,10 +164,10 @@ cc_binary {
     name: "android.hardware.composer.hwc3-service.drm",
 
     srcs: [
-      ":drm_hwcomposer_hwc3",
-      ":drm_hwcomposer_service",
-      ":drm_hwcomposer_common",
-      "bufferinfo/legacy/BufferInfoLibdrm.cpp",
+        ":drm_hwcomposer_hwc3",
+        ":drm_hwcomposer_service",
+        ":drm_hwcomposer_common",
+        "bufferinfo/legacy/BufferInfoLibdrm.cpp",
     ],
 
     defaults: [
