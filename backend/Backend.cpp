@@ -213,6 +213,15 @@ std::tuple<int, int> Backend::GetExtraClientRange2(
   size_t avail_planes = planes.size();
 
   /*
+   * Only video layer must to be compositing by device.
+   * parameter device_size indicate video layers number.
+   * Since video layer has 2 planes, and so need 2 hardware
+   * planes to composite. hwc will not assgin 2 planes
+   * for video layer directly, instead avail_planes(indicate
+   * available planes) decrease 1.
+   */
+  avail_planes -= device_size;
+  /*
    * If more layers then planes, save one plane
    * for client composited layers
    */
