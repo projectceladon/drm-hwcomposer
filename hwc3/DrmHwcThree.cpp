@@ -20,6 +20,7 @@
 
 #include "Utils.h"
 #include "aidl/android/hardware/graphics/common/Dataspace.h"
+#include "aidl/android/hardware/graphics/common/DisplayHotplugEvent.h"
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
@@ -61,7 +62,8 @@ void DrmHwcThree::SendVsyncEventToClient(uint64_t display_id, int64_t timestamp,
 void DrmHwcThree::SendHotplugEventToClient(hwc2_display_t display_id,
                                            bool connected) {
   HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), connected);
-  composer_callback_->onHotplug(static_cast<int64_t>(display_id), connected);
+  common::DisplayHotplugEvent event = connected ? common::DisplayHotplugEvent::CONNECTED : common::DisplayHotplugEvent::DISCONNECTED;
+  composer_callback_->onHotplugEvent(static_cast<int64_t>(display_id), event);
 }
 
 void DrmHwcThree::CleanDisplayResources(uint64_t display_id) {
