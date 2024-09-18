@@ -23,6 +23,7 @@
 #include <sstream>
 
 #include "HwcDisplayConfigs.h"
+#include "compositor/ColorInfo.h"
 #include "compositor/FlatteningController.h"
 #include "compositor/LayerData.h"
 #include "drm/DrmAtomicStateManager.h"
@@ -234,6 +235,7 @@ class HwcDisplay {
   std::shared_ptr<drm_color_ctm> color_matrix_;
   android_color_transform_t color_transform_hint_{};
   int32_t content_type_{};
+  Colorspace colorspace_{};
 
   std::shared_ptr<DrmKmsPlan> current_plan_;
 

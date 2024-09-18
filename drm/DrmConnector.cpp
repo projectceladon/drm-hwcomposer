@@ -96,6 +96,42 @@ auto DrmConnector::Init()-> bool {
     return false;
   }
 
+  if (GetConnectorProperty("Colorspace", &colorspace_property_,
+                           /*is_optional=*/true)) {
+    colorspace_property_.AddEnumToMap("Default", Colorspace::kDefault,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("SMPTE_170M_YCC", Colorspace::kSmpte170MYcc,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("BT709_YCC", Colorspace::kBt709Ycc,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("XVYCC_601", Colorspace::kXvycc601,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("XVYCC_709", Colorspace::kXvycc709,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("SYCC_601", Colorspace::kSycc601,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("opYCC_601", Colorspace::kOpycc601,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("opRGB", Colorspace::kOprgb,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("BT2020_CYCC", Colorspace::kBt2020Cycc,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("BT2020_RGB", Colorspace::kBt2020Rgb,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("BT2020_YCC", Colorspace::kBt2020Ycc,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("DCI-P3_RGB_D65", Colorspace::kDciP3RgbD65,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("DCI-P3_RGB_Theater", Colorspace::kDciP3RgbTheater,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("RGB_WIDE_FIXED", Colorspace::kRgbWideFixed,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("RGB_WIDE_FLOAT", Colorspace::kRgbWideFloat,
+                                      colorspace_enum_map_);
+    colorspace_property_.AddEnumToMap("BT601_YCC", Colorspace::kBt601Ycc,
+                                      colorspace_enum_map_);
+  }
+
   GetConnectorProperty("content type", &content_type_property_,
                        /*is_optional=*/true);
 

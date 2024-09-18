@@ -21,6 +21,7 @@
 #include <memory>
 #include <optional>
 
+#include "compositor/ColorInfo.h"
 #include "compositor/DrmKmsPlan.h"
 #include "compositor/LayerData.h"
 #include "drm/DrmPlane.h"
@@ -36,6 +37,7 @@ struct AtomicCommitArgs {
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
   std::shared_ptr<drm_color_ctm> color_matrix;
+  std::optional<Colorspace> colorspace;
   std::optional<int32_t> content_type;
 
   std::shared_ptr<DrmFbIdHandle> writeback_fb;

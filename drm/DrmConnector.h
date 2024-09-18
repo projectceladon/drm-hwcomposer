@@ -27,6 +27,8 @@
 #include "DrmProperty.h"
 #include "DrmUnique.h"
 
+#include "compositor/ColorInfo.h"
+
 namespace android {
 
 class DrmDevice;
@@ -94,6 +96,14 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return edid_property_;
   }
 
+  auto &GetColorspaceProperty() const {
+    return colorspace_property_;
+  }
+
+  auto GetColorspacePropertyValue(Colorspace c) {
+    return colorspace_enum_map_[c];
+  }
+
   auto &GetContentTypeProperty() const {
     return content_type_property_;
   }
@@ -138,10 +148,13 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty dpms_property_;
   DrmProperty crtc_id_property_;
   DrmProperty edid_property_;
+  DrmProperty colorspace_property_;
   DrmProperty content_type_property_;
 
   DrmProperty writeback_pixel_formats_;
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;
+
+  std::map<Colorspace, uint64_t> colorspace_enum_map_;
 };
 }  // namespace android

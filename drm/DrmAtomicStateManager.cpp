@@ -139,6 +139,12 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       return -EINVAL;
   }
 
+  if (args.colorspace && connector->GetColorspaceProperty()) {
+    if (!connector->GetColorspaceProperty()
+             .AtomicSet(*pset, connector->GetColorspacePropertyValue(*args.colorspace)))
+      return -EINVAL;
+  }
+
   if (args.content_type && connector->GetContentTypeProperty()) {
     if (!connector->GetContentTypeProperty().AtomicSet(*pset, *args.content_type))
       return -EINVAL;

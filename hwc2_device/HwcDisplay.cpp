@@ -463,6 +463,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   a_args.color_matrix = color_matrix_;
   a_args.content_type = content_type_;
+  a_args.colorspace = colorspace_;
 
   uint32_t prev_vperiod_ns = 0;
   GetDisplayVsyncPeriod(&prev_vperiod_ns);
@@ -672,11 +673,35 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
 }
 
 HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
-  if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_BT2100_HLG)
+  /* Maps to the Colorspace DRM connector property:
+   * https://elixir.bootlin.com/linux/v6.11/source/include/drm/drm_connector.h#L538
+   */
+  if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_P3)
     return HWC2::Error::BadParameter;
 
-  if (mode != HAL_COLOR_MODE_NATIVE)
-    return HWC2::Error::Unsupported;
+  switch (mode) {
+    case HAL_COLOR_MODE_NATIVE:
+      colorspace_ = Colorspace::kDefault;
+      break;
+    case HAL_COLOR_MODE_STANDARD_BT601_625:
+    case HAL_COLOR_MODE_STANDARD_BT601_625_UNADJUSTED:
+    case HAL_COLOR_MODE_STANDARD_BT601_525:
+    case HAL_COLOR_MODE_STANDARD_BT601_525_UNADJUSTED:
+      // The DP spec does not say whether this is the 525 or the 625 line version.
+      colorspace_ = Colorspace::kBt601Ycc;
+      break;
+    case HAL_COLOR_MODE_STANDARD_BT709:
+    case HAL_COLOR_MODE_SRGB:
+      colorspace_ = Colorspace::kBt709Ycc;
+      break;
+    case HAL_COLOR_MODE_DCI_P3:
+    case HAL_COLOR_MODE_DISPLAY_P3:
+      colorspace_ = Colorspace::kDciP3RgbD65;
+      break;
+    case HAL_COLOR_MODE_ADOBE_RGB:
+    default:
+      return HWC2::Error::Unsupported;
+  }
 
   color_mode_ = mode;
   return HWC2::Error::None;
@@ -1018,16 +1043,12 @@ HWC2::Error HwcDisplay::SetColorModeWithIntent(int32_t mode, int32_t intent) {
       intent > HAL_RENDER_INTENT_TONE_MAP_ENHANCE)
     return HWC2::Error::BadParameter;
 
-  if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_BT2100_HLG)
-    return HWC2::Error::BadParameter;
-
-  if (mode != HAL_COLOR_MODE_NATIVE)
-    return HWC2::Error::Unsupported;
-
   if (intent != HAL_RENDER_INTENT_COLORIMETRIC)
     return HWC2::Error::Unsupported;
 
-  color_mode_ = mode;
+  auto err = SetColorMode(mode);
+  if (err != HWC2::Error::None) return err;
+
   return HWC2::Error::None;
 }
 
