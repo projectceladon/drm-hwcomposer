@@ -177,7 +177,6 @@ cc_binary {
     shared_libs: [
         "android.hardware.graphics.composer3-V3-ndk",
         "libbase",
-        "libbinder",
         "libbinder_ndk",
         "liblog",
         "libutils",
@@ -224,4 +223,61 @@ filegroup {
 filegroup {
     name: "drm_hwcomposer_platformmediatek",
     srcs: ["bufferinfo/legacy/BufferInfoMaliMediatek.cpp"],
+}
+
+prebuilt_etc {
+    name: "drm_hwcomposer_hwc3_apex_vintf",
+    src: "hwc3/hwc3-drm.xml",
+    sub_dir: "vintf",
+    vendor: true,
+    installable: false,
+}
+
+prebuilt_etc {
+    name: "drm_hwcomposer_hwc3_apex_init_rc",
+    filename_from_src: true,
+    vendor: true,
+    src: ":gen-drm_hwcomposer_hwc3_apex_init_rc",
+}
+
+genrule {
+    name: "gen-drm_hwcomposer_hwc3_apex_init_rc",
+    srcs: ["hwc3/hwc3-drm.rc"],
+    out: ["hwc3-drm.apex.rc"],
+    cmd: "sed " +
+        // Update the binary location to inside the Apex:
+        "-e 's%/vendor/bin/%/apex/com.android.hardware.graphics.composer/bin/%' " +
+        "$(in) > $(out)",
+}
+
+filegroup {
+    name: "drm_hwcomposer_hwc3_apex_file_contexts",
+    srcs: [
+        "hwc3/hwc3-apex-file-contexts",
+    ],
+}
+
+filegroup {
+    name: "drm_hwcomposer_hwc3_apex_manifest",
+    srcs: [
+        "hwc3/hwc3-apex-manifest.json",
+    ],
+}
+
+apex {
+    name: "com.android.hardware.graphics.composer.drm_hwcomposer",
+    key: "com.android.hardware.key",
+    certificate: ":com.android.hardware.certificate",
+    file_contexts: ":drm_hwcomposer_hwc3_apex_file_contexts",
+    manifest: ":drm_hwcomposer_hwc3_apex_manifest",
+    vendor: true,
+    updatable: false,
+    soc_specific: true,
+    binaries: [
+        "android.hardware.composer.hwc3-service.drm",
+    ],
+    prebuilts: [
+        "drm_hwcomposer_hwc3_apex_init_rc",
+        "drm_hwcomposer_hwc3_apex_vintf",
+    ],
 }

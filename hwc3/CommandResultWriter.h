@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <android-base/unique_fd.h>
+
 #include "Utils.h"
 #include "aidl/android/hardware/graphics/composer3/CommandError.h"
 #include "aidl/android/hardware/graphics/composer3/CommandResultPayload.h"

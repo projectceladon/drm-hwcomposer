@@ -19,7 +19,6 @@
 
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
-#include <binder/ProcessState.h>
 #include <sched.h>
 
 #include "Composer.h"
