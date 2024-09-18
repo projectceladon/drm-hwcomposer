@@ -462,6 +462,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   a_args.color_matrix = color_matrix_;
+  a_args.content_type = content_type_;
 
   uint32_t prev_vperiod_ns = 0;
   GetDisplayVsyncPeriod(&prev_vperiod_ns);
@@ -916,12 +917,13 @@ HWC2::Error HwcDisplay::GetSupportedContentTypes(
 }
 
 HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
-  if (contentType != HWC2_CONTENT_TYPE_NONE)
-    return HWC2::Error::Unsupported;
-
-  /* TODO: Map to the DRM Connector property:
-   * https://elixir.bootlin.com/linux/v5.4-rc5/source/drivers/gpu/drm/drm_connector.c#L809
+  /* Maps exactly to the content_type DRM connector property:
+   * https://elixir.bootlin.com/linux/v6.11/source/include/uapi/drm/drm_mode.h#L107
    */
+  if (contentType < HWC2_CONTENT_TYPE_NONE || contentType > HWC2_CONTENT_TYPE_GAME)
+    return HWC2::Error::BadParameter;
+
+  content_type_ = contentType;
 
   return HWC2::Error::None;
 }

@@ -139,6 +139,11 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       return -EINVAL;
   }
 
+  if (args.content_type && connector->GetContentTypeProperty()) {
+    if (!connector->GetContentTypeProperty().AtomicSet(*pset, *args.content_type))
+      return -EINVAL;
+  }
+
   auto unused_planes = new_frame_state.used_planes;
 
   if (args.composition) {

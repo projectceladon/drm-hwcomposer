@@ -233,6 +233,7 @@ class HwcDisplay {
   static constexpr int kCtmCols = 3;
   std::shared_ptr<drm_color_ctm> color_matrix_;
   android_color_transform_t color_transform_hint_{};
+  int32_t content_type_{};
 
   std::shared_ptr<DrmKmsPlan> current_plan_;
 
