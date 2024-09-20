@@ -73,7 +73,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
   }
 }
 
-void HwcDisplay::SetColorMarixToIdentity() {
+void HwcDisplay::SetColorMatrixToIdentity() {
   color_matrix_ = std::make_shared<drm_color_ctm>();
   for (int i = 0; i < kCtmCols; i++) {
     for (int j = 0; j < kCtmRows; j++) {
@@ -189,7 +189,7 @@ HWC2::Error HwcDisplay::Init() {
 
   client_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
 
-  SetColorMarixToIdentity();
+  SetColorMatrixToIdentity();
 
   return HWC2::Error::None;
 }
@@ -727,7 +727,7 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
 
   switch (color_transform_hint_) {
     case HAL_COLOR_TRANSFORM_IDENTITY:
-      SetColorMarixToIdentity();
+      SetColorMatrixToIdentity();
       break;
     case HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX:
       color_matrix_ = std::make_shared<drm_color_ctm>();

@@ -244,7 +244,7 @@ class HwcDisplay {
   Stats prev_stats_;
   std::string DumpDelta(HwcDisplay::Stats delta);
 
-  void SetColorMarixToIdentity();
+  void SetColorMatrixToIdentity();
 
   HWC2::Error Init();
 
