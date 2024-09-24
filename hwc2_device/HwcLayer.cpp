@@ -28,6 +28,12 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   if (layer_properties.blend_mode) {
     blend_mode_ = layer_properties.blend_mode.value();
   }
+  if (layer_properties.color_space) {
+    color_space_ = layer_properties.color_space.value();
+  }
+  if (layer_properties.sample_range) {
+    sample_range_ = layer_properties.sample_range.value();
+  }
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

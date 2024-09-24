@@ -31,6 +31,8 @@ class HwcLayer {
   // A set of properties to be validated.
   struct LayerProperties {
     std::optional<BufferBlendMode> blend_mode;
+    std::optional<BufferColorSpace> color_space;
+    std::optional<BufferSampleRange> sample_range;
   };
 
   explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};

@@ -85,6 +85,51 @@ std::optional<BufferBlendMode> AidlToBlendMode(
   }
 }
 
+std::optional<BufferColorSpace> AidlToColorSpace(
+    const std::optional<ParcelableDataspace>& dataspace) {
+  if (!dataspace) {
+    return std::nullopt;
+  }
+
+  int32_t standard = static_cast<int32_t>(dataspace->dataspace) &
+                     static_cast<int32_t>(common::Dataspace::STANDARD_MASK);
+  switch (standard) {
+    case static_cast<int32_t>(common::Dataspace::STANDARD_BT709):
+      return BufferColorSpace::kItuRec709;
+    case static_cast<int32_t>(common::Dataspace::STANDARD_BT601_625):
+    case static_cast<int32_t>(common::Dataspace::STANDARD_BT601_625_UNADJUSTED):
+    case static_cast<int32_t>(common::Dataspace::STANDARD_BT601_525):
+    case static_cast<int32_t>(common::Dataspace::STANDARD_BT601_525_UNADJUSTED):
+      return BufferColorSpace::kItuRec601;
+    case static_cast<int32_t>(common::Dataspace::STANDARD_BT2020):
+    case static_cast<int32_t>(
+        common::Dataspace::STANDARD_BT2020_CONSTANT_LUMINANCE):
+      return BufferColorSpace::kItuRec2020;
+    default:
+      ALOGE("Unsupported standard: %d", standard);
+      return std::nullopt;
+  }
+}
+
+std::optional<BufferSampleRange> AidlToSampleRange(
+    const std::optional<ParcelableDataspace>& dataspace) {
+  if (!dataspace) {
+    return std::nullopt;
+  }
+
+  int32_t sample_range = static_cast<int32_t>(dataspace->dataspace) &
+                         static_cast<int32_t>(common::Dataspace::RANGE_MASK);
+  switch (sample_range) {
+    case static_cast<int32_t>(common::Dataspace::RANGE_FULL):
+      return BufferSampleRange::kFullRange;
+    case static_cast<int32_t>(common::Dataspace::RANGE_LIMITED):
+      return BufferSampleRange::kLimitedRange;
+    default:
+      ALOGE("Unsupported sample range: %d", sample_range);
+      return std::nullopt;
+  }
+}
+
 }  // namespace
 
 ComposerClient::ComposerClient() {
@@ -333,13 +378,12 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   }
   HwcLayer::LayerProperties properties;
   properties.blend_mode = AidlToBlendMode(command.blendMode);
+  properties.color_space = AidlToColorSpace(command.dataspace);
+  properties.sample_range = AidlToSampleRange(command.dataspace);
   layer->SetLayerProperties(properties);
 
   if (command.composition) {
     ExecuteSetLayerComposition(display_id, layer_wrapper, *command.composition);
-  }
-  if (command.dataspace) {
-    ExecuteSetLayerDataspace(display_id, layer_wrapper, *command.dataspace);
   }
   if (command.displayFrame) {
     ExecuteSetLayerDisplayFrame(display_id, layer_wrapper,
@@ -1065,16 +1109,6 @@ void ComposerClient::ExecuteSetLayerComposition(
   }
   if (error != hwc3::Error::kNone) {
     cmd_result_writer_->AddError(error);
-  }
-}
-
-void ComposerClient::ExecuteSetLayerDataspace(
-    int64_t /*display_id*/, HwcLayerWrapper& layer,
-    const ParcelableDataspace& dataspace) {
-  auto err = Hwc2toHwc3Error(
-      layer.layer->SetLayerDataspace(Hwc3DataspaceToHwc2(dataspace.dataspace)));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
   }
 }
 

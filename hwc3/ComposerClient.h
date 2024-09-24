@@ -162,8 +162,6 @@ class ComposerClient : public BnComposerClient {
                              const Buffer& buffer);
   void ExecuteSetLayerComposition(int64_t display_id, HwcLayerWrapper& layer,
                                   const ParcelableComposition& composition);
-  void ExecuteSetLayerDataspace(int64_t display_id, HwcLayerWrapper& layer,
-                                const ParcelableDataspace& dataspace);
   void ExecuteSetLayerDisplayFrame(int64_t display_id, HwcLayerWrapper& layer,
                                    const common::Rect& rect);
   void ExecuteSetLayerPlaneAlpha(int64_t display_id, HwcLayerWrapper& layer,
