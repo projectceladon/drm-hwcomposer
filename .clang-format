@@ -3,5 +3,6 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
+IncludeBlocks: Preserve
 PenaltyBreakAssignment: 10000000
 PenaltyBreakBeforeFirstCallParameter: 1000
