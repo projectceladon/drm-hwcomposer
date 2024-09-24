@@ -171,13 +171,6 @@ inline int32_t Hwc3PowerModeToHwc2(PowerMode power_mode) {
   return static_cast<int32_t>(power_mode);
 }
 
-// Values match, so static_cast is okay.
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/BlendMode.aidl;drc=bab1ba54ede32520a5042d616a3af46ad4f55d5f;l=25
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=72;drc=1a0e4a1698c7b080d6763cef9e16592bce75967e
-inline int32_t Hwc3BlendModeToHwc2(common::BlendMode blend_mode) {
-  return static_cast<int32_t>(blend_mode);
-}
-
 // Values appear to match.
 // https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/Dataspace.aidl
 // https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.0.h;l=43

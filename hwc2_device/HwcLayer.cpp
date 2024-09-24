@@ -24,6 +24,12 @@
 
 namespace android {
 
+void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
+  if (layer_properties.blend_mode) {
+    blend_mode_ = layer_properties.blend_mode.value();
+  }
+}
+
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 HWC2::Error HwcLayer::SetCursorPosition(int32_t /*x*/, int32_t /*y*/) {
   return HWC2::Error::None;

@@ -19,28 +19,29 @@
 
 #include "ComposerClient.h"
 
-#include <aidlcommonsupport/NativeHandle.h>
-#include <android-base/logging.h>
-#include <android/binder_ibinder_platform.h>
-#include <hardware/hwcomposer2.h>
-
 #include <cinttypes>
 #include <cmath>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "aidl/android/hardware/graphics/common/Transform.h"
-#include "aidl/android/hardware/graphics/composer3/ClientTarget.h"
-#include "aidl/android/hardware/graphics/composer3/Composition.h"
-#include "aidl/android/hardware/graphics/composer3/DisplayRequest.h"
-#include "aidl/android/hardware/graphics/composer3/IComposerClient.h"
-#include "aidl/android/hardware/graphics/composer3/PowerMode.h"
-#include "aidl/android/hardware/graphics/composer3/PresentOrValidate.h"
-#include "aidl/android/hardware/graphics/composer3/RenderIntent.h"
-#include "android/binder_auto_utils.h"
-#include "cutils/native_handle.h"
-#include "hardware/hwcomposer_defs.h"
+#include <aidl/android/hardware/graphics/common/Transform.h>
+#include <aidl/android/hardware/graphics/composer3/ClientTarget.h>
+#include <aidl/android/hardware/graphics/composer3/Composition.h>
+#include <aidl/android/hardware/graphics/composer3/DisplayRequest.h>
+#include <aidl/android/hardware/graphics/composer3/IComposerClient.h>
+#include <aidl/android/hardware/graphics/composer3/PowerMode.h>
+#include <aidl/android/hardware/graphics/composer3/PresentOrValidate.h>
+#include <aidl/android/hardware/graphics/composer3/RenderIntent.h>
+#include <aidlcommonsupport/NativeHandle.h>
+#include <android-base/logging.h>
+#include <android/binder_auto_utils.h>
+#include <android/binder_ibinder_platform.h>
+#include <cutils/native_handle.h>
+#include <hardware/hwcomposer2.h>
+#include <hardware/hwcomposer_defs.h>
+
+#include "bufferinfo/BufferInfo.h"
 #include "hwc2_device/HwcDisplay.h"
 #include "hwc2_device/HwcDisplayConfigs.h"
 #include "hwc2_device/HwcLayer.h"
@@ -49,6 +50,7 @@
 
 using ::android::HwcDisplay;
 using ::android::HwcDisplayConfigs;
+using ::android::HwcLayer;
 
 #include "utils/log.h"
 
@@ -63,6 +65,25 @@ constexpr std::array<float, 16> kIdentityMatrix = {
     0.0F, 0.0F, 0.0F, 1.0F,
 };
 // clang-format on
+
+std::optional<BufferBlendMode> AidlToBlendMode(
+    const std::optional<ParcelableBlendMode>& aidl_blend_mode) {
+  if (!aidl_blend_mode) {
+    return std::nullopt;
+  }
+
+  switch (aidl_blend_mode->blendMode) {
+    case common::BlendMode::NONE:
+      return BufferBlendMode::kNone;
+    case common::BlendMode::PREMULTIPLIED:
+      return BufferBlendMode::kPreMult;
+    case common::BlendMode::COVERAGE:
+      return BufferBlendMode::kCoverage;
+    case common::BlendMode::INVALID:
+      ALOGE("Invalid BlendMode");
+      return std::nullopt;
+  }
+}
 
 }  // namespace
 
@@ -310,9 +331,10 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   if (command.buffer) {
     ExecuteSetLayerBuffer(display_id, layer_wrapper, *command.buffer);
   }
-  if (command.blendMode) {
-    ExecuteSetLayerBlendMode(display_id, layer_wrapper, *command.blendMode);
-  }
+  HwcLayer::LayerProperties properties;
+  properties.blend_mode = AidlToBlendMode(command.blendMode);
+  layer->SetLayerProperties(properties);
+
   if (command.composition) {
     ExecuteSetLayerComposition(display_id, layer_wrapper, *command.composition);
   }
@@ -1021,16 +1043,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   auto fence_fd = const_cast<ndk::ScopedFileDescriptor&>(buffer.fence)
                       .release();
   err = Hwc2toHwc3Error(layer.layer->SetLayerBuffer(imported_buffer, fence_fd));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
-}
-
-void ComposerClient::ExecuteSetLayerBlendMode(
-    int64_t /*display_id*/, HwcLayerWrapper& layer,
-    const ParcelableBlendMode& blend_mode) {
-  auto err = Hwc2toHwc3Error(layer.layer->SetLayerBlendMode(
-      Hwc3BlendModeToHwc2(blend_mode.blendMode)));
   if (err != hwc3::Error::kNone) {
     cmd_result_writer_->AddError(err);
   }
