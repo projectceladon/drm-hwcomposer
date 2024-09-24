@@ -211,6 +211,13 @@ std::optional<hwc_rect> AidlToRect(const std::optional<common::Rect>& rect) {
   return hwc_rect{rect->left, rect->top, rect->right, rect->bottom};
 }
 
+std::optional<hwc_frect> AidlToFRect(const std::optional<common::FRect>& rect) {
+  if (!rect) {
+    return std::nullopt;
+  }
+  return hwc_frect{rect->left, rect->top, rect->right, rect->bottom};
+}
+
 std::optional<float> AidlToAlpha(const std::optional<PlaneAlpha>& alpha) {
   if (!alpha) {
     return std::nullopt;
@@ -479,11 +486,10 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   properties.composition_type = AidlToCompositionType(command.composition);
   properties.display_frame = AidlToRect(command.displayFrame);
   properties.alpha = AidlToAlpha(command.planeAlpha);
+  properties.source_crop = AidlToFRect(command.sourceCrop);
+
   layer->SetLayerProperties(properties);
 
-  if (command.sourceCrop) {
-    ExecuteSetLayerSourceCrop(display_id, layer_wrapper, *command.sourceCrop);
-  }
   if (command.transform) {
     ExecuteSetLayerTransform(display_id, layer_wrapper, *command.transform);
   }
@@ -1184,16 +1190,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   }
 }
 
-void ComposerClient::ExecuteSetLayerSourceCrop(
-    int64_t /*display_id*/, HwcLayerWrapper& layer,
-    const common::FRect& source_crop) {
-  const hwc_frect_t rect{source_crop.left, source_crop.top, source_crop.right,
-                         source_crop.bottom};
-  auto err = Hwc2toHwc3Error(layer.layer->SetLayerSourceCrop(rect));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
-}
 void ComposerClient::ExecuteSetLayerTransform(
     int64_t /*display_id*/, HwcLayerWrapper& layer,
     const ParcelableTransform& transform) {

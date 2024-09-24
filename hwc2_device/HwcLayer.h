@@ -36,6 +36,7 @@ class HwcLayer {
     std::optional<HWC2::Composition> composition_type;
     std::optional<hwc_rect_t> display_frame;
     std::optional<float> alpha;
+    std::optional<hwc_frect_t> source_crop;
   };
 
   explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};
