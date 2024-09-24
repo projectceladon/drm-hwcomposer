@@ -49,6 +49,7 @@
 #include "hwc3/Utils.h"
 
 using ::android::HwcDisplay;
+using ::android::HwcDisplayConfig;
 using ::android::HwcDisplayConfigs;
 using ::android::HwcLayer;
 
@@ -128,6 +129,29 @@ std::optional<BufferSampleRange> AidlToSampleRange(
       ALOGE("Unsupported sample range: %d", sample_range);
       return std::nullopt;
   }
+}
+
+DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
+    const HwcDisplayConfigs& configs, const HwcDisplayConfig& config) {
+  DisplayConfiguration aidl_configuration =
+      {.configId = static_cast<int32_t>(config.id),
+       .width = config.mode.GetRawMode().hdisplay,
+       .height = config.mode.GetRawMode().vdisplay,
+       .configGroup = static_cast<int32_t>(config.group_id),
+       .vsyncPeriod = config.mode.GetVSyncPeriodNs()};
+
+  if (configs.mm_width != 0) {
+    // ideally this should be vdisplay/mm_heigth, however mm_height
+    // comes from edid parsing and is highly unreliable. Viewing the
+    // rarity of anisotropic displays, falling back to a single value
+    // for dpi yield more correct output.
+    static const float kMmPerInch = 25.4;
+    float dpi = float(config.mode.GetRawMode().hdisplay) * kMmPerInch /
+                float(configs.mm_width);
+    aidl_configuration.dpi = {.x = dpi, .y = dpi};
+  }
+  // TODO: Populate vrrConfig.
+  return aidl_configuration;
 }
 
 }  // namespace
@@ -539,7 +563,7 @@ ndk::ScopedAStatus ComposerClient::getDataspaceSaturationMatrix(
 }
 
 ndk::ScopedAStatus ComposerClient::getDisplayAttribute(
-    int64_t display_id, int32_t config, DisplayAttribute attribute,
+    int64_t display_id, int32_t config_id, DisplayAttribute attribute,
     int32_t* value) {
   DEBUG_FUNC();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
@@ -548,11 +572,46 @@ ndk::ScopedAStatus ComposerClient::getDisplayAttribute(
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  const hwc3::Error error = Hwc2toHwc3Error(
-      display->GetDisplayAttribute(Hwc3ConfigIdToHwc2(config),
-                                   Hwc3DisplayAttributeToHwc2(attribute),
-                                   value));
-  return ToBinderStatus(error);
+  const HwcDisplayConfigs& configs = display->GetDisplayConfigs();
+  auto config = configs.hwc_configs.find(config_id);
+  if (config == configs.hwc_configs.end()) {
+    return ToBinderStatus(hwc3::Error::kBadConfig);
+  }
+
+  DisplayConfiguration
+      aidl_configuration = HwcDisplayConfigToAidlConfiguration(configs,
+                                                               config->second);
+  // Legacy API for querying DPI uses units of dots per 1000 inches.
+  static const int kLegacyDpiUnit = 1000;
+  switch (attribute) {
+    case DisplayAttribute::WIDTH:
+      *value = aidl_configuration.width;
+      break;
+    case DisplayAttribute::HEIGHT:
+      *value = aidl_configuration.height;
+      break;
+    case DisplayAttribute::VSYNC_PERIOD:
+      *value = aidl_configuration.vsyncPeriod;
+      break;
+    case DisplayAttribute::DPI_X:
+      *value = aidl_configuration.dpi
+                   ? static_cast<int>(aidl_configuration.dpi->x *
+                                      kLegacyDpiUnit)
+                   : -1;
+      break;
+    case DisplayAttribute::DPI_Y:
+      *value = aidl_configuration.dpi
+                   ? static_cast<int>(aidl_configuration.dpi->y *
+                                      kLegacyDpiUnit)
+                   : -1;
+      break;
+    case DisplayAttribute::CONFIG_GROUP:
+      *value = aidl_configuration.configGroup;
+      break;
+    case DisplayAttribute::INVALID:
+      return ToBinderStatus(hwc3::Error::kUnsupported);
+  }
+  return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus ComposerClient::getDisplayCapabilities(
@@ -586,7 +645,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayCapabilities(
 }
 
 ndk::ScopedAStatus ComposerClient::getDisplayConfigs(
-    int64_t display_id, std::vector<int32_t>* configs) {
+    int64_t display_id, std::vector<int32_t>* out_configs) {
   DEBUG_FUNC();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
@@ -594,23 +653,9 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigs(
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  uint32_t num_configs = 0;
-  hwc3::Error error = Hwc2toHwc3Error(
-      display->LegacyGetDisplayConfigs(&num_configs, nullptr));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
-  }
-
-  std::vector<hwc2_config_t> out_configs(num_configs);
-  error = Hwc2toHwc3Error(
-      display->LegacyGetDisplayConfigs(&num_configs, out_configs.data()));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
-  }
-
-  configs->reserve(num_configs);
-  for (const auto config : out_configs) {
-    configs->emplace_back(Hwc2ConfigIdToHwc3(config));
+  const HwcDisplayConfigs& configs = display->GetDisplayConfigs();
+  for (const auto& [id, config] : configs.hwc_configs) {
+    out_configs->push_back(static_cast<int32_t>(id));
   }
   return ndk::ScopedAStatus::ok();
 }
@@ -1024,26 +1069,8 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
 
   const HwcDisplayConfigs& configs = display->GetDisplayConfigs();
   for (const auto& [id, config] : configs.hwc_configs) {
-    configurations->emplace_back(
-        DisplayConfiguration{.configId = static_cast<int32_t>(config.id),
-                             .width = config.mode.GetRawMode().hdisplay,
-                             .height = config.mode.GetRawMode().vdisplay,
-                             .configGroup = static_cast<int32_t>(
-                                 config.group_id),
-                             .vsyncPeriod = config.mode.GetVSyncPeriodNs()});
-
-    if (configs.mm_width != 0) {
-      // ideally this should be vdisplay/mm_heigth, however mm_height
-      // comes from edid parsing and is highly unreliable. Viewing the
-      // rarity of anisotropic displays, falling back to a single value
-      // for dpi yield more correct output.
-      static const float kMmPerInch = 25.4;
-      float dpi = float(config.mode.GetRawMode().hdisplay) * kMmPerInch /
-                  float(configs.mm_width);
-      configurations->back().dpi = {.x = dpi, .y = dpi};
-    }
-
-    // TODO: Populate vrrConfig.
+    configurations->push_back(
+        HwcDisplayConfigToAidlConfiguration(configs, config));
   }
   return ndk::ScopedAStatus::ok();
 }
