@@ -37,6 +37,9 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   if (layer_properties.composition_type) {
     sf_type_ = layer_properties.composition_type.value();
   }
+  if (layer_properties.display_frame) {
+    layer_data_.pi.display_frame = layer_properties.display_frame.value();
+  }
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

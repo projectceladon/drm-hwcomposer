@@ -204,6 +204,13 @@ DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
   return aidl_configuration;
 }
 
+std::optional<hwc_rect> AidlToRect(const std::optional<common::Rect>& rect) {
+  if (!rect) {
+    return std::nullopt;
+  }
+  return hwc_rect{rect->left, rect->top, rect->right, rect->bottom};
+}
+
 }  // namespace
 
 ComposerClient::ComposerClient() {
@@ -463,12 +470,9 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   properties.color_space = AidlToColorSpace(command.dataspace);
   properties.sample_range = AidlToSampleRange(command.dataspace);
   properties.composition_type = AidlToCompositionType(command.composition);
+  properties.display_frame = AidlToRect(command.displayFrame);
   layer->SetLayerProperties(properties);
 
-  if (command.displayFrame) {
-    ExecuteSetLayerDisplayFrame(display_id, layer_wrapper,
-                                *command.displayFrame);
-  }
   if (command.planeAlpha) {
     ExecuteSetLayerPlaneAlpha(display_id, layer_wrapper, *command.planeAlpha);
   }
@@ -1175,15 +1179,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   }
 }
 
-void ComposerClient::ExecuteSetLayerDisplayFrame(int64_t /*display_id*/,
-                                                 HwcLayerWrapper& layer,
-                                                 const common::Rect& rect) {
-  const hwc_rect_t hwc2_rect{rect.left, rect.top, rect.right, rect.bottom};
-  auto err = Hwc2toHwc3Error(layer.layer->SetLayerDisplayFrame(hwc2_rect));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
-}
 void ComposerClient::ExecuteSetLayerPlaneAlpha(int64_t /*display_id*/,
                                                HwcLayerWrapper& layer,
                                                const PlaneAlpha& plane_alpha) {

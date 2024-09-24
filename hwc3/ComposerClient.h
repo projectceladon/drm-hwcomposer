@@ -160,8 +160,6 @@ class ComposerClient : public BnComposerClient {
   void DispatchLayerCommand(int64_t display_id, const LayerCommand& command);
   void ExecuteSetLayerBuffer(int64_t display_id, HwcLayerWrapper& layer_id,
                              const Buffer& buffer);
-  void ExecuteSetLayerDisplayFrame(int64_t display_id, HwcLayerWrapper& layer,
-                                   const common::Rect& rect);
   void ExecuteSetLayerPlaneAlpha(int64_t display_id, HwcLayerWrapper& layer,
                                  const PlaneAlpha& plane_alpha);
   void ExecuteSetLayerSourceCrop(int64_t display_id, HwcLayerWrapper& layer,
