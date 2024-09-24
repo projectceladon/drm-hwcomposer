@@ -211,6 +211,13 @@ std::optional<hwc_rect> AidlToRect(const std::optional<common::Rect>& rect) {
   return hwc_rect{rect->left, rect->top, rect->right, rect->bottom};
 }
 
+std::optional<float> AidlToAlpha(const std::optional<PlaneAlpha>& alpha) {
+  if (!alpha) {
+    return std::nullopt;
+  }
+  return alpha->alpha;
+}
+
 }  // namespace
 
 ComposerClient::ComposerClient() {
@@ -471,11 +478,9 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   properties.sample_range = AidlToSampleRange(command.dataspace);
   properties.composition_type = AidlToCompositionType(command.composition);
   properties.display_frame = AidlToRect(command.displayFrame);
+  properties.alpha = AidlToAlpha(command.planeAlpha);
   layer->SetLayerProperties(properties);
 
-  if (command.planeAlpha) {
-    ExecuteSetLayerPlaneAlpha(display_id, layer_wrapper, *command.planeAlpha);
-  }
   if (command.sourceCrop) {
     ExecuteSetLayerSourceCrop(display_id, layer_wrapper, *command.sourceCrop);
   }
@@ -1174,16 +1179,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   auto fence_fd = const_cast<ndk::ScopedFileDescriptor&>(buffer.fence)
                       .release();
   err = Hwc2toHwc3Error(layer.layer->SetLayerBuffer(imported_buffer, fence_fd));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
-}
-
-void ComposerClient::ExecuteSetLayerPlaneAlpha(int64_t /*display_id*/,
-                                               HwcLayerWrapper& layer,
-                                               const PlaneAlpha& plane_alpha) {
-  auto err = Hwc2toHwc3Error(
-      layer.layer->SetLayerPlaneAlpha(plane_alpha.alpha));
   if (err != hwc3::Error::kNone) {
     cmd_result_writer_->AddError(err);
   }
