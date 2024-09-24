@@ -34,6 +34,9 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   if (layer_properties.sample_range) {
     sample_range_ = layer_properties.sample_range.value();
   }
+  if (layer_properties.composition_type) {
+    sf_type_ = layer_properties.composition_type.value();
+  }
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

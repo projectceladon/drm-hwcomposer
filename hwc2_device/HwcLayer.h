@@ -33,6 +33,7 @@ class HwcLayer {
     std::optional<BufferBlendMode> blend_mode;
     std::optional<BufferColorSpace> color_space;
     std::optional<BufferSampleRange> sample_range;
+    std::optional<HWC2::Composition> composition_type;
   };
 
   explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};

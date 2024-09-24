@@ -131,6 +131,56 @@ std::optional<BufferSampleRange> AidlToSampleRange(
   }
 }
 
+bool IsSupportedCompositionType(
+    const std::optional<ParcelableComposition> composition) {
+  if (!composition) {
+    return true;
+  }
+  switch (composition->composition) {
+    case Composition::INVALID:
+    case Composition::CLIENT:
+    case Composition::DEVICE:
+    case Composition::SOLID_COLOR:
+    case Composition::CURSOR:
+      return true;
+
+    // Unsupported composition types. Set an error for the current
+    // DisplayCommand and return.
+    case Composition::DISPLAY_DECORATION:
+    case Composition::SIDEBAND:
+    case Composition::REFRESH_RATE_INDICATOR:
+      return false;
+  }
+}
+
+std::optional<HWC2::Composition> AidlToCompositionType(
+    const std::optional<ParcelableComposition> composition) {
+  if (!composition) {
+    return std::nullopt;
+  }
+
+  switch (composition->composition) {
+    case Composition::INVALID:
+      return HWC2::Composition::Invalid;
+    case Composition::CLIENT:
+      return HWC2::Composition::Client;
+    case Composition::DEVICE:
+      return HWC2::Composition::Device;
+    case Composition::SOLID_COLOR:
+      return HWC2::Composition::SolidColor;
+    case Composition::CURSOR:
+      return HWC2::Composition::Cursor;
+
+    // Unsupported composition types.
+    case Composition::DISPLAY_DECORATION:
+    case Composition::SIDEBAND:
+    case Composition::REFRESH_RATE_INDICATOR:
+      ALOGE("Unsupported composition type: %s",
+            toString(composition->composition).c_str());
+      return std::nullopt;
+  }
+}
+
 DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
     const HwcDisplayConfigs& configs, const HwcDisplayConfig& config) {
   DisplayConfiguration aidl_configuration =
@@ -396,19 +446,25 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
     return;
   }
 
+  // If the requested composition type is not supported, the HWC should return
+  // an error and not process any further commands.
+  if (!IsSupportedCompositionType(command.composition)) {
+    cmd_result_writer_->AddError(hwc3::Error::kUnsupported);
+    return;
+  }
+
   HwcLayerWrapper layer_wrapper{command.layer, layer};
   if (command.buffer) {
     ExecuteSetLayerBuffer(display_id, layer_wrapper, *command.buffer);
   }
+
   HwcLayer::LayerProperties properties;
   properties.blend_mode = AidlToBlendMode(command.blendMode);
   properties.color_space = AidlToColorSpace(command.dataspace);
   properties.sample_range = AidlToSampleRange(command.dataspace);
+  properties.composition_type = AidlToCompositionType(command.composition);
   layer->SetLayerProperties(properties);
 
-  if (command.composition) {
-    ExecuteSetLayerComposition(display_id, layer_wrapper, *command.composition);
-  }
   if (command.displayFrame) {
     ExecuteSetLayerDisplayFrame(display_id, layer_wrapper,
                                 *command.displayFrame);
@@ -1116,26 +1172,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   err = Hwc2toHwc3Error(layer.layer->SetLayerBuffer(imported_buffer, fence_fd));
   if (err != hwc3::Error::kNone) {
     cmd_result_writer_->AddError(err);
-  }
-}
-
-void ComposerClient::ExecuteSetLayerComposition(
-    int64_t /*display_id*/, HwcLayerWrapper& layer,
-    const ParcelableComposition& composition) {
-  hwc3::Error error = hwc3::Error::kNone;
-  switch (composition.composition) {
-      // Unsupported composition types should set an error for the current
-      // DisplayCommand.
-    case Composition::DISPLAY_DECORATION:
-    case Composition::SIDEBAND:
-      error = hwc3::Error::kUnsupported;
-      break;
-    default:
-      error = Hwc2toHwc3Error(layer.layer->SetLayerCompositionType(
-          Hwc3CompositionToHwc2(composition.composition)));
-  }
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
   }
 }
 
