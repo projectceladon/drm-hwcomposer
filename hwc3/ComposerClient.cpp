@@ -52,6 +52,7 @@ using ::android::HwcDisplay;
 using ::android::HwcDisplayConfig;
 using ::android::HwcDisplayConfigs;
 using ::android::HwcLayer;
+using ::android::LayerTransform;
 
 #include "utils/log.h"
 
@@ -223,6 +224,36 @@ std::optional<float> AidlToAlpha(const std::optional<PlaneAlpha>& alpha) {
     return std::nullopt;
   }
   return alpha->alpha;
+}
+
+std::optional<LayerTransform> AidlToLayerTransform(
+    const std::optional<ParcelableTransform>& aidl_transform) {
+  if (!aidl_transform) {
+    return std::nullopt;
+  }
+
+  uint32_t transform = LayerTransform::kIdentity;
+  // 270* and 180* cannot be combined with flips. More specifically, they
+  // already contain both horizontal and vertical flips, so those fields are
+  // redundant in this case. 90* rotation can be combined with either horizontal
+  // flip or vertical flip, so treat it differently
+  if (aidl_transform->transform == common::Transform::ROT_270) {
+    transform = LayerTransform::kRotate270;
+  } else if (aidl_transform->transform == common::Transform::ROT_180) {
+    transform = LayerTransform::kRotate180;
+  } else {
+    auto aidl_transform_bits = static_cast<uint32_t>(aidl_transform->transform);
+    if ((aidl_transform_bits &
+         static_cast<uint32_t>(common::Transform::FLIP_H)) != 0)
+      transform |= LayerTransform::kFlipH;
+    if ((aidl_transform_bits &
+         static_cast<uint32_t>(common::Transform::FLIP_V)) != 0)
+      transform |= LayerTransform::kFlipV;
+    if ((aidl_transform_bits &
+         static_cast<uint32_t>(common::Transform::ROT_90)) != 0)
+      transform |= LayerTransform::kRotate90;
+  }
+  return static_cast<LayerTransform>(transform);
 }
 
 }  // namespace
@@ -487,12 +518,10 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   properties.display_frame = AidlToRect(command.displayFrame);
   properties.alpha = AidlToAlpha(command.planeAlpha);
   properties.source_crop = AidlToFRect(command.sourceCrop);
+  properties.transform = AidlToLayerTransform(command.transform);
 
   layer->SetLayerProperties(properties);
 
-  if (command.transform) {
-    ExecuteSetLayerTransform(display_id, layer_wrapper, *command.transform);
-  }
   if (command.z) {
     ExecuteSetLayerZOrder(display_id, layer_wrapper, *command.z);
   }
@@ -1190,15 +1219,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   }
 }
 
-void ComposerClient::ExecuteSetLayerTransform(
-    int64_t /*display_id*/, HwcLayerWrapper& layer,
-    const ParcelableTransform& transform) {
-  auto err = Hwc2toHwc3Error(
-      layer.layer->SetLayerTransform(Hwc3TransformToHwc2(transform.transform)));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
-}
 void ComposerClient::ExecuteSetLayerZOrder(int64_t /*display_id*/,
                                            HwcLayerWrapper& layer,
                                            const ZOrder& z_order) {

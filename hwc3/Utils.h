@@ -165,11 +165,4 @@ inline int32_t Hwc3DataspaceToHwc2(common::Dataspace dataspace) {
   return static_cast<int32_t>(dataspace);
 }
 
-// Values match, so static_cast is okay.
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/Transform.aidl
-// https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.0.h;l=41
-inline int32_t Hwc3TransformToHwc2(common::Transform transform) {
-  return static_cast<int32_t>(transform);
-}
-
 };  // namespace aidl::android::hardware::graphics::composer3

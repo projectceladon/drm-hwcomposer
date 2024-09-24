@@ -47,6 +47,9 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   if (layer_properties.source_crop) {
     layer_data_.pi.source_crop = layer_properties.source_crop.value();
   }
+  if (layer_properties.transform) {
+    layer_data_.pi.transform = layer_properties.transform.value();
+  }
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
