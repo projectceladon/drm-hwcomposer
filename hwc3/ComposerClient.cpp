@@ -744,24 +744,8 @@ ndk::ScopedAStatus ComposerClient::getSupportedContentTypes(
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  uint32_t out_num_supported_types = 0;
-  auto error = Hwc2toHwc3Error(
-      display->GetSupportedContentTypes(&out_num_supported_types, nullptr));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
-  }
-
-  std::vector<uint32_t> out_supported_types(out_num_supported_types);
-  error = Hwc2toHwc3Error(
-      display->GetSupportedContentTypes(&out_num_supported_types,
-                                        out_supported_types.data()));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
-  }
-
-  for (const auto type : out_supported_types) {
-    types->push_back(Hwc2ContentTypeToHwc3(type));
-  }
+  // Support for ContentType is not implemented.
+  types->clear();
   return ndk::ScopedAStatus::ok();
 }
 
@@ -885,8 +869,10 @@ ndk::ScopedAStatus ComposerClient::setContentType(int64_t display_id,
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  auto error = display->SetContentType(Hwc3ContentTypeToHwc2(type));
-  return ToBinderStatus(Hwc2toHwc3Error(error));
+  if (type == ContentType::NONE) {
+    return ndk::ScopedAStatus::ok();
+  }
+  return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setDisplayedContentSamplingEnabled(

@@ -153,20 +153,6 @@ inline int32_t Hwc3RenderIntentToHwc2(RenderIntent render_intent) {
   return static_cast<int32_t>(render_intent);
 }
 
-// Content type matches, so static_cast is safe.
-// https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/main/graphics/composer/aidl/android/hardware/graphics/composer3/ContentType.aidl
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=350;drc=1a0e4a1698c7b080d6763cef9e16592bce75967e
-inline ContentType Hwc2ContentTypeToHwc3(uint32_t content_type) {
-  if (content_type > HWC2_CONTENT_TYPE_GAME) {
-    ALOGE("Unknown HWC2 content type. Could not translate: %d", content_type);
-    return ContentType::NONE;
-  }
-  return static_cast<ContentType>(content_type);
-}
-inline int32_t Hwc3ContentTypeToHwc2(ContentType content_type) {
-  return static_cast<int32_t>(content_type);
-}
-
 // Values match, so it's safe to do static_cast.
 // https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/main/graphics/composer/aidl/android/hardware/graphics/composer3/DisplayAttribute.aidl
 // https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=58;drc=d783cabd4d9bddb4b83f2dd38300b7598bb58b24
