@@ -226,6 +226,13 @@ std::optional<float> AidlToAlpha(const std::optional<PlaneAlpha>& alpha) {
   return alpha->alpha;
 }
 
+std::optional<uint32_t> AidlToZOrder(const std::optional<ZOrder>& z_order) {
+  if (!z_order) {
+    return std::nullopt;
+  }
+  return z_order->z;
+}
+
 std::optional<LayerTransform> AidlToLayerTransform(
     const std::optional<ParcelableTransform>& aidl_transform) {
   if (!aidl_transform) {
@@ -519,12 +526,10 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   properties.alpha = AidlToAlpha(command.planeAlpha);
   properties.source_crop = AidlToFRect(command.sourceCrop);
   properties.transform = AidlToLayerTransform(command.transform);
+  properties.z_order = AidlToZOrder(command.z);
 
   layer->SetLayerProperties(properties);
 
-  if (command.z) {
-    ExecuteSetLayerZOrder(display_id, layer_wrapper, *command.z);
-  }
   if (command.brightness) {
     ExecuteSetLayerBrightness(display_id, layer_wrapper, *command.brightness);
   }
@@ -1214,15 +1219,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   auto fence_fd = const_cast<ndk::ScopedFileDescriptor&>(buffer.fence)
                       .release();
   err = Hwc2toHwc3Error(layer.layer->SetLayerBuffer(imported_buffer, fence_fd));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
-}
-
-void ComposerClient::ExecuteSetLayerZOrder(int64_t /*display_id*/,
-                                           HwcLayerWrapper& layer,
-                                           const ZOrder& z_order) {
-  auto err = Hwc2toHwc3Error(layer.layer->SetLayerZOrder(z_order.z));
   if (err != hwc3::Error::kNone) {
     cmd_result_writer_->AddError(err);
   }

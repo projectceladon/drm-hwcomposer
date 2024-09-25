@@ -50,6 +50,9 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   if (layer_properties.transform) {
     layer_data_.pi.transform = layer_properties.transform.value();
   }
+  if (layer_properties.z_order) {
+    z_order_ = layer_properties.z_order.value();
+  }
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

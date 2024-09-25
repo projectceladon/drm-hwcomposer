@@ -160,8 +160,6 @@ class ComposerClient : public BnComposerClient {
   void DispatchLayerCommand(int64_t display_id, const LayerCommand& command);
   void ExecuteSetLayerBuffer(int64_t display_id, HwcLayerWrapper& layer_id,
                              const Buffer& buffer);
-  void ExecuteSetLayerZOrder(int64_t display_id, HwcLayerWrapper& layer,
-                             const ZOrder& z_order);
   void ExecuteSetLayerBrightness(int64_t display_id, HwcLayerWrapper& layer,
                                  const LayerBrightness& brightness);
 
