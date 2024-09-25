@@ -154,6 +154,14 @@ bool IsSupportedCompositionType(
   }
 }
 
+bool ValidateLayerBrightness(const std::optional<LayerBrightness>& brightness) {
+  if (!brightness) {
+    return true;
+  }
+  return !(std::signbit(brightness->brightness) ||
+           std::isnan(brightness->brightness));
+}
+
 std::optional<HWC2::Composition> AidlToCompositionType(
     const std::optional<ParcelableComposition> composition) {
   if (!composition) {
@@ -512,6 +520,13 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
     return;
   }
 
+  // For some invalid parameters, the HWC should return an error and not process
+  // any further commands.
+  if (!ValidateLayerBrightness(command.brightness)) {
+    cmd_result_writer_->AddError(hwc3::Error::kBadParameter);
+    return;
+  }
+
   HwcLayerWrapper layer_wrapper{command.layer, layer};
   if (command.buffer) {
     ExecuteSetLayerBuffer(display_id, layer_wrapper, *command.buffer);
@@ -529,10 +544,6 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   properties.z_order = AidlToZOrder(command.z);
 
   layer->SetLayerProperties(properties);
-
-  if (command.brightness) {
-    ExecuteSetLayerBrightness(display_id, layer_wrapper, *command.brightness);
-  }
 
   // Some unsupported functionality returns kUnsupported, and others
   // are just a no-op.
@@ -1221,15 +1232,6 @@ void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
   err = Hwc2toHwc3Error(layer.layer->SetLayerBuffer(imported_buffer, fence_fd));
   if (err != hwc3::Error::kNone) {
     cmd_result_writer_->AddError(err);
-  }
-}
-
-void ComposerClient::ExecuteSetLayerBrightness(
-    int64_t /*display_id*/, HwcLayerWrapper& /*layer*/,
-    const LayerBrightness& brightness) {
-  if (std::signbit(brightness.brightness) ||
-      std::isnan(brightness.brightness)) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadParameter);
   }
 }
 
