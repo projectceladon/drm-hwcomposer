@@ -48,6 +48,12 @@ class DrmMode {
            (float)(mode_.vtotal * mode_.htotal) * 1000.0F;
   }
 
+  auto GetVSyncPeriodNs() const {
+    static const int kNanosecondsPerSecond = 1E9;
+    return static_cast<int32_t>(kNanosecondsPerSecond *
+                                double(1 / GetVRefresh()));
+  }
+
   auto GetName() const {
     return std::string(mode_.name) + "@" + std::to_string(GetVRefresh());
   }

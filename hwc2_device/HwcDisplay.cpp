@@ -320,7 +320,7 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
       break;
     case HWC2::Attribute::VsyncPeriod:
       // in nanoseconds
-      *value = static_cast<int>(1E9 / hwc_config.mode.GetVRefresh());
+      *value = hwc_config.mode.GetVSyncPeriodNs();
       break;
     case HWC2::Attribute::DpiY:
       // ideally this should be vdisplay/mm_heigth, however mm_height

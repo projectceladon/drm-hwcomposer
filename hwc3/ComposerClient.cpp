@@ -972,15 +972,13 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
 
   const HwcDisplayConfigs& configs = display->GetDisplayConfigs();
   for (const auto& [id, config] : configs.hwc_configs) {
-    static const int kNanosecondsPerSecond = 1E9;
     configurations->emplace_back(
         DisplayConfiguration{.configId = static_cast<int32_t>(config.id),
                              .width = config.mode.GetRawMode().hdisplay,
                              .height = config.mode.GetRawMode().vdisplay,
                              .configGroup = static_cast<int32_t>(
                                  config.group_id),
-                             .vsyncPeriod = static_cast<int>(kNanosecondsPerSecond * double(
-                                 1 / config.mode.GetVRefresh()))});
+                             .vsyncPeriod = config.mode.GetVSyncPeriodNs()});
 
     if (configs.mm_width != 0) {
       // ideally this should be vdisplay/mm_heigth, however mm_height
