@@ -202,9 +202,15 @@ hwc3::Error ComposerClient::ValidateDisplayInternal(
     return Hwc2toHwc3Error(hwc2_error);
   }
 
+  hwc3::Error error = Hwc2toHwc3Error(
+      display.GetChangedCompositionTypes(&num_types, nullptr, nullptr));
+  if (error != hwc3::Error::kNone) {
+    return error;
+  }
+
   std::vector<hwc2_layer_t> hwc_changed_layers(num_types);
   std::vector<int32_t> hwc_composition_types(num_types);
-  hwc3::Error error = Hwc2toHwc3Error(
+  error = Hwc2toHwc3Error(
       display.GetChangedCompositionTypes(&num_types, hwc_changed_layers.data(),
                                          hwc_composition_types.data()));
   if (error != hwc3::Error::kNone) {
