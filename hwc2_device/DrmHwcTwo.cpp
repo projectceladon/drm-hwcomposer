@@ -69,15 +69,16 @@ HWC2::Error DrmHwcTwo::RegisterCallback(int32_t descriptor,
 }
 
 void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
-                                         bool connected) {
+                                         DisplayStatus display_status) {
   auto hc = hotplug_callback_;
+
   if (hc.first != nullptr && hc.second != nullptr) {
     /* For some reason HWC Service will call HWC2 API in hotplug callback
      * handler. This is the reason we're using recursive mutex.
      */
     hc.first(hc.second, displayid,
-             connected ? HWC2_CONNECTION_CONNECTED
-                       : HWC2_CONNECTION_DISCONNECTED);
+             display_status ? HWC2_CONNECTION_CONNECTED
+                            : HWC2_CONNECTION_DISCONNECTED);
   }
 }
 

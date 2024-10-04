@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "drmhwc"
+
 #include "DrmHwcThree.h"
 
 #include <cinttypes>
@@ -59,10 +61,22 @@ void DrmHwcThree::SendVsyncEventToClient(uint64_t display_id, int64_t timestamp,
                               static_cast<int32_t>(vsync_period));
 }
 
-void DrmHwcThree::SendHotplugEventToClient(hwc2_display_t display_id,
-                                           bool connected) {
-  HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), connected);
-  common::DisplayHotplugEvent event = connected ? common::DisplayHotplugEvent::CONNECTED : common::DisplayHotplugEvent::DISCONNECTED;
+void DrmHwcThree::SendHotplugEventToClient(
+    hwc2_display_t display_id, DrmHwc::DisplayStatus display_status) {
+  common::DisplayHotplugEvent event = common::DisplayHotplugEvent::DISCONNECTED;
+  switch (display_status) {
+    case DrmHwc::kDisconnected:
+      event = common::DisplayHotplugEvent::DISCONNECTED;
+      HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), false);
+      break;
+    case DrmHwc::kConnected:
+      event = common::DisplayHotplugEvent::CONNECTED;
+      HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), true);
+      break;
+    case DrmHwc::kLinkTrainingFailed:
+      event = common::DisplayHotplugEvent::ERROR_INCOMPATIBLE_CABLE;
+      break;
+  }
   composer_callback_->onHotplugEvent(static_cast<int64_t>(display_id), event);
 }
 

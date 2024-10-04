@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <drm/drm_mode.h>
 #define LOG_TAG "drmhwc"
 
 #include "DrmConnector.h"
@@ -230,4 +231,14 @@ int DrmConnector::UpdateModes() {
   return 0;
 }
 
+bool DrmConnector::IsLinkStatusGood() {
+  if (GetConnectorProperty("link-status", &link_status_property_, false)) {
+    auto link_status_property_value = link_status_property_.GetValue();
+    if (link_status_property_value &&
+        (link_status_property_value == DRM_MODE_LINK_STATUS_BAD))
+      return false;
+  }
+
+  return true;
+}
 }  // namespace android

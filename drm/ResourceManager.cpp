@@ -154,6 +154,10 @@ void ResourceManager::UpdateFrontendDisplays() {
         attached_pipelines_.erase(conn);
       }
     }
+    if (connected) {
+      if (!conn->IsLinkStatusGood())
+        frontend_interface_->NotifyDisplayLinkStatus(attached_pipelines_[conn]);
+    }
   }
   frontend_interface_->FinalizeDisplayBinding();
 }

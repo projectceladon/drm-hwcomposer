@@ -80,6 +80,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   int UpdateModes();
 
+  bool IsLinkStatusGood();
+
   auto &GetModes() const {
     return modes_;
   }
@@ -151,6 +153,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty colorspace_property_;
   DrmProperty content_type_property_;
 
+  DrmProperty link_status_property_;
   DrmProperty writeback_pixel_formats_;
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;

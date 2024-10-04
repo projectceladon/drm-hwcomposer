@@ -37,7 +37,7 @@ class DrmHwcTwo : public DrmHwc {
       hwc2_display_t displayid, int64_t timestamp) const override;
   void SendRefreshEventToClient(uint64_t displayid) override;
   void SendHotplugEventToClient(hwc2_display_t displayid,
-                                bool connected) override;
+                                DisplayStatus display_status) override;
 
  private:
   std::pair<HWC2_PFN_HOTPLUG, hwc2_callback_data_t> hotplug_callback_{};

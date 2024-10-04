@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "drm/DrmDisplayPipeline.h"
 #include "drm/ResourceManager.h"
 #include "hwc2_device/HwcDisplay.h"
 
@@ -26,6 +27,13 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
   DrmHwc();
   ~DrmHwc() override = default;
 
+  // Enum for Display status: Connected, Disconnected, Link Training Failed
+  enum DisplayStatus {
+    kDisconnected,
+    kConnected,
+    kLinkTrainingFailed,
+  };
+
   // Client Callback functions.:
   virtual void SendVsyncEventToClient(hwc2_display_t displayid,
                                       int64_t timestamp,
@@ -34,7 +42,7 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
       hwc2_display_t displayid, int64_t timestamp) const = 0;
   virtual void SendRefreshEventToClient(uint64_t displayid) = 0;
   virtual void SendHotplugEventToClient(hwc2_display_t displayid,
-                                        bool connected) = 0;
+                                        enum DisplayStatus display_status) = 0;
 
   // Device functions
   HWC2::Error CreateVirtualDisplay(uint32_t width, uint32_t height,
@@ -53,8 +61,9 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
     return resource_manager_;
   }
 
-  void ScheduleHotplugEvent(hwc2_display_t displayid, bool connected) {
-    deferred_hotplug_events_[displayid] = connected;
+  void ScheduleHotplugEvent(hwc2_display_t displayid,
+                            enum DisplayStatus display_status) {
+    deferred_hotplug_events_[displayid] = display_status;
   }
 
   void DeinitDisplays();
@@ -64,8 +73,14 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
   bool UnbindDisplay(std::shared_ptr<DrmDisplayPipeline> pipeline) override;
   void FinalizeDisplayBinding() override;
 
+  // Notify Display Link Status
+  void NotifyDisplayLinkStatus(
+      std::shared_ptr<DrmDisplayPipeline> pipeline) override;
+
  protected:
-  auto& Displays() { return displays_; }
+  auto &Displays() {
+    return displays_;
+  }
 
  private:
   ResourceManager resource_manager_;
@@ -75,7 +90,7 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
 
   std::string dump_string_;
 
-  std::map<hwc2_display_t, bool> deferred_hotplug_events_;
+  std::map<hwc2_display_t, enum DisplayStatus> deferred_hotplug_events_;
   std::vector<hwc2_display_t> displays_for_removal_list_;
 
   uint32_t last_display_handle_ = kPrimaryDisplay;

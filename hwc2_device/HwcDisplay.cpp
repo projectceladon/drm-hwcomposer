@@ -19,6 +19,8 @@
 
 #include "HwcDisplay.h"
 
+#include <cinttypes>
+
 #include "backend/Backend.h"
 #include "backend/BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
@@ -96,9 +98,9 @@ void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
 
   if (pipeline_ != nullptr || handle_ == kPrimaryDisplay) {
     Init();
-    hwc_->ScheduleHotplugEvent(handle_, /*connected = */ true);
+    hwc_->ScheduleHotplugEvent(handle_, DrmHwc::kConnected);
   } else {
-    hwc_->ScheduleHotplugEvent(handle_, /*connected = */ false);
+    hwc_->ScheduleHotplugEvent(handle_, DrmHwc::kDisconnected);
   }
 }
 

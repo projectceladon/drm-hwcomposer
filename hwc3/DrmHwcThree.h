@@ -39,7 +39,7 @@ class DrmHwcThree : public ::android::DrmHwc {
       hwc2_display_t display_id, int64_t timestamp) const override;
   void SendRefreshEventToClient(uint64_t display_id) override;
   void SendHotplugEventToClient(hwc2_display_t display_id,
-                                bool connected) override;
+                                DrmHwc::DisplayStatus display_status) override;
 
  private:
   void CleanDisplayResources(uint64_t display_id);

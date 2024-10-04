@@ -22,6 +22,7 @@
 #include "DrmDevice.h"
 #include "DrmDisplayPipeline.h"
 #include "DrmFbImporter.h"
+#include "DrmProperty.h"
 #include "UEventListener.h"
 
 namespace android {
@@ -37,6 +38,8 @@ class PipelineToFrontendBindingInterface {
   virtual bool BindDisplay(std::shared_ptr<DrmDisplayPipeline>) = 0;
   virtual bool UnbindDisplay(std::shared_ptr<DrmDisplayPipeline>) = 0;
   virtual void FinalizeDisplayBinding() = 0;
+  virtual void NotifyDisplayLinkStatus(
+      std::shared_ptr<DrmDisplayPipeline> pipeline) = 0;
 };
 
 class ResourceManager {
