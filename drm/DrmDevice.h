@@ -134,10 +134,10 @@ class DrmDevice {
 
   ResourceManager *const res_man_;
  public:
-  bool preferred_mode_limit_;
-  bool planes_enabling_;
-  uint32_t planes_num_;
-  bool color_adjustment_enabling_;
+  bool preferred_mode_limit_ = false;
+  bool planes_enabling_ = false;
+  uint32_t planes_num_ = 0;
+  bool color_adjustment_enabling_ = false;
 };
 }  // namespace android
 

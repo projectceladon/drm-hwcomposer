@@ -79,7 +79,7 @@ class ResourceManager {
   PipelineToFrontendBindingInterface *const frontend_interface_;
 
   bool initialized_{};
-  int card_num_;
+  int card_num_ = 0;
   bool reloaded_{};
 };
 }  // namespace android
