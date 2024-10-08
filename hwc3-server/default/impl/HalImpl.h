@@ -34,8 +34,8 @@ namespace aidl::android::hardware::graphics::composer3::impl {
 class HalImpl : public IComposerHal {
   public:
     HalImpl(hwc2_device_t* device);
-    HalImpl(const HalImpl &) = delete;
-    HalImpl &operator=(const HalImpl &) = delete;
+    HalImpl(const HalImpl &) = default;
+    HalImpl &operator=(const HalImpl &) = default;
     virtual ~HalImpl();
 
     void getCapabilities(std::vector<Capability>* caps) override;
