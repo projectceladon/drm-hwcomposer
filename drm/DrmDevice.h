@@ -26,6 +26,7 @@
 #include "DrmEncoder.h"
 #include "DrmFbImporter.h"
 #include "utils/UniqueFd.h"
+#include "utils/hwcdefs.h"
 
 #define DRM_FORMAT_NV12_Y_TILED_INTEL fourcc_code('9', '9', '9', '6')
 namespace android {
@@ -104,7 +105,6 @@ class DrmDevice {
   void ResetModeId();
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
-
   static auto IsIvshmDev(int fd) -> bool;
 
  private:
