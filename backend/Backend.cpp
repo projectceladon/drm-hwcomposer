@@ -124,7 +124,8 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc2()->GetResMan().ForcedScalingWithGpu());
+          display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
+         (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev());
 }
 
 bool Backend::IsVideoLayer(HwcLayer *layer) {
