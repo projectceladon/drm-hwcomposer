@@ -106,6 +106,7 @@ class DrmDevice {
                   DrmProperty *property) const;
 
   static auto IsIvshmDev(int fd) -> bool;
+  auto IsIvshmDev() {return IsIvshmDev_;}
 
  private:
   explicit DrmDevice(ResourceManager *res_man);
@@ -133,6 +134,7 @@ class DrmDevice {
   std::unique_ptr<DrmFbImporter> drm_fb_importer_;
 
   ResourceManager *const res_man_;
+  bool IsIvshmDev_ = false;
  public:
   bool preferred_mode_limit_ = false;
   bool planes_enabling_ = false;
