@@ -22,6 +22,8 @@
 
 #include <ctime>
 #include <sstream>
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
 
 #include "bufferinfo/BufferInfoGetter.h"
 #include "drm/DrmAtomicStateManager.h"
@@ -177,8 +179,20 @@ void ResourceManager::Init() {
   });
 
   UpdateFrontendDisplays();
-
+  pt_ = std::thread(&ResourceManager::HwcServiceThread, this);
   initialized_ = true;
+}
+
+void ResourceManager::HwcServiceThread() {
+  this->hwcService_.Start((DrmHwcTwo*)frontend_interface_);
+  sp<ProcessState> proc(ProcessState::self());
+  if (!proc.get())
+  {
+      ALOGE("Error: Fail to new ProcessState.");
+      return ;
+  }
+  proc->startThreadPool();
+  IPCThreadState::self()->joinThreadPool();
 }
 
 void ResourceManager::DeInit() {
