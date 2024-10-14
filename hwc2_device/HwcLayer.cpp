@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <xf86drm.h>
 #define LOG_TAG "hwc-layer"
 
 #include "HwcLayer.h"
@@ -21,6 +22,7 @@
 #include "HwcDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
+#include "utils/intel_blit.h"
 
 namespace android {
 
@@ -250,6 +252,29 @@ void HwcLayer::ImportFb() {
     ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
     bi_get_failed_ = true;
     return;
+  }
+
+  int kms_fd = parent_->GetPipe().device->GetFd();
+  layer_data_.bi->use_shadow_fds = (intel_dgpu_fd() >= 0) && !virtio_gpu_allow_p2p(kms_fd);
+  if (layer_data_.bi->use_shadow_fds) {
+    uint32_t handle;
+    int ret = intel_create_buffer(layer_data_.bi->width, layer_data_.bi->height,
+                                  layer_data_.bi->format, layer_data_.bi->modifiers[0],
+                                  &handle);
+    ALOGI("create shadow buffer, modifier=0x%lx\n", (unsigned long) layer_data_.bi->modifiers[0]);
+    if (ret) {
+      ALOGE("Failed to create shadow buffer\n");
+      layer_data_.bi->use_shadow_fds = false;
+    } else {
+      layer_data_.bi->shadow_buffer_handles[0] = handle;
+      ret = drmPrimeHandleToFD(intel_dgpu_fd(), handle, 0, &layer_data_.bi->shadow_fds[0]);
+      if (ret) {
+        ALOGE("Failed to export shadow buffer\n");
+        layer_data_.bi->use_shadow_fds = false;
+	drmCloseBufferHandle(intel_dgpu_fd(), handle);
+      }
+      intel_blit_init(&layer_data_.bi->info);
+    }
   }
 
   layer_data_

@@ -69,6 +69,7 @@ struct LayerData {
     clonned.fb = fb;
     clonned.pi = pi;
     clonned.acquire_fence = std::move(acquire_fence);
+    clonned.blit_fence = std::move(blit_fence);
     return clonned;
   }
 
@@ -76,6 +77,7 @@ struct LayerData {
   std::shared_ptr<DrmFbIdHandle> fb;
   PresentInfo pi;
   UniqueFd acquire_fence;
+  UniqueFd blit_fence;
 };
 
 }  // namespace android
