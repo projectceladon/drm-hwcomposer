@@ -28,8 +28,13 @@ class HwcDisplay;
 
 class HwcLayer {
  public:
+  struct Buffer {
+    buffer_handle_t buffer_handle;
+    SharedFd acquire_fence;
+  };
   // A set of properties to be validated.
   struct LayerProperties {
+    std::optional<Buffer> buffer;
     std::optional<BufferBlendMode> blend_mode;
     std::optional<BufferColorSpace> color_space;
     std::optional<BufferSampleRange> sample_range;

@@ -25,6 +25,11 @@
 namespace android {
 
 void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
+  if (layer_properties.buffer) {
+    layer_data_.acquire_fence = layer_properties.buffer->acquire_fence;
+    buffer_handle_ = layer_properties.buffer->buffer_handle;
+    buffer_handle_updated_ = true;
+  }
   if (layer_properties.blend_mode) {
     blend_mode_ = layer_properties.blend_mode.value();
   }

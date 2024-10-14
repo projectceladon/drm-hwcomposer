@@ -549,12 +549,20 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
     return;
   }
 
-  HwcLayerWrapper layer_wrapper{command.layer, layer};
+  HwcLayer::LayerProperties properties;
   if (command.buffer) {
-    ExecuteSetLayerBuffer(display_id, layer_wrapper, *command.buffer);
+    HwcLayer::Buffer buffer;
+    auto err = ImportLayerBuffer(display_id, command.layer, *command.buffer,
+                                 &buffer.buffer_handle);
+    if (err != hwc3::Error::kNone) {
+      cmd_result_writer_->AddError(err);
+      return;
+    }
+    buffer.acquire_fence = ::android::MakeSharedFd(
+        command.buffer->fence.dup().release());
+    properties.buffer.emplace(buffer);
   }
 
-  HwcLayer::LayerProperties properties;
   properties.blend_mode = AidlToBlendMode(command.blendMode);
   properties.color_space = AidlToColorSpace(command.dataspace);
   properties.sample_range = AidlToSampleRange(command.dataspace);
@@ -1238,27 +1246,16 @@ std::string ComposerClient::Dump() {
   return binder;
 }
 
-void ComposerClient::ExecuteSetLayerBuffer(int64_t display_id,
-                                           HwcLayerWrapper& layer,
-                                           const Buffer& buffer) {
-  buffer_handle_t imported_buffer = nullptr;
+hwc3::Error ComposerClient::ImportLayerBuffer(
+    int64_t display_id, int64_t layer_id, const Buffer& buffer,
+    buffer_handle_t* out_imported_buffer) {
+  *out_imported_buffer = nullptr;
 
   auto releaser = composer_resources_->CreateResourceReleaser(true);
-  auto err = composer_resources_->GetLayerBuffer(display_id, layer.layer_id,
-                                                 buffer, &imported_buffer,
+  auto err = composer_resources_->GetLayerBuffer(display_id, layer_id, buffer,
+                                                 out_imported_buffer,
                                                  releaser.get());
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-    return;
-  }
-
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-  auto fence_fd = const_cast<ndk::ScopedFileDescriptor&>(buffer.fence)
-                      .release();
-  err = Hwc2toHwc3Error(layer.layer->SetLayerBuffer(imported_buffer, fence_fd));
-  if (err != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(err);
-  }
+  return err;
 }
 
 void ComposerClient::ExecuteSetDisplayBrightness(
