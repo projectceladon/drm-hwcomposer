@@ -94,13 +94,6 @@ inline Composition Hwc2CompositionTypeToHwc3(int32_t composition_type) {
   return static_cast<Composition>(composition_type);
 }
 
-inline int32_t Hwc3CompositionToHwc2(Composition composition_type) {
-  if (composition_type > Composition::SIDEBAND) {
-    return HWC2_COMPOSITION_INVALID;
-  }
-  return static_cast<int32_t>(composition_type);
-}
-
 // Values for color modes match across HWC versions, so static cast is safe:
 // https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/main/graphics/composer/aidl/android/hardware/graphics/composer3/ColorMode.aidl
 // https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.0.h;drc=7d940ae4afa450696afa25e07982f3a95e17e9b2;l=118
@@ -153,27 +146,6 @@ inline int32_t Hwc3RenderIntentToHwc2(RenderIntent render_intent) {
   return static_cast<int32_t>(render_intent);
 }
 
-// Content type matches, so static_cast is safe.
-// https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/main/graphics/composer/aidl/android/hardware/graphics/composer3/ContentType.aidl
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=350;drc=1a0e4a1698c7b080d6763cef9e16592bce75967e
-inline ContentType Hwc2ContentTypeToHwc3(uint32_t content_type) {
-  if (content_type > HWC2_CONTENT_TYPE_GAME) {
-    ALOGE("Unknown HWC2 content type. Could not translate: %d", content_type);
-    return ContentType::NONE;
-  }
-  return static_cast<ContentType>(content_type);
-}
-inline int32_t Hwc3ContentTypeToHwc2(ContentType content_type) {
-  return static_cast<int32_t>(content_type);
-}
-
-// Values match, so it's safe to do static_cast.
-// https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/main/graphics/composer/aidl/android/hardware/graphics/composer3/DisplayAttribute.aidl
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=58;drc=d783cabd4d9bddb4b83f2dd38300b7598bb58b24
-inline int32_t Hwc3DisplayAttributeToHwc2(DisplayAttribute display_attribute) {
-  return static_cast<int32_t>(display_attribute);
-}
-
 // Values match up to DOZE_SUSPEND.
 // https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/main/graphics/composer/aidl/android/hardware/graphics/composer3/PowerMode.aidl
 // https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=348;drc=d783cabd4d9bddb4b83f2dd38300b7598bb58b24
@@ -185,26 +157,12 @@ inline int32_t Hwc3PowerModeToHwc2(PowerMode power_mode) {
   return static_cast<int32_t>(power_mode);
 }
 
-// Values match, so static_cast is okay.
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/BlendMode.aidl;drc=bab1ba54ede32520a5042d616a3af46ad4f55d5f;l=25
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;l=72;drc=1a0e4a1698c7b080d6763cef9e16592bce75967e
-inline int32_t Hwc3BlendModeToHwc2(common::BlendMode blend_mode) {
-  return static_cast<int32_t>(blend_mode);
-}
-
 // Values appear to match.
 // https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/Dataspace.aidl
 // https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.0.h;l=43
 // https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.1.h;l=22;drc=7d940ae4afa450696afa25e07982f3a95e17e9b2
 inline int32_t Hwc3DataspaceToHwc2(common::Dataspace dataspace) {
   return static_cast<int32_t>(dataspace);
-}
-
-// Values match, so static_cast is okay.
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/Transform.aidl
-// https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.0.h;l=41
-inline int32_t Hwc3TransformToHwc2(common::Transform transform) {
-  return static_cast<int32_t>(transform);
 }
 
 };  // namespace aidl::android::hardware::graphics::composer3

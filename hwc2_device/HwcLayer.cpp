@@ -24,6 +24,37 @@
 
 namespace android {
 
+void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
+  if (layer_properties.blend_mode) {
+    blend_mode_ = layer_properties.blend_mode.value();
+  }
+  if (layer_properties.color_space) {
+    color_space_ = layer_properties.color_space.value();
+  }
+  if (layer_properties.sample_range) {
+    sample_range_ = layer_properties.sample_range.value();
+  }
+  if (layer_properties.composition_type) {
+    sf_type_ = layer_properties.composition_type.value();
+  }
+  if (layer_properties.display_frame) {
+    layer_data_.pi.display_frame = layer_properties.display_frame.value();
+  }
+  if (layer_properties.alpha) {
+    layer_data_.pi.alpha = std::lround(layer_properties.alpha.value() *
+                                       UINT16_MAX);
+  }
+  if (layer_properties.source_crop) {
+    layer_data_.pi.source_crop = layer_properties.source_crop.value();
+  }
+  if (layer_properties.transform) {
+    layer_data_.pi.transform = layer_properties.transform.value();
+  }
+  if (layer_properties.z_order) {
+    z_order_ = layer_properties.z_order.value();
+  }
+}
+
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 HWC2::Error HwcLayer::SetCursorPosition(int32_t /*x*/, int32_t /*y*/) {
   return HWC2::Error::None;

@@ -160,24 +160,6 @@ class ComposerClient : public BnComposerClient {
   void DispatchLayerCommand(int64_t display_id, const LayerCommand& command);
   void ExecuteSetLayerBuffer(int64_t display_id, HwcLayerWrapper& layer_id,
                              const Buffer& buffer);
-  void ExecuteSetLayerBlendMode(int64_t display_id, HwcLayerWrapper& layer,
-                                const ParcelableBlendMode& blend_mode);
-  void ExecuteSetLayerComposition(int64_t display_id, HwcLayerWrapper& layer,
-                                  const ParcelableComposition& composition);
-  void ExecuteSetLayerDataspace(int64_t display_id, HwcLayerWrapper& layer,
-                                const ParcelableDataspace& dataspace);
-  void ExecuteSetLayerDisplayFrame(int64_t display_id, HwcLayerWrapper& layer,
-                                   const common::Rect& rect);
-  void ExecuteSetLayerPlaneAlpha(int64_t display_id, HwcLayerWrapper& layer,
-                                 const PlaneAlpha& plane_alpha);
-  void ExecuteSetLayerSourceCrop(int64_t display_id, HwcLayerWrapper& layer,
-                                 const common::FRect& source_crop);
-  void ExecuteSetLayerTransform(int64_t display_id, HwcLayerWrapper& layer,
-                                const ParcelableTransform& transform);
-  void ExecuteSetLayerZOrder(int64_t display_id, HwcLayerWrapper& layer,
-                             const ZOrder& z_order);
-  void ExecuteSetLayerBrightness(int64_t display_id, HwcLayerWrapper& layer,
-                                 const LayerBrightness& brightness);
 
   // Display commands
   void ExecuteDisplayCommand(const DisplayCommand& command);

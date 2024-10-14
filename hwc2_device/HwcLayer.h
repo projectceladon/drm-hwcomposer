@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <aidl/android/hardware/graphics/common/Transform.h>
 #include <hardware/hwcomposer2.h>
 
 #include "bufferinfo/BufferInfoGetter.h"
@@ -27,6 +28,19 @@ class HwcDisplay;
 
 class HwcLayer {
  public:
+  // A set of properties to be validated.
+  struct LayerProperties {
+    std::optional<BufferBlendMode> blend_mode;
+    std::optional<BufferColorSpace> color_space;
+    std::optional<BufferSampleRange> sample_range;
+    std::optional<HWC2::Composition> composition_type;
+    std::optional<hwc_rect_t> display_frame;
+    std::optional<float> alpha;
+    std::optional<hwc_frect_t> source_crop;
+    std::optional<LayerTransform> transform;
+    std::optional<uint32_t> z_order;
+  };
+
   explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};
 
   HWC2::Composition GetSfType() const {
@@ -61,7 +75,9 @@ class HwcLayer {
     return layer_data_;
   }
 
-  // Layer hooks
+  void SetLayerProperties(const LayerProperties &layer_properties);
+
+  // HWC2 Layer hooks
   HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
   HWC2::Error SetLayerBlendMode(int32_t mode);
   HWC2::Error SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fence);

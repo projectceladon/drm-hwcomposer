@@ -59,7 +59,7 @@ class HwcDisplay {
     return configs_;
   }
 
-  // HWC Hooks
+  // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);
   HWC2::Error DestroyLayer(hwc2_layer_t layer);
