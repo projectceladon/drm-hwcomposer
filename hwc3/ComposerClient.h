@@ -165,8 +165,6 @@ class ComposerClient : public BnComposerClient {
 
   // Display commands
   void ExecuteDisplayCommand(const DisplayCommand& command);
-  void ExecuteSetDisplayBrightness(uint64_t display_id,
-                                   const DisplayBrightness& command);
   void ExecuteSetDisplayColorTransform(uint64_t display_id,
                                        const std::vector<float>& matrix);
   void ExecuteSetDisplayClientTarget(uint64_t display_id,

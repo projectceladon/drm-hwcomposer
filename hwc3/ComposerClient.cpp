@@ -602,9 +602,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     DispatchLayerCommand(command.display, layer_cmd);
   }
 
-  if (command.brightness) {
-    ExecuteSetDisplayBrightness(command.display, *command.brightness);
-  }
+  // TODO: Implement support for display brightness.
   if (command.colorTransformMatrix) {
     ExecuteSetDisplayColorTransform(command.display,
                                     *command.colorTransformMatrix);
@@ -1258,20 +1256,6 @@ hwc3::Error ComposerClient::ImportLayerBuffer(
   return err;
 }
 
-void ComposerClient::ExecuteSetDisplayBrightness(
-    uint64_t display_id, const DisplayBrightness& command) {
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
-    return;
-  }
-
-  auto error = Hwc2toHwc3Error(
-      display->SetDisplayBrightness(command.brightness));
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
-  }
-}
 void ComposerClient::ExecuteSetDisplayColorTransform(
     uint64_t display_id, const std::vector<float>& matrix) {
   auto* display = GetDisplay(display_id);
