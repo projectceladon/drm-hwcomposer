@@ -42,6 +42,7 @@
 #include <hardware/hwcomposer_defs.h>
 
 #include "bufferinfo/BufferInfo.h"
+#include "compositor/DisplayInfo.h"
 #include "hwc2_device/HwcDisplay.h"
 #include "hwc2_device/HwcDisplayConfigs.h"
 #include "hwc2_device/HwcLayer.h"
@@ -909,13 +910,40 @@ ndk::ScopedAStatus ComposerClient::getDisplayedContentSamplingAttributes(
 ndk::ScopedAStatus ComposerClient::getDisplayPhysicalOrientation(
     int64_t display_id, common::Transform* orientation) {
   DEBUG_FUNC();
+
+  if (orientation == nullptr) {
+    ALOGE("Invalid 'orientation' pointer.");
+    return ToBinderStatus(hwc3::Error::kBadParameter);
+  }
+
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  *orientation = common::Transform::NONE;
+  PanelOrientation
+      drm_orientation = display->getDisplayPhysicalOrientation().value_or(
+          PanelOrientation::kModePanelOrientationNormal);
+
+  switch (drm_orientation) {
+    case PanelOrientation::kModePanelOrientationNormal:
+      *orientation = common::Transform::NONE;
+      break;
+    case PanelOrientation::kModePanelOrientationBottomUp:
+      *orientation = common::Transform::ROT_180;
+      break;
+    case PanelOrientation::kModePanelOrientationLeftUp:
+      *orientation = common::Transform::ROT_270;
+      break;
+    case PanelOrientation::kModePanelOrientationRightUp:
+      *orientation = common::Transform::ROT_90;
+      break;
+    default:
+      ALOGE("Unknown panel orientation value: %d", drm_orientation);
+      return ToBinderStatus(hwc3::Error::kBadDisplay);
+  }
+
   return ndk::ScopedAStatus::ok();
 }
 

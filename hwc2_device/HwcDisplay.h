@@ -23,7 +23,7 @@
 #include <sstream>
 
 #include "HwcDisplayConfigs.h"
-#include "compositor/ColorInfo.h"
+#include "compositor/DisplayInfo.h"
 #include "compositor/FlatteningController.h"
 #include "compositor/LayerData.h"
 #include "drm/DrmAtomicStateManager.h"
@@ -197,6 +197,8 @@ class HwcDisplay {
     virtual_disp_width_ = width;
     virtual_disp_height_ = height;
   }
+
+  auto getDisplayPhysicalOrientation() -> std::optional<PanelOrientation>;
 
  private:
   HwcDisplayConfigs configs_;

@@ -125,4 +125,22 @@ auto DrmProperty::AtomicSet(drmModeAtomicReq &pset, uint64_t value) const
   return true;
 }
 
+std::optional<std::string> DrmProperty::GetEnumNameFromValue(
+    uint64_t value) const {
+  if (enums_.empty()) {
+    ALOGE("No enum values for property: %s", name_.c_str());
+    return {};
+  }
+
+  for (const auto &it : enums_) {
+    if (it.value == value) {
+      return it.name;
+    }
+  }
+
+  ALOGE("Property '%s' has no matching enum for value: %lu", name_.c_str(),
+        value);
+  return {};
+}
+
 }  // namespace android

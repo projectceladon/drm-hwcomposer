@@ -36,3 +36,13 @@ enum class Colorspace : int32_t {
   kRgbWideFloat,
   kBt601Ycc,
 };
+
+/**
+ * Display panel orientation property values.
+ */
+enum PanelOrientation {
+  kModePanelOrientationNormal = 0,
+  kModePanelOrientationBottomUp,
+  kModePanelOrientationLeftUp,
+  kModePanelOrientationRightUp
+};

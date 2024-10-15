@@ -64,9 +64,15 @@ class DrmProperty {
   auto AddEnumToMap(const std::string &name, E key, std::map<E, uint64_t> &map)
       -> bool;
 
+  template <class E>
+  auto AddEnumToMapReverse(const std::string &name, E value,
+                           std::map<uint64_t, E> &map) -> bool;
+
   explicit operator bool() const {
     return id_ != 0;
   }
+
+  auto GetEnumNameFromValue(uint64_t value) const -> std::optional<std::string>;
 
  private:
   class DrmPropertyEnum {
@@ -98,6 +104,20 @@ auto DrmProperty::AddEnumToMap(const std::string &name, E key,
   std::tie(enum_value, err) = GetEnumValueWithName(name);
   if (err == 0) {
     map[key] = enum_value;
+    return true;
+  }
+
+  return false;
+}
+
+template <class E>
+auto DrmProperty::AddEnumToMapReverse(const std::string &name, E value,
+                                      std::map<uint64_t, E> &map) -> bool {
+  uint64_t enum_value = UINT64_MAX;
+  int err = 0;
+  std::tie(enum_value, err) = GetEnumValueWithName(name);
+  if (err == 0) {
+    map[enum_value] = value;
     return true;
   }
 

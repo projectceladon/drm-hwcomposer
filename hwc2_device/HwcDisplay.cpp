@@ -24,9 +24,14 @@
 #include "backend/Backend.h"
 #include "backend/BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
+#include "compositor/DisplayInfo.h"
+#include "drm/DrmConnector.h"
+#include "drm/DrmDisplayPipeline.h"
 #include "drm/DrmHwc.h"
 #include "utils/log.h"
 #include "utils/properties.h"
+
+using ::android::DrmDisplayPipeline;
 
 namespace android {
 
@@ -194,6 +199,23 @@ HWC2::Error HwcDisplay::Init() {
   SetColorMatrixToIdentity();
 
   return HWC2::Error::None;
+}
+
+std::optional<PanelOrientation> HwcDisplay::getDisplayPhysicalOrientation() {
+  if (IsInHeadlessMode()) {
+    // The pipeline can be nullptr in headless mode, so return the default
+    // "normal" mode.
+    return PanelOrientation::kModePanelOrientationNormal;
+  }
+
+  DrmDisplayPipeline &pipeline = GetPipe();
+  if (pipeline.connector == nullptr || pipeline.connector->Get() == nullptr) {
+    ALOGW(
+        "No display pipeline present to query the panel orientation property.");
+    return {};
+  }
+
+  return pipeline.connector->Get()->GetPanelOrientation();
 }
 
 HWC2::Error HwcDisplay::ChosePreferredConfig() {

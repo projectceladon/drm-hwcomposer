@@ -21,7 +21,7 @@
 #include <memory>
 #include <optional>
 
-#include "compositor/ColorInfo.h"
+#include "compositor/DisplayInfo.h"
 #include "compositor/DrmKmsPlan.h"
 #include "compositor/LayerData.h"
 #include "drm/DrmPlane.h"

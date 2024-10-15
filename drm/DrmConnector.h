@@ -26,8 +26,7 @@
 #include "DrmMode.h"
 #include "DrmProperty.h"
 #include "DrmUnique.h"
-
-#include "compositor/ColorInfo.h"
+#include "compositor/DisplayInfo.h"
 
 namespace android {
 
@@ -118,6 +117,10 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return writeback_out_fence_;
   }
 
+  auto &GetPanelOrientationProperty() const {
+    return panel_orientation_;
+  }
+
   auto IsConnected() const {
     return connector_->connection == DRM_MODE_CONNECTED;
   }
@@ -130,11 +133,13 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return connector_->mmHeight;
   };
 
+  auto GetPanelOrientation() -> std::optional<PanelOrientation>;
+
  private:
   DrmConnector(DrmModeConnectorUnique connector, DrmDevice *drm, uint32_t index)
       : connector_(std::move(connector)),
         drm_(drm),
-        index_in_res_array_(index){};
+        index_in_res_array_(index) {};
 
   DrmModeConnectorUnique connector_;
   DrmDevice *const drm_;
@@ -157,7 +162,9 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty writeback_pixel_formats_;
   DrmProperty writeback_fb_id_;
   DrmProperty writeback_out_fence_;
+  DrmProperty panel_orientation_;
 
   std::map<Colorspace, uint64_t> colorspace_enum_map_;
+  std::map<uint64_t, PanelOrientation> panel_orientation_enum_map_;
 };
 }  // namespace android
