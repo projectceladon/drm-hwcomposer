@@ -38,6 +38,14 @@ extern "C" {
  * compatibility Keep fields aligned to their size
  */
 
+#ifndef VIRTGPU_PARAM_RESOURCE_BLOB
+#define VIRTGPU_PARAM_RESOURCE_BLOB 3 /* DRM_VIRTGPU_RESOURCE_CREATE_BLOB */
+#endif
+#define VIRTGPU_PARAM_QUERY_DEV 11 /* Query the virtio device name. */
+#define VIRTGPU_PARAM_ALLOW_P2P 12 /* Whether the device/crtc supports P2P */
+
+#define DRM_VIRTGPU_GETPARAM    0x03
+
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
 
 #define VIRTGPU_PARAM_RESOURCE_BLOB_BIT (1ull << VIRTGPU_PARAM_RESOURCE_BLOB)
