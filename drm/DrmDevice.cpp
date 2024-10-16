@@ -246,6 +246,7 @@ int DrmDevice::GetProperty(uint32_t obj_id, uint32_t obj_type,
 }
 
 auto DrmDevice::IsIvshmDev(int fd) -> bool {
+  uint64_t dev_feature = 0;
   for (uint32_t i = 0; i < ARRAY_SIZE(params); i++) {
     struct drm_virtgpu_getparam get_param = {.param = 0, .value = 0};
 
@@ -253,12 +254,13 @@ auto DrmDevice::IsIvshmDev(int fd) -> bool {
     get_param.value = (uint64_t)(uintptr_t)&params[i].value;
     int ret = drmIoctl(fd, DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
     if (ret == 0) {
-      if ((strcmp(params[i].name, "VIRTGPU_PARAM_QUERY_DEV") == 0) && (params[i].value != 1)) {
-        return true;
-      }
+      if ((strcmp(params[i].name, "VIRTGPU_PARAM_QUERY_DEV") == 0) && (params[i].value != 1))
+        dev_feature |= VIRTGPU_PARAM_QUERY_DEV_BIT;
+      if ((strcmp(params[i].name, "VIRTGPU_PARAM_RESOURCE_BLOB") == 0) && (params[i].value == 1))
+        dev_feature |= VIRTGPU_PARAM_RESOURCE_BLOB_BIT;
     }
   }
-  return false;
+  return dev_feature & VIRTGPU_PARAM_QUERY_DEV_BIT && dev_feature & VIRTGPU_PARAM_RESOURCE_BLOB_BIT;
 }
 
 std::string DrmDevice::GetName() const {
