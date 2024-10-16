@@ -27,13 +27,6 @@ build-container:
     - docker push $DOCKER_IMAGE_TAG
   after_script:
     - docker logout
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes:
-      - .ci/Dockerfile
-    - if: $CI_PIPELINE_SOURCE == 'push'
-      changes:
-      - .ci/Dockerfile
 
 build:
   stage: build
