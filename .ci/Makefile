@@ -1,5 +1,5 @@
 
-BASE_DIR ?=../aospless
+BASE_DIR:=../aospless
 
 SYSTEM_INCLUDE_DIRS := /usr/include/libdrm
 
