@@ -80,13 +80,13 @@ filegroup {
         "drm/DrmDisplayPipeline.cpp",
         "drm/DrmEncoder.cpp",
         "drm/DrmFbImporter.cpp",
+        "drm/DrmHwc.cpp",
         "drm/DrmMode.cpp",
         "drm/DrmPlane.cpp",
         "drm/DrmProperty.cpp",
         "drm/ResourceManager.cpp",
         "drm/UEventListener.cpp",
         "drm/VSyncWorker.cpp",
-        "drm/DrmHwc.cpp",
 
         "backend/Backend.cpp",
         "backend/BackendClient.cpp",
@@ -164,9 +164,9 @@ cc_binary {
     name: "android.hardware.composer.hwc3-service.drm",
 
     srcs: [
+        ":drm_hwcomposer_common",
         ":drm_hwcomposer_hwc3",
         ":drm_hwcomposer_service",
-        ":drm_hwcomposer_common",
         "bufferinfo/legacy/BufferInfoLibdrm.cpp",
     ],
 

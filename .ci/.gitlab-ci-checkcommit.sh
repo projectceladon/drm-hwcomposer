@@ -36,7 +36,7 @@ findtag() {
 }
 
 check_tool_installed bpfmt
-check_tool_installed clang-format-diff-15
+check_tool_installed clang-format-diff-19
 
 git fetch https://gitlab.freedesktop.org/drm-hwcomposer/drm-hwcomposer.git
 
@@ -61,7 +61,7 @@ git log --pretty='%h' FETCH_HEAD..HEAD | while read h; do
 		exit 1
 	fi
 
-	git show "$h" -- | clang-format-diff-15 -p 1 -style=file > /tmp/format-fixup.patch
+	git show "$h" -- | clang-format-diff-19 -p 1 -style=file > /tmp/format-fixup.patch
 	if [ -s  /tmp/format-fixup.patch ]; then
 		cat /tmp/format-fixup.patch >&2
 		exit 1

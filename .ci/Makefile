@@ -3,12 +3,12 @@ BASE_DIR:=../aospless
 
 SYSTEM_INCLUDE_DIRS := /usr/include/libdrm
 
-CLANG := clang++-15
-CLANG_TIDY := clang-tidy-15
+CLANG := clang++-19
+CLANG_TIDY := clang-tidy-19
 OUT_DIR := /tmp/drm_hwcomposer/build
 SRC_DIR := .
 
-CXXFLAGS := -Wall -Wextra -Werror
+CXXFLAGS := -Wall -Wextra -Werror -Wno-missing-designated-field-initializers
 CXXFLAGS += -D_LIBCPP_ENABLE_THREAD_SAFETY_ANNOTATIONS
 CXXFLAGS += -fvisibility-inlines-hidden -std=gnu++17 -DHWC2_USE_CPP11 -DHWC2_INCLUDE_STRINGIFICATION -fno-rtti
 
@@ -45,6 +45,24 @@ TIDY_CHECKS_FINE := *                                   \
     -hicpp-signed-bitwise                               \
     -misc-const-correctness                             \
     -readability-identifier-length                      \
+    -misc-include-cleaner                               \
+    -performance-enum-size                              \
+    -misc-use-anonymous-namespace                       \
+    -boost-use-ranges                                   \
+    -cppcoreguidelines-avoid-do-while                   \
+    -modernize-min-max-use-initializer-list             \
+    -cppcoreguidelines-owning-memory                    \
+    -readability-redundant-member-init                  \
+    -cppcoreguidelines-avoid-const-or-ref-data-members  \
+    -cert-err33-c                                       \
+    -readability-math-missing-parentheses               \
+    -readability-avoid-unconditional-preprocessor-if    \
+    -modernize-type-traits                              \
+    -clang-analyzer-optin.core.EnumCastOutOfRange       \
+    -performance-inefficient-vector-operation           \
+    -readability-static-accessed-through-instance       \
+    -misc-use-internal-linkage                          \
+    -performance-avoid-endl                             \
 
 TIDY_CHECKS_NORMAL :=                                   \
     $(TIDY_CHECKS_FINE)                                 \
