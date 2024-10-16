@@ -51,7 +51,7 @@ ci: ## Run presubmit within the docker container
 	@echo "Run native build:"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -f .ci/Makefile -j$(NPROCS)"
 	@echo "Run meson cross-build for Android:"
-	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless all"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless install"
 	@echo "Run style check:"
 	$(if $(GIT_IS_SYMLINK), \
 		./.ci/.gitlab-ci-checkcommit.sh, \
