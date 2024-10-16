@@ -190,6 +190,28 @@ std::optional<HWC2::Composition> AidlToCompositionType(
   }
 }
 
+#if __ANDROID_API__ < 35
+
+class DisplayConfiguration {
+ public:
+  class Dpi {
+   public:
+    float x = 0.000000F;
+    float y = 0.000000F;
+  };
+  // NOLINTNEXTLINE(readability-identifier-naming)
+  int32_t configId = 0;
+  int32_t width = 0;
+  int32_t height = 0;
+  std::optional<Dpi> dpi;
+  // NOLINTNEXTLINE(readability-identifier-naming)
+  int32_t configGroup = 0;
+  // NOLINTNEXTLINE(readability-identifier-naming)
+  int32_t vsyncPeriod = 0;
+};
+
+#endif
+
 DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
     const HwcDisplayConfigs& configs, const HwcDisplayConfig& config) {
   DisplayConfiguration aidl_configuration =
@@ -1173,6 +1195,8 @@ ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
+#if __ANDROID_API__ >= 35
+
 ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
     int64_t display_id, int32_t /*max_frame_interval_ns*/,
     std::vector<DisplayConfiguration>* configurations) {
@@ -1196,6 +1220,8 @@ ndk::ScopedAStatus ComposerClient::notifyExpectedPresent(
     int32_t /*frame_interval_ns*/) {
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
+
+#endif
 
 std::string ComposerClient::Dump() {
   uint32_t size = 0;

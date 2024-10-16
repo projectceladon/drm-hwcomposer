@@ -22,7 +22,9 @@
 
 #include "Utils.h"
 #include "aidl/android/hardware/graphics/common/Dataspace.h"
+#if __ANDROID_API__ >= 35
 #include "aidl/android/hardware/graphics/common/DisplayHotplugEvent.h"
+#endif
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
@@ -61,6 +63,8 @@ void DrmHwcThree::SendVsyncEventToClient(uint64_t display_id, int64_t timestamp,
                               static_cast<int32_t>(vsync_period));
 }
 
+#if __ANDROID_API__ >= 35
+
 void DrmHwcThree::SendHotplugEventToClient(
     hwc2_display_t display_id, DrmHwc::DisplayStatus display_status) {
   common::DisplayHotplugEvent event = common::DisplayHotplugEvent::DISCONNECTED;
@@ -79,6 +83,17 @@ void DrmHwcThree::SendHotplugEventToClient(
   }
   composer_callback_->onHotplugEvent(static_cast<int64_t>(display_id), event);
 }
+
+#else
+
+void DrmHwcThree::SendHotplugEventToClient(
+    hwc2_display_t display_id, DrmHwc::DisplayStatus display_status) {
+  bool connected = display_status != DrmHwc::kDisconnected;
+  HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), connected);
+  composer_callback_->onHotplug(static_cast<int64_t>(display_id), connected);
+}
+
+#endif
 
 void DrmHwcThree::CleanDisplayResources(uint64_t display_id) {
   DEBUG_FUNC();
