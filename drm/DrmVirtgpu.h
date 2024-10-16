@@ -37,9 +37,13 @@ extern "C" {
  * compatibility Keep fields aligned to their size
  */
 
+#define VIRTGPU_PARAM_RESOURCE_BLOB 3 /* DRM_VIRTGPU_RESOURCE_CREATE_BLOB */
 #define VIRTGPU_PARAM_QUERY_DEV 11 /* Query the virtio device name. */
 #define DRM_VIRTGPU_GETPARAM    0x03
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
+
+#define VIRTGPU_PARAM_RESOURCE_BLOB_BIT (1ull << VIRTGPU_PARAM_RESOURCE_BLOB)
+#define VIRTGPU_PARAM_QUERY_DEV_BIT (1ull << VIRTGPU_PARAM_QUERY_DEV)
 
 struct drm_virtgpu_getparam {
   __u64 param;
@@ -63,7 +67,7 @@ struct virtgpu_param {
   }
 
 static struct virtgpu_param params[] = {
-  PARAM(VIRTGPU_PARAM_QUERY_DEV),
+  PARAM(VIRTGPU_PARAM_QUERY_DEV),PARAM(VIRTGPU_PARAM_RESOURCE_BLOB),
 };
 
 #if defined(__cplusplus)
