@@ -25,6 +25,7 @@
 #define DRM_VIRTGPU_H
 
 #include "drm.h"
+#include "virtgpu_drm.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -37,24 +38,16 @@ extern "C" {
  * compatibility Keep fields aligned to their size
  */
 
-#define VIRTGPU_PARAM_QUERY_DEV 11 /* Query the virtio device name. */
-#define DRM_VIRTGPU_GETPARAM    0x03
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
 
-struct drm_virtgpu_getparam {
-  __u64 param;
-  __u64 value;
-};
+#define VIRTGPU_PARAM_RESOURCE_BLOB_BIT (1ull << VIRTGPU_PARAM_RESOURCE_BLOB)
+#define VIRTGPU_PARAM_QUERY_DEV_BIT (1ull << VIRTGPU_PARAM_QUERY_DEV)
 
 struct virtgpu_param {
   uint64_t param;
   const char *name;
   uint32_t value;
 };
-
-#define DRM_IOCTL_VIRTGPU_GETPARAM \
-  DRM_IOWR(DRM_COMMAND_BASE + DRM_VIRTGPU_GETPARAM,\
-           struct drm_virtgpu_getparam)
 
 #define PARAM(x)                                                                                   \
   (struct virtgpu_param)                                                                     \
@@ -63,7 +56,7 @@ struct virtgpu_param {
   }
 
 static struct virtgpu_param params[] = {
-  PARAM(VIRTGPU_PARAM_QUERY_DEV),
+  PARAM(VIRTGPU_PARAM_QUERY_DEV),PARAM(VIRTGPU_PARAM_RESOURCE_BLOB),
 };
 
 #if defined(__cplusplus)
