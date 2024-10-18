@@ -51,7 +51,9 @@ cc_defaults {
         "libutils",
     ],
 
-    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+    include_dirs: [
+        "vendor/intel/external/drm-hwcomposer",
+        "kernel/linux-intel-lts2022"],
 
     header_libs: [
         "android.hardware.graphics.composer3-command-buffer",
