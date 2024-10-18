@@ -14,7 +14,7 @@ executable(
     cpp_args : common_cpp_flags + hwc2_cpp_flags,
     dependencies : deps,
     install : true,
-    link_with: [drmhwc_common, drmhwc_hwc2_common],
+    link_whole: [drmhwc_common, drmhwc_hwc2_common],
     install_dir : get_option('bindir') / 'hw',
     include_directories: inc_include,
 )
