@@ -560,14 +560,24 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   std::vector<LayerData> composition_layers;
 
-  /* Import & populate */
-  for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
-    l.second->PopulateLayerData(a_args.test_only);
+  /* Store plan to ensure shared planes won't be stolen by other display
+   * in between of ValidateDisplay() and PresentDisplay() calls
+   */
+  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe());
+  if (!current_plan_) {
+    if (!a_args.test_only) {
+      ALOGE("Failed to create DrmKmsPlan");
+    }
+    return HWC2::Error::BadConfig;
   }
 
-  // now that they're ordered by z, add them to the composition
+  /* Import & populate */
   for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
-    if (!l.second->IsLayerUsableAsDevice()) {
+    l.second->PopulateLayerDataWithoutAddFb();
+    if (l.second->IsLayerUsableAsDevice()) {
+      DrmPlane* plane = current_plan_->GetPlane(l.second->GetLayerData().Clone());
+      l.second->PopulateLayerData(a_args.test_only, plane->IsPixBlendModeSupported());
+    } else {
       /* This will be normally triggered on validation of the first frame
        * containing CLIENT layer. At this moment client buffer is not yet
        * provided by the CLIENT.
@@ -577,25 +587,11 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
        */
       return HWC2::Error::BadLayer;
     }
-    composition_layers.emplace_back(l.second->GetLayerData().Clone());
+    current_plan_->AddToPlan(l.second->GetLayerData().Clone());
   }
-
-  /* Store plan to ensure shared planes won't be stolen by other display
-   * in between of ValidateDisplay() and PresentDisplay() calls
-   */
-  current_plan_ = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
-                                               std::move(composition_layers));
-  if (!current_plan_) {
-    if (!a_args.test_only) {
-      ALOGE("Failed to create DrmKmsPlan");
-    }
-    return HWC2::Error::BadConfig;
-  }
-
   a_args.composition = current_plan_;
 
   int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
-
   if (ret) {
     if (!a_args.test_only)
       ALOGE("Failed to apply the frame composition ret=%d", ret);
@@ -703,7 +699,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
-  client_layer_.PopulateLayerData(/*test = */ true);
+  client_layer_.PopulateLayerData(/*test = */ true, true);
   if (!client_layer_.IsLayerUsableAsDevice()) {
     ALOGE("Client layer must be always usable by DRM/KMS");
     return HWC2::Error::BadLayer;

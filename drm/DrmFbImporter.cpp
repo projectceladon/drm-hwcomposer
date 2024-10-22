@@ -35,7 +35,8 @@
 namespace android {
 
 auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
-                                   DrmDevice &drm)
+                                   DrmDevice &drm,
+                                   bool IsPixelBlendModeSupported)
     -> std::shared_ptr<DrmFbIdHandle> {
   ATRACE_NAME("Import dmabufs and register FB");
 
@@ -71,6 +72,25 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
     return local;
   }
 
+  if (!IsPixelBlendModeSupported) {
+    switch (bo->format)
+    {
+    case DRM_FORMAT_ABGR4444:
+      bo->format = DRM_FORMAT_XBGR4444;
+      break;
+    case DRM_FORMAT_ABGR1555:
+      bo->format = DRM_FORMAT_XBGR1555;
+      break;
+    case DRM_FORMAT_ABGR8888:
+      bo->format = DRM_FORMAT_XBGR8888;
+      break;
+    case DRM_FORMAT_ABGR2101010:
+      bo->format = DRM_FORMAT_XBGR2101010;
+      break;
+    default:
+      break;
+    }
+  }
   /* Create framebuffer object */
   if (!has_modifiers) {
     err = drmModeAddFB2(drm.GetFd(), bo->width, bo->height, bo->format,
@@ -125,7 +145,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
   }
 }
 
-auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
+auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo, bool IsPixelBlendModeSupported)
     -> std::shared_ptr<DrmFbIdHandle> {
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
@@ -153,7 +173,7 @@ auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
   }
 
   /* No DrmFbIdHandle found in cache, create framebuffer object */
-  auto fb_id_handle = DrmFbIdHandle::CreateInstance(bo, first_handle, *drm_);
+  auto fb_id_handle = DrmFbIdHandle::CreateInstance(bo, first_handle, *drm_, IsPixelBlendModeSupported);
   if (fb_id_handle) {
     drm_fb_id_handle_cache_[first_handle] = fb_id_handle;
   }

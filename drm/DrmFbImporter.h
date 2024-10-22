@@ -37,7 +37,8 @@ namespace android {
 class DrmFbIdHandle {
  public:
   static auto CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
-                             DrmDevice &drm) -> std::shared_ptr<DrmFbIdHandle>;
+                             DrmDevice &drm,
+                             bool IsPixelBlendModeSupported) -> std::shared_ptr<DrmFbIdHandle>;
 
   ~DrmFbIdHandle();
   DrmFbIdHandle(DrmFbIdHandle &&) = delete;
@@ -67,7 +68,7 @@ class DrmFbImporter {
   auto operator=(const DrmFbImporter &) = delete;
   auto operator=(DrmFbImporter &&) = delete;
 
-  auto GetOrCreateFbId(BufferInfo *bo) -> std::shared_ptr<DrmFbIdHandle>;
+  auto GetOrCreateFbId(BufferInfo *bo, bool IsPixelBlendModeSupported) -> std::shared_ptr<DrmFbIdHandle>;
 
  private:
   void CleanupEmptyCacheElements() {

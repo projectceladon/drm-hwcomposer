@@ -232,7 +232,7 @@ HWC2::Error HwcLayer::SetLayerPerFrameMetadata(uint32_t numElements,
     return HWC2::Error::None;
 }
 
-void HwcLayer::ImportFb() {
+void HwcLayer::ImportFb(bool IsPixelBlendModeSupported) {
   if (!IsLayerUsableAsDevice() || !buffer_handle_updated_) {
     return;
   }
@@ -254,7 +254,7 @@ void HwcLayer::ImportFb() {
 
   layer_data_
       .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
-      &layer_data_.bi.value());
+      &layer_data_.bi.value(),IsPixelBlendModeSupported);
 
   if (!layer_data_.fb) {
     ALOGV("Unable to create framebuffer object for buffer 0x%p",
@@ -268,8 +268,25 @@ void HwcLayer::ImportFb() {
   }
 }
 
-void HwcLayer::PopulateLayerData(bool test) {
-  ImportFb();
+void HwcLayer::PopulateLayerDataWithoutAddFb() {
+  layer_data_.bi = BufferInfoGetter::GetInstance()->GetBoInfo(buffer_handle_);
+  if (!layer_data_.bi) {
+    ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
+    return;
+  }
+  if (blend_mode_ != BufferBlendMode::kUndefined) {
+    layer_data_.bi->blend_mode = blend_mode_;
+  }
+  if (color_space_ != BufferColorSpace::kUndefined) {
+    layer_data_.bi->color_space = color_space_;
+  }
+  if (sample_range_ != BufferSampleRange::kUndefined) {
+    layer_data_.bi->sample_range = sample_range_;
+  }
+}
+
+void HwcLayer::PopulateLayerData(bool test, bool IsPixelBlendModeSupported) {
+  ImportFb(IsPixelBlendModeSupported);
 
   if (blend_mode_ != BufferBlendMode::kUndefined) {
     layer_data_.bi->blend_mode = blend_mode_;

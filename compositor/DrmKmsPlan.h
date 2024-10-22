@@ -38,6 +38,12 @@ struct DrmKmsPlan {
   static auto CreateDrmKmsPlan(DrmDisplayPipeline &pipe,
                                std::vector<LayerData> composition)
       -> std::unique_ptr<DrmKmsPlan>;
+  static auto CreateDrmKmsPlan(DrmDisplayPipeline &pipe)
+      -> std::unique_ptr<DrmKmsPlan>;
+  void AddToPlan(LayerData layerdata);
+  DrmPlane* GetPlane(LayerData layerdata);
+  std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> avail_planes;
+  int z_pos;
 };
 
 }  // namespace android

@@ -56,4 +56,47 @@ auto DrmKmsPlan::CreateDrmKmsPlan(DrmDisplayPipeline &pipe,
   return plan;
 }
 
+auto DrmKmsPlan::CreateDrmKmsPlan(DrmDisplayPipeline &pipe)
+    -> std::unique_ptr<DrmKmsPlan> {
+  auto plan = std::make_unique<DrmKmsPlan>();
+  plan->avail_planes = pipe.GetUsablePlanes();
+  plan->z_pos = 0;
+  return plan;
+}
+
+void DrmKmsPlan::AddToPlan(LayerData layerdata) {
+    std::shared_ptr<BindingOwner<DrmPlane>> plane;
+
+    if (avail_planes.empty()) {
+      return;
+    }
+    plane = *avail_planes.begin();
+    avail_planes.erase(avail_planes.begin());
+
+    LayerToPlaneJoining joining = {
+        .layer = std::move(layerdata),
+        .plane = plane,
+        .z_pos = z_pos++,
+    };
+
+    plan.emplace_back(std::move(joining));
+}
+
+DrmPlane* DrmKmsPlan::GetPlane(LayerData layerdata){
+  std::shared_ptr<BindingOwner<DrmPlane>> plane;
+  /* Skip unsupported planes */
+  do {
+    if (avail_planes.empty()) {
+      return nullptr;
+    }
+
+    plane = *avail_planes.begin();
+    if (!plane->Get()->IsValidForLayer(&layerdata)) {
+      avail_planes.erase(avail_planes.begin());
+    }
+    else
+      return plane->Get();
+  } while (true);
+  return nullptr;
+}
 }  // namespace android

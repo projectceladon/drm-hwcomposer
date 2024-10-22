@@ -112,15 +112,15 @@ class HwcLayer {
 
   /* Layer state */
  public:
-  void PopulateLayerData(bool test);
-
+  void PopulateLayerData(bool test, bool IsPixelBlendModeSupported = true);
+  void PopulateLayerDataWithoutAddFb();
   buffer_handle_t GetBufferHandle() {return buffer_handle_;}
   bool IsLayerUsableAsDevice() const {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
 
  private:
-  void ImportFb();
+  void ImportFb(bool IsPixelBlendModeSupported);
   bool bi_get_failed_{};
   bool fb_import_failed_{};
 
