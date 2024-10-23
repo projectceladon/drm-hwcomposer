@@ -39,6 +39,7 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
       -> std::unique_ptr<DrmPlane>;
 
   bool IsCrtcSupported(const DrmCrtc &crtc) const;
+  bool IsPixBlendModeSupported() { return blend_property_ ? true : false;}
   bool IsValidForLayer(LayerData *layer);
 
   auto GetType() const {
