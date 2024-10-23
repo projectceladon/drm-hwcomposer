@@ -35,7 +35,8 @@
 namespace android {
 
 auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
-                                   DrmDevice &drm)
+                                   DrmDevice &drm,
+                                   bool is_pixel_blend_mode_supported)
     -> std::shared_ptr<DrmFbIdHandle> {
   ATRACE_NAME("Import dmabufs and register FB");
 
@@ -69,6 +70,30 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
           bo->modifiers[0]);
     local.reset();
     return local;
+  }
+
+  /*
+    only when device is virtio-gpu, has 1 plane and plane do not support pixel blend mode
+    is_pixel_blend_mode_supported is false. modify ABGR format to XBGR format
+  */
+  if (!is_pixel_blend_mode_supported) {
+    switch (bo->format)
+    {
+    case DRM_FORMAT_ABGR4444:
+      bo->format = DRM_FORMAT_XBGR4444;
+      break;
+    case DRM_FORMAT_ABGR1555:
+      bo->format = DRM_FORMAT_XBGR1555;
+      break;
+    case DRM_FORMAT_ABGR8888:
+      bo->format = DRM_FORMAT_XBGR8888;
+      break;
+    case DRM_FORMAT_ABGR2101010:
+      bo->format = DRM_FORMAT_XBGR2101010;
+      break;
+    default:
+      break;
+    }
   }
 
   /* Create framebuffer object */
@@ -125,7 +150,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
   }
 }
 
-auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
+auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo, bool is_pixel_blend_mode_supported)
     -> std::shared_ptr<DrmFbIdHandle> {
   /* Lookup DrmFbIdHandle in cache first. First handle serves as a cache key. */
   GemHandle first_handle = 0;
@@ -153,7 +178,7 @@ auto DrmFbImporter::GetOrCreateFbId(BufferInfo *bo)
   }
 
   /* No DrmFbIdHandle found in cache, create framebuffer object */
-  auto fb_id_handle = DrmFbIdHandle::CreateInstance(bo, first_handle, *drm_);
+  auto fb_id_handle = DrmFbIdHandle::CreateInstance(bo, first_handle, *drm_, is_pixel_blend_mode_supported);
   if (fb_id_handle) {
     drm_fb_id_handle_cache_[first_handle] = fb_id_handle;
   }

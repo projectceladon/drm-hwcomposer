@@ -252,9 +252,19 @@ void HwcLayer::ImportFb() {
     return;
   }
 
+
+  /*
+    consider device is virtio-gpu
+    check if pixel blend mode is supported
+  */
+  bool is_pixel_blend_mode_supported = true;
+  auto planes = parent_->GetPipe().GetUsablePlanes();
+  if (planes.size() == 1 && !planes.begin()->get()->Get()->IsPixBlendModeSupported())
+    is_pixel_blend_mode_supported = false;
+
   layer_data_
       .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
-      &layer_data_.bi.value());
+      &layer_data_.bi.value(), is_pixel_blend_mode_supported);
 
   if (!layer_data_.fb) {
     ALOGV("Unable to create framebuffer object for buffer 0x%p",
