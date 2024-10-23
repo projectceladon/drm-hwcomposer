@@ -883,14 +883,15 @@ ndk::ScopedAStatus ComposerClient::getDisplayVsyncPeriod(
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  uint32_t hwc2_vsync_period = 0;
-  auto error = Hwc2toHwc3Error(
-      display->GetDisplayVsyncPeriod(&hwc2_vsync_period));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
+  // getDisplayVsyncPeriod should return the vsync period of the config that
+  // is currently committed to the kernel. If a config change is pending due to
+  // setActiveConfigWithConstraints, return the pre-change vsync period.
+  const HwcDisplayConfig* config = display->GetCurrentConfig();
+  if (config == nullptr) {
+    return ToBinderStatus(hwc3::Error::kBadConfig);
   }
 
-  *vsync_period = static_cast<int32_t>(hwc2_vsync_period);
+  *vsync_period = config->mode.GetVSyncPeriodNs();
   return ndk::ScopedAStatus::ok();
 }
 

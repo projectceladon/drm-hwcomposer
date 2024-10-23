@@ -96,6 +96,14 @@ HwcDisplay::~HwcDisplay() {
   Deinit();
 };
 
+const HwcDisplayConfig *HwcDisplay::GetCurrentConfig() const {
+  auto config_iter = configs_.hwc_configs.find(configs_.active_config_id);
+  if (config_iter == configs_.hwc_configs.end()) {
+    return nullptr;
+  }
+  return &config_iter->second;
+}
+
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
 

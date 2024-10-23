@@ -59,6 +59,9 @@ class HwcDisplay {
     return configs_;
   }
 
+  // Get the config representing the mode that has been committed to KMS.
+  const HwcDisplayConfig *GetCurrentConfig() const;
+
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);
