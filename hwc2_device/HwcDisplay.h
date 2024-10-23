@@ -62,6 +62,11 @@ class HwcDisplay {
   // Get the config representing the mode that has been committed to KMS.
   const HwcDisplayConfig *GetCurrentConfig() const;
 
+  // Get the config that was last requested through SetActiveConfig and similar
+  // functions. This may differ from the GetCurrentConfig if the config change
+  // is queued up to take effect in the future.
+  const HwcDisplayConfig *GetLastRequestedConfig() const;
+
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);

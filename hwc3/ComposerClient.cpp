@@ -646,7 +646,7 @@ ndk::ScopedAStatus ComposerClient::executeCommands(
 }
 
 ndk::ScopedAStatus ComposerClient::getActiveConfig(int64_t display_id,
-                                                   int32_t* config) {
+                                                   int32_t* config_id) {
   DEBUG_FUNC();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
@@ -654,13 +654,12 @@ ndk::ScopedAStatus ComposerClient::getActiveConfig(int64_t display_id,
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  uint32_t hwc2_config = 0;
-  const hwc3::Error error = Hwc2toHwc3Error(
-      display->GetActiveConfig(&hwc2_config));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
+  const HwcDisplayConfig* config = display->GetLastRequestedConfig();
+  if (config == nullptr) {
+    return ToBinderStatus(hwc3::Error::kBadConfig);
   }
-  *config = Hwc2ConfigIdToHwc3(hwc2_config);
+
+  *config_id = Hwc2ConfigIdToHwc3(config->id);
   return ndk::ScopedAStatus::ok();
 }
 

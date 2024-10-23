@@ -104,6 +104,14 @@ const HwcDisplayConfig *HwcDisplay::GetCurrentConfig() const {
   return &config_iter->second;
 }
 
+const HwcDisplayConfig *HwcDisplay::GetLastRequestedConfig() const {
+  auto config_iter = configs_.hwc_configs.find(staged_mode_config_id_);
+  if (config_iter == configs_.hwc_configs.end()) {
+    return nullptr;
+  }
+  return &config_iter->second;
+}
+
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
 
