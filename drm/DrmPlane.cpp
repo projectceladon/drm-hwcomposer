@@ -155,14 +155,11 @@ bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
   if (crtc_prop_val != 0 && crtc_prop_val != crtc.GetId() &&
       GetType() == DRM_PLANE_TYPE_PRIMARY) {
     // Some DRM driver such as omap_drm allows sharing primary plane between
-    // CRTCs, but the primay plane could not be shared if it has been used by
+    // CRTCs, but the primary plane could not be shared if it has been used by
     // any CRTC already, which is protected by the plane_switching_crtc function
     // in the kernel drivers/gpu/drm/drm_atomic.c file.
     // The current drm_hwc design is not ready to support such scenario yet,
     // so adding the CRTC status check here to workaorund for now.
-    ALOGW("%s: This Plane(id=%d) is activated for Crtc(id=%" PRIu64
-          "), could not be used for Crtc (id=%d)",
-          __FUNCTION__, GetId(), crtc_prop_val, crtc.GetId());
     return false;
   }
 
