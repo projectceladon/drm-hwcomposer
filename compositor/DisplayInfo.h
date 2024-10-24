@@ -46,3 +46,12 @@ enum PanelOrientation {
   kModePanelOrientationLeftUp,
   kModePanelOrientationRightUp
 };
+
+struct QueuedConfigTiming {
+  // In order for the new config to be applied, the client must send a new frame
+  // at this time.
+  int64_t refresh_time_ns;
+
+  // The time when the display will start to refresh at the new vsync period.
+  int64_t new_vsync_time_ns;
+};

@@ -96,7 +96,7 @@ HwcDisplay::~HwcDisplay() {
   Deinit();
 };
 
-const HwcDisplayConfig *HwcDisplay::GetCurrentConfig() const {
+auto HwcDisplay::GetCurrentConfig() const -> const HwcDisplayConfig * {
   auto config_iter = configs_.hwc_configs.find(configs_.active_config_id);
   if (config_iter == configs_.hwc_configs.end()) {
     return nullptr;
@@ -104,12 +104,48 @@ const HwcDisplayConfig *HwcDisplay::GetCurrentConfig() const {
   return &config_iter->second;
 }
 
-const HwcDisplayConfig *HwcDisplay::GetLastRequestedConfig() const {
+auto HwcDisplay::GetLastRequestedConfig() const -> const HwcDisplayConfig * {
   auto config_iter = configs_.hwc_configs.find(staged_mode_config_id_);
   if (config_iter == configs_.hwc_configs.end()) {
     return nullptr;
   }
   return &config_iter->second;
+}
+
+auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
+                             bool seamless, QueuedConfigTiming *out_timing)
+    -> ConfigError {
+  if (configs_.hwc_configs.count(config) == 0) {
+    ALOGE("Could not find active mode for %u", config);
+    return ConfigError::kBadConfig;
+  }
+
+  // TODO: Add support for seamless configuration changes.
+  if (seamless) {
+    return ConfigError::kSeamlessNotAllowed;
+  }
+
+  // Request a refresh from the client one vsync period before the desired
+  // time, or simply at the desired time if there is no active configuration.
+  const HwcDisplayConfig *current_config = GetCurrentConfig();
+  out_timing->refresh_time_ns = desired_time -
+                                (current_config
+                                     ? current_config->mode.GetVSyncPeriodNs()
+                                     : 0);
+  out_timing->new_vsync_time_ns = desired_time;
+
+  // Queue the config change timing to be consistent with the requested
+  // refresh time.
+  staged_mode_ = configs_.hwc_configs[config].mode;
+  staged_mode_change_time_ = out_timing->refresh_time_ns;
+  staged_mode_config_id_ = config;
+
+  // Enable vsync events until the mode has been applied.
+  last_vsync_ts_ = 0;
+  vsync_tracking_en_ = true;
+  vsync_worker_->VSyncControl(true);
+
+  return ConfigError::kNone;
 }
 
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {

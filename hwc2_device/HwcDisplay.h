@@ -41,6 +41,13 @@ inline constexpr uint32_t kPrimaryDisplay = 0;
 // NOLINTNEXTLINE
 class HwcDisplay {
  public:
+  enum ConfigError {
+    kNone,
+    kBadConfig,
+    kSeamlessNotAllowed,
+    kSeamlessNotPossible
+  };
+
   HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwc *hwc);
   HwcDisplay(const HwcDisplay &) = delete;
   ~HwcDisplay();
@@ -60,12 +67,16 @@ class HwcDisplay {
   }
 
   // Get the config representing the mode that has been committed to KMS.
-  const HwcDisplayConfig *GetCurrentConfig() const;
+  auto GetCurrentConfig() const -> const HwcDisplayConfig *;
 
   // Get the config that was last requested through SetActiveConfig and similar
   // functions. This may differ from the GetCurrentConfig if the config change
   // is queued up to take effect in the future.
-  const HwcDisplayConfig *GetLastRequestedConfig() const;
+  auto GetLastRequestedConfig() const -> const HwcDisplayConfig *;
+
+  // Queue a configuration change to take effect in the future.
+  auto QueueConfig(hwc2_config_t config, int64_t desired_time, bool seamless,
+                   QueuedConfigTiming *out_timing) -> ConfigError;
 
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();

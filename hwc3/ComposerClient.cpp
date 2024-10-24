@@ -1051,13 +1051,14 @@ ndk::ScopedAStatus ComposerClient::registerCallback(
 ndk::ScopedAStatus ComposerClient::setActiveConfig(int64_t display_id,
                                                    int32_t config) {
   DEBUG_FUNC();
-  const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
-  HwcDisplay* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    return ToBinderStatus(hwc3::Error::kBadDisplay);
-  }
 
-  return ToBinderStatus(Hwc2toHwc3Error(display->SetActiveConfig(config)));
+  VsyncPeriodChangeTimeline timeline;
+  VsyncPeriodChangeConstraints constraints = {
+      .desiredTimeNanos = ::android::ResourceManager::GetTimeMonotonicNs(),
+      .seamlessRequired = false,
+  };
+  return setActiveConfigWithConstraints(display_id, config, constraints,
+                                        &timeline);
 }
 
 ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
@@ -1071,23 +1072,24 @@ ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  hwc_vsync_period_change_constraints_t hwc2_constraints;
-  hwc2_constraints.desiredTimeNanos = constraints.desiredTimeNanos;
-  hwc2_constraints.seamlessRequired = static_cast<uint8_t>(
-      constraints.seamlessRequired);
+  ::QueuedConfigTiming timing{};
+  HwcDisplay::ConfigError
+      result = display->QueueConfig(config, constraints.desiredTimeNanos,
+                                    constraints.seamlessRequired, &timing);
+  timeline->newVsyncAppliedTimeNanos = timing.new_vsync_time_ns;
+  timeline->refreshTimeNanos = timing.refresh_time_ns;
+  timeline->refreshRequired = true;
 
-  hwc_vsync_period_change_timeline_t hwc2_timeline{};
-  auto error = Hwc2toHwc3Error(
-      display->SetActiveConfigWithConstraints(config, &hwc2_constraints,
-                                              &hwc2_timeline));
-  if (error != hwc3::Error::kNone) {
-    return ToBinderStatus(error);
+  switch (result) {
+    case HwcDisplay::ConfigError::kBadConfig:
+      return ToBinderStatus(hwc3::Error::kBadConfig);
+    case HwcDisplay::ConfigError::kSeamlessNotAllowed:
+      return ToBinderStatus(hwc3::Error::kSeamlessNotAllowed);
+    case HwcDisplay::ConfigError::kSeamlessNotPossible:
+      return ToBinderStatus(hwc3::Error::kSeamlessNotPossible);
+    case HwcDisplay::ConfigError::kNone:
+      return ndk::ScopedAStatus::ok();
   }
-
-  timeline->refreshTimeNanos = hwc2_timeline.refreshTimeNanos;
-  timeline->newVsyncAppliedTimeNanos = hwc2_timeline.newVsyncAppliedTimeNanos;
-  timeline->refreshRequired = static_cast<bool>(hwc2_timeline.refreshRequired);
-  return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus ComposerClient::setBootDisplayConfig(int64_t /*display_id*/,
