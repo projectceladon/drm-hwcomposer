@@ -19,6 +19,9 @@
 #include "DrmHwc.h"
 
 #include <cinttypes>
+#include <string>
+
+#include <android-base/properties.h>
 
 #include "backend/Backend.h"
 #include "utils/log.h"
@@ -196,6 +199,15 @@ void DrmHwc::Dump(uint32_t *out_size, char *out_buffer) {
 }
 
 uint32_t DrmHwc::GetMaxVirtualDisplayCount() {
+  /* Virtual display is an experimental feature.
+   * Unless explicitly set to true, return 0 for no support.
+   */
+  if (!base::GetBoolProperty(std::string(
+                                 "vendor.hwc.drm.enable_virtual_display"),
+                             false)) {
+    return 0;
+  }
+
   auto writeback_count = resource_manager_.GetWritebackConnectorsCount();
   writeback_count = std::min(writeback_count, 1U);
   /* Currently, only 1 virtual display is supported. Other cases need testing */
