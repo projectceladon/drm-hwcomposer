@@ -42,7 +42,7 @@ git fetch https://gitlab.freedesktop.org/drm-hwcomposer/drm-hwcomposer.git
 
 git log --pretty='%h' FETCH_HEAD..HEAD | while read h; do
 	subject=$(git show -s --pretty='%s' "$h")
-	if [[ $subject != drm_hwcomposer:* ]]; then
+	if [[ $subject != drm_hwcomposer:* ]] && [[ $subject != Revert* ]]; then
 		echoerr "Invalid subject prefix: $subject"
 		exit 1
 	fi
