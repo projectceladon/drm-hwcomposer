@@ -22,6 +22,7 @@
 #include <xf86drmMode.h>
 
 #include <cerrno>
+#include <cinttypes>
 #include <cstdint>
 #include <string>
 
@@ -138,7 +139,7 @@ std::optional<std::string> DrmProperty::GetEnumNameFromValue(
     }
   }
 
-  ALOGE("Property '%s' has no matching enum for value: %lu", name_.c_str(),
+  ALOGE("Property '%s' has no matching enum for value: %" PRIu64, name_.c_str(),
         value);
   return {};
 }
