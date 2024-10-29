@@ -55,6 +55,8 @@ cc_defaults {
         "-DHWC2_USE_CPP11",
     ],
 
+    cpp_std: "gnu++17",
+
     relative_install_path: "hw",
     vendor: true,
 }
