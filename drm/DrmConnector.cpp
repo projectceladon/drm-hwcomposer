@@ -23,6 +23,7 @@
 
 #include <array>
 #include <cerrno>
+#include <cinttypes>
 #include <cstdint>
 #include <sstream>
 
@@ -279,7 +280,7 @@ std::optional<PanelOrientation> DrmConnector::GetPanelOrientation() {
     return panel_orientation_enum_map_[panel_orientation_value];
   }
 
-  ALOGE("Unknown panel orientation: panel_orientation = %lu",
+  ALOGE("Unknown panel orientation: panel_orientation = %" PRIu64,
         panel_orientation_value);
   return {};
 }
