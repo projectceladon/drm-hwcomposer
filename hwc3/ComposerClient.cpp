@@ -108,6 +108,8 @@ std::optional<BufferColorSpace> AidlToColorSpace(
     case static_cast<int32_t>(
         common::Dataspace::STANDARD_BT2020_CONSTANT_LUMINANCE):
       return BufferColorSpace::kItuRec2020;
+    case static_cast<int32_t>(common::Dataspace::UNKNOWN):
+      return BufferColorSpace::kUndefined;
     default:
       ALOGE("Unsupported standard: %d", standard);
       return std::nullopt;
@@ -127,6 +129,8 @@ std::optional<BufferSampleRange> AidlToSampleRange(
       return BufferSampleRange::kFullRange;
     case static_cast<int32_t>(common::Dataspace::RANGE_LIMITED):
       return BufferSampleRange::kLimitedRange;
+    case static_cast<int32_t>(common::Dataspace::UNKNOWN):
+      return BufferSampleRange::kUndefined;
     default:
       ALOGE("Unsupported sample range: %d", sample_range);
       return std::nullopt;
