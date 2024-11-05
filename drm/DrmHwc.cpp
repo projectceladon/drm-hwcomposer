@@ -19,12 +19,10 @@
 #include "DrmHwc.h"
 
 #include <cinttypes>
-#include <string>
-
-#include <android-base/properties.h>
 
 #include "backend/Backend.h"
 #include "utils/log.h"
+#include "utils/properties.h"
 
 namespace android {
 
@@ -202,9 +200,7 @@ uint32_t DrmHwc::GetMaxVirtualDisplayCount() {
   /* Virtual display is an experimental feature.
    * Unless explicitly set to true, return 0 for no support.
    */
-  if (!base::GetBoolProperty(std::string(
-                                 "vendor.hwc.drm.enable_virtual_display"),
-                             false)) {
+  if (0 == property_get_bool("vendor.hwc.drm.enable_virtual_display", 0)) {
     return 0;
   }
 
