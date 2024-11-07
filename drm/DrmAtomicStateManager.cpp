@@ -101,7 +101,7 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     }
   }
 
-  bool nonblock = true;
+  bool nonblock = !args.blocking;
 
   if (args.active) {
     nonblock = false;

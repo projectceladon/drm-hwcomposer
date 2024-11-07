@@ -33,6 +33,7 @@ namespace android {
 struct AtomicCommitArgs {
   /* inputs. All fields are optional, but at least one has to be specified */
   bool test_only = false;
+  bool blocking = false;
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
