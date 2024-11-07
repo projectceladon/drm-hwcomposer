@@ -78,6 +78,9 @@ class HwcDisplay {
   auto QueueConfig(hwc2_config_t config, int64_t desired_time, bool seamless,
                    QueuedConfigTiming *out_timing) -> ConfigError;
 
+  // Get the HwcDisplayConfig, or nullptor if none.
+  auto GetConfig(hwc2_config_t config_id) const -> const HwcDisplayConfig *;
+
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);
@@ -226,9 +229,8 @@ class HwcDisplay {
 
   SharedFd present_fence_;
 
-  std::optional<DrmMode> staged_mode_;
   int64_t staged_mode_change_time_{};
-  uint32_t staged_mode_config_id_{};
+  std::optional<uint32_t> staged_mode_config_id_{};
 
   std::shared_ptr<DrmDisplayPipeline> pipeline_;
 

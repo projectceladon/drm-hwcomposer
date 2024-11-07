@@ -96,20 +96,21 @@ HwcDisplay::~HwcDisplay() {
   Deinit();
 };
 
-auto HwcDisplay::GetCurrentConfig() const -> const HwcDisplayConfig * {
-  auto config_iter = configs_.hwc_configs.find(configs_.active_config_id);
+auto HwcDisplay::GetConfig(hwc2_config_t config_id) const
+    -> const HwcDisplayConfig * {
+  auto config_iter = configs_.hwc_configs.find(config_id);
   if (config_iter == configs_.hwc_configs.end()) {
     return nullptr;
   }
   return &config_iter->second;
 }
 
+auto HwcDisplay::GetCurrentConfig() const -> const HwcDisplayConfig * {
+  return GetConfig(configs_.active_config_id);
+}
+
 auto HwcDisplay::GetLastRequestedConfig() const -> const HwcDisplayConfig * {
-  auto config_iter = configs_.hwc_configs.find(staged_mode_config_id_);
-  if (config_iter == configs_.hwc_configs.end()) {
-    return nullptr;
-  }
-  return &config_iter->second;
+  return GetConfig(staged_mode_config_id_.value_or(configs_.active_config_id));
 }
 
 auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
@@ -136,7 +137,6 @@ auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
 
   // Queue the config change timing to be consistent with the requested
   // refresh time.
-  staged_mode_ = configs_.hwc_configs[config].mode;
   staged_mode_change_time_ = out_timing->refresh_time_ns;
   staged_mode_config_id_ = config;
 
@@ -296,10 +296,12 @@ HWC2::Error HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
 }
 
 HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
-  if (configs_.hwc_configs.count(staged_mode_config_id_) == 0)
+  // If a config has been queued, it is considered the "active" config.
+  const HwcDisplayConfig *hwc_config = GetLastRequestedConfig();
+  if (hwc_config == nullptr)
     return HWC2::Error::BadConfig;
 
-  *config = staged_mode_config_id_;
+  *config = hwc_config->id;
   return HWC2::Error::None;
 }
 
@@ -532,17 +534,22 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   GetDisplayVsyncPeriod(&prev_vperiod_ns);
 
   auto mode_update_commited_ = false;
-  if (staged_mode_ &&
+  if (staged_mode_config_id_ &&
       staged_mode_change_time_ <= ResourceManager::GetTimeMonotonicNs()) {
+    const HwcDisplayConfig *staged_config = GetConfig(
+        staged_mode_config_id_.value());
+    if (staged_config == nullptr) {
+      return HWC2::Error::BadConfig;
+    }
     client_layer_.SetLayerDisplayFrame(
         (hwc_rect_t){.left = 0,
                      .top = 0,
-                     .right = int(staged_mode_->GetRawMode().hdisplay),
-                     .bottom = int(staged_mode_->GetRawMode().vdisplay)});
+                     .right = int(staged_config->mode.GetRawMode().hdisplay),
+                     .bottom = int(staged_config->mode.GetRawMode().vdisplay)});
 
-    configs_.active_config_id = staged_mode_config_id_;
+    configs_.active_config_id = staged_mode_config_id_.value();
 
-    a_args.display_mode = *staged_mode_;
+    a_args.display_mode = staged_config->mode;
     if (!a_args.test_only) {
       mode_update_commited_ = true;
     }
@@ -624,7 +631,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   if (mode_update_commited_) {
-    staged_mode_.reset();
+    staged_mode_config_id_.reset();
     vsync_tracking_en_ = false;
     if (last_vsync_ts_ != 0) {
       hwc_->SendVsyncPeriodTimingChangedEventToClient(handle_,
@@ -679,7 +686,6 @@ HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
     return HWC2::Error::BadConfig;
   }
 
-  staged_mode_ = configs_.hwc_configs[config].mode;
   staged_mode_change_time_ = change_time;
   staged_mode_config_id_ = config;
 
