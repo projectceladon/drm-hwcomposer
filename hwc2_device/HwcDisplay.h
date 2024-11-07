@@ -74,6 +74,11 @@ class HwcDisplay {
   // is queued up to take effect in the future.
   auto GetLastRequestedConfig() const -> const HwcDisplayConfig *;
 
+  // Set a config synchronously. If the requested config fails to be committed,
+  // this will return with an error. Otherwise, the config will have been
+  // committed to the kernel on successful return.
+  ConfigError SetConfig(hwc2_config_t config);
+
   // Queue a configuration change to take effect in the future.
   auto QueueConfig(hwc2_config_t config, int64_t desired_time, bool seamless,
                    QueuedConfigTiming *out_timing) -> ConfigError;
@@ -223,6 +228,10 @@ class HwcDisplay {
   auto getDisplayPhysicalOrientation() -> std::optional<PanelOrientation>;
 
  private:
+  AtomicCommitArgs CreateModesetCommit(
+      const HwcDisplayConfig *config,
+      const std::optional<LayerData> &modeset_layer);
+
   HwcDisplayConfigs configs_;
 
   DrmHwc *const hwc_;

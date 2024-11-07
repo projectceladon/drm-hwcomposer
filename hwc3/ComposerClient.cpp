@@ -1081,13 +1081,36 @@ ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  ::QueuedConfigTiming timing{};
-  HwcDisplay::ConfigError
-      result = display->QueueConfig(config, constraints.desiredTimeNanos,
-                                    constraints.seamlessRequired, &timing);
-  timeline->newVsyncAppliedTimeNanos = timing.new_vsync_time_ns;
-  timeline->refreshTimeNanos = timing.refresh_time_ns;
-  timeline->refreshRequired = true;
+  if (constraints.seamlessRequired) {
+    return ToBinderStatus(hwc3::Error::kSeamlessNotAllowed);
+  }
+
+  const bool future_config = constraints.desiredTimeNanos >
+                             ::android::ResourceManager::GetTimeMonotonicNs();
+  const HwcDisplayConfig* current_config = display->GetCurrentConfig();
+  const HwcDisplayConfig* next_config = display->GetConfig(config);
+  const bool same_config_group = current_config != nullptr &&
+                                 next_config != nullptr &&
+                                 current_config->group_id ==
+                                     next_config->group_id;
+  // If the contraints dictate that this is to be applied in the future, it
+  // must be queued. If the new config is in the same config group as the
+  // current one, then queue it to reduce jank.
+  HwcDisplay::ConfigError result{};
+  if (future_config || same_config_group) {
+    QueuedConfigTiming timing = {};
+    result = display->QueueConfig(config, constraints.desiredTimeNanos,
+                                  constraints.seamlessRequired, &timing);
+    timeline->newVsyncAppliedTimeNanos = timing.new_vsync_time_ns;
+    timeline->refreshTimeNanos = timing.refresh_time_ns;
+    timeline->refreshRequired = true;
+  } else {
+    // Fall back to a blocking commit, which may modeset.
+    result = display->SetConfig(config);
+    timeline->newVsyncAppliedTimeNanos = ::android::ResourceManager::
+        GetTimeMonotonicNs();
+    timeline->refreshRequired = false;
+  }
 
   switch (result) {
     case HwcDisplay::ConfigError::kBadConfig:

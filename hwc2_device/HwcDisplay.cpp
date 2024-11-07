@@ -21,6 +21,11 @@
 
 #include <cinttypes>
 
+#include <hardware/gralloc.h>
+#include <ui/GraphicBufferAllocator.h>
+#include <ui/GraphicBufferMapper.h>
+#include <ui/PixelFormat.h>
+
 #include "backend/Backend.h"
 #include "backend/BackendManager.h"
 #include "bufferinfo/BufferInfoGetter.h"
@@ -34,6 +39,71 @@
 using ::android::DrmDisplayPipeline;
 
 namespace android {
+
+namespace {
+// Allocate a black buffer that can be used for an initial modeset when there.
+// is no appropriate client buffer available to be used.
+// Caller must free the returned buffer with GraphicBufferAllocator::free.
+auto GetModesetBuffer(uint32_t width, uint32_t height) -> buffer_handle_t {
+  constexpr PixelFormat format = PIXEL_FORMAT_RGBA_8888;
+  constexpr uint64_t usage = GRALLOC_USAGE_SW_READ_OFTEN |
+                             GRALLOC_USAGE_SW_WRITE_OFTEN |
+                             GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_FB;
+
+  constexpr uint32_t layer_count = 1;
+  const std::string name = "drm-hwcomposer";
+
+  buffer_handle_t handle = nullptr;
+  uint32_t stride = 0;
+  status_t status = GraphicBufferAllocator::get().allocate(width, height,
+                                                           format, layer_count,
+                                                           usage, &handle,
+                                                           &stride, name);
+  if (status != OK) {
+    ALOGE("Failed to allocate modeset buffer.");
+    return nullptr;
+  }
+
+  void *data = nullptr;
+  Rect bounds = {0, 0, static_cast<int32_t>(width),
+                 static_cast<int32_t>(height)};
+  status = GraphicBufferMapper::get().lock(handle, usage, bounds, &data);
+  if (status != OK) {
+    ALOGE("Failed to map modeset buffer.");
+    GraphicBufferAllocator::get().free(handle);
+    return nullptr;
+  }
+
+  // Cast one of the multiplicands to ensure that the multiplication happens
+  // in a wider type (size_t).
+  const size_t buffer_size = static_cast<size_t>(height) * stride *
+                             bytesPerPixel(format);
+  memset(data, 0, buffer_size);
+  status = GraphicBufferMapper::get().unlock(handle);
+  ALOGW_IF(status != OK, "Failed to unmap buffer.");
+  return handle;
+}
+
+auto GetModesetLayerProperties(buffer_handle_t buffer, uint32_t width,
+                               uint32_t height) -> HwcLayer::LayerProperties {
+  HwcLayer::LayerProperties properties;
+  properties.buffer = {.buffer_handle = buffer, .acquire_fence = {}};
+  properties.display_frame = {
+      .left = 0,
+      .top = 0,
+      .right = int(width),
+      .bottom = int(height),
+  };
+  properties.source_crop = (hwc_frect_t){
+      .left = 0.0F,
+      .top = 0.0F,
+      .right = static_cast<float>(width),
+      .bottom = static_cast<float>(height),
+  };
+  properties.blend_mode = BufferBlendMode::kNone;
+  return properties;
+}
+}  // namespace
 
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
@@ -111,6 +181,57 @@ auto HwcDisplay::GetCurrentConfig() const -> const HwcDisplayConfig * {
 
 auto HwcDisplay::GetLastRequestedConfig() const -> const HwcDisplayConfig * {
   return GetConfig(staged_mode_config_id_.value_or(configs_.active_config_id));
+}
+
+HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
+  const HwcDisplayConfig *new_config = GetConfig(config);
+  if (new_config == nullptr) {
+    ALOGE("Could not find active mode for %u", config);
+    return ConfigError::kBadConfig;
+  }
+
+  const HwcDisplayConfig *current_config = GetCurrentConfig();
+
+  const uint32_t width = new_config->mode.GetRawMode().hdisplay;
+  const uint32_t height = new_config->mode.GetRawMode().hdisplay;
+
+  std::optional<LayerData> modeset_layer_data;
+  // If a client layer has already been provided, and its size matches the
+  // new config, use it for the modeset.
+  if (client_layer_.IsLayerUsableAsDevice() && current_config &&
+      current_config->mode.GetRawMode().hdisplay == width &&
+      current_config->mode.GetRawMode().vdisplay == height) {
+    ALOGV("Use existing client_layer for blocking config.");
+    modeset_layer_data = client_layer_.GetLayerData();
+  } else {
+    ALOGV("Allocate modeset buffer.");
+    buffer_handle_t modeset_buffer = GetModesetBuffer(width, height);
+    if (modeset_buffer != nullptr) {
+      auto modeset_layer = std::make_unique<HwcLayer>(this);
+      modeset_layer->SetLayerProperties(
+          GetModesetLayerProperties(modeset_buffer, width, height));
+      modeset_layer->PopulateLayerData();
+      modeset_layer_data = modeset_layer->GetLayerData();
+      GraphicBufferAllocator::get().free(modeset_buffer);
+    }
+  }
+
+  ALOGV("Create modeset commit.");
+  // Create atomic commit args for a blocking modeset. There's no need to do a
+  // separate test commit, since the commit does a test anyways.
+  AtomicCommitArgs commit_args = CreateModesetCommit(new_config,
+                                                     modeset_layer_data);
+  commit_args.blocking = true;
+  int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(commit_args);
+
+  if (ret) {
+    ALOGE("Blocking config failed: %d", ret);
+    return HwcDisplay::ConfigError::kBadConfig;
+  }
+
+  ALOGV("Blocking config succeeded.");
+  configs_.active_config_id = config;
+  return ConfigError::kNone;
 }
 
 auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
@@ -520,6 +641,34 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
   return HWC2::Error::None;
 }
 
+AtomicCommitArgs HwcDisplay::CreateModesetCommit(
+    const HwcDisplayConfig *config,
+    const std::optional<LayerData> &modeset_layer) {
+  AtomicCommitArgs args{};
+
+  args.color_matrix = color_matrix_;
+  args.content_type = content_type_;
+  args.colorspace = colorspace_;
+
+  std::vector<LayerData> composition_layers;
+  if (modeset_layer) {
+    composition_layers.emplace_back(modeset_layer.value());
+  }
+
+  if (composition_layers.empty()) {
+    ALOGW("Attempting to create a modeset commit without a layer.");
+  }
+
+  args.display_mode = config->mode;
+  args.active = true;
+  args.composition = DrmKmsPlan::CreateDrmKmsPlan(GetPipe(),
+                                                  std::move(
+                                                      composition_layers));
+  ALOGW_IF(!args.composition, "No composition for blocking modeset");
+
+  return args;
+}
+
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   if (IsInHeadlessMode()) {
     ALOGE("%s: Display is in headless mode, should never reach here", __func__);
@@ -673,6 +822,7 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
   color_matrix_ = {};
 
   ++frame_no_;
+
   return HWC2::Error::None;
 }
 
