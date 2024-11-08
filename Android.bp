@@ -101,6 +101,7 @@ filegroup {
         "hwc2_device/hwc2_device.cpp",
 
         "utils/fd.cpp",
+        "utils/properties.cpp",
     ],
 }
 

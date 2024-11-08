@@ -25,6 +25,7 @@
 #include "hwc3/ComposerClient.h"
 #include "hwc3/Utils.h"
 #include "utils/log.h"
+#include "utils/properties.h"
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
@@ -71,6 +72,11 @@ ndk::ScopedAStatus Composer::getCapabilities(std::vector<Capability>* caps) {
   DEBUG_FUNC();
   /* No capabilities advertised */
   caps->clear();
+
+  if (Properties::IsPresentFenceNotReliable()) {
+    caps->emplace_back(Capability::PRESENT_FENCE_IS_NOT_RELIABLE);
+  }
+
   return ndk::ScopedAStatus::ok();
 }
 
