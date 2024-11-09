@@ -41,6 +41,8 @@ struct AtomicCommitArgs {
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
   bool color_adjustment = false;
+  std::shared_ptr<DrmFbIdHandle> writeback_fb;
+  SharedFd writeback_release_fence;
 
   /* out */
   UniqueFd out_fence;

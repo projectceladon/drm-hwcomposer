@@ -187,6 +187,15 @@ class HwcDisplay {
 
   void Deinit();
 
+  auto &GetWritebackLayer() {
+    return writeback_layer_;
+  }
+
+  void SetVirtualDisplayResolution(uint16_t width, uint16_t height) {
+    virtual_disp_width_ = width;
+    virtual_disp_height_ = height;
+  }
+
  private:
   enum ClientFlattenningState : int32_t {
     Disabled = -3,
@@ -227,6 +236,9 @@ class HwcDisplay {
 
   std::map<hwc2_layer_t, HwcLayer> layers_;
   HwcLayer client_layer_;
+  std::unique_ptr<HwcLayer> writeback_layer_;
+  uint16_t virtual_disp_width_{};
+  uint16_t virtual_disp_height_{};
   int32_t color_mode_{};
   std::vector<int32_t> current_color_mode_ = {HAL_COLOR_MODE_NATIVE, HAL_COLOR_MODE_BT2020, HAL_COLOR_MODE_BT2100_PQ, HAL_COLOR_MODE_BT2100_HLG, /*HAL_COLOR_MODE_DISPLAY_BT2020*/};
   std::array<float, MATRIX_SIZE> color_transform_matrix_{};
