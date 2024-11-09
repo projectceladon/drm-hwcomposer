@@ -317,6 +317,11 @@ auto DrmDevice::GetConnectors()
   return connectors_;
 }
 
+auto DrmDevice::GetWritebackConnectors()
+    -> const std::vector<std::unique_ptr<DrmConnector>> & {
+  return writeback_connectors_;
+}
+
 auto DrmDevice::GetPlanes() -> const std::vector<std::unique_ptr<DrmPlane>> & {
   return planes_;
 }

@@ -114,6 +114,13 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return hdr_metadata_;
   }
 
+  auto &GetWritebackFbIdProperty() const {
+    return writeback_fb_id_;
+  }
+
+  auto &GetWritebackOutFenceProperty() const {
+    return writeback_out_fence_;
+  }
 
   auto IsConnected() const {
     return connector_->connection == DRM_MODE_CONNECTED;

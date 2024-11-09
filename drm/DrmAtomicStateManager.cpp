@@ -74,8 +74,26 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   int out_fence = -1;
-  if (!crtc->GetOutFencePtrProperty().AtomicSet(*pset, uint64_t(&out_fence))) {
-    return -EINVAL;
+  if (!args.writeback_fb) {
+    if (!crtc->GetOutFencePtrProperty().  //
+         AtomicSet(*pset, uint64_t(&out_fence))) {
+      return -EINVAL;
+    }
+  } else {
+    if (!connector->GetWritebackOutFenceProperty().  //
+         AtomicSet(*pset, uint64_t(&out_fence))) {
+      return -EINVAL;
+    }
+
+    if (!connector->GetWritebackFbIdProperty().  //
+         AtomicSet(*pset, args.writeback_fb->GetFbId())) {
+      return -EINVAL;
+    }
+
+    if (args.writeback_release_fence) {
+      sync_wait(*args.writeback_release_fence, -1);
+      args.writeback_release_fence.reset();
+    }
   }
 
   bool nonblock = true;

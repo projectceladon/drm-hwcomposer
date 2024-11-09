@@ -293,4 +293,30 @@ auto ResourceManager::GetOrderedConnectors() -> std::vector<DrmConnector *> {
 
   return ordered_connectors;
 }
+
+auto ResourceManager::GetVirtualDisplayPipeline()
+    -> std::shared_ptr<DrmDisplayPipeline> {
+  for (auto &drm : drms_) {
+    for (const auto &conn : drm->GetWritebackConnectors()) {
+      auto pipeline = DrmDisplayPipeline::CreatePipeline(*conn);
+      if (!pipeline) {
+        ALOGE("Failed to create pipeline for writeback connector %s",
+              conn->GetName().c_str());
+      }
+      if (pipeline) {
+        return pipeline;
+      }
+    }
+  }
+  return {};
+}
+
+auto ResourceManager::GetWritebackConnectorsCount() -> uint32_t {
+  uint32_t count = 0;
+  for (auto &drm : drms_) {
+    count += drm->GetWritebackConnectors().size();
+  }
+  return count;
+}
+
 }  // namespace android

@@ -57,6 +57,8 @@ class ResourceManager {
     return main_lock_;
   }
 
+  auto GetVirtualDisplayPipeline() -> std::shared_ptr<DrmDisplayPipeline>;
+  auto GetWritebackConnectorsCount() -> uint32_t;
   static auto GetTimeMonotonicNs() -> int64_t;
 
  private:
