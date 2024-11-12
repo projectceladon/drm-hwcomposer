@@ -143,6 +143,9 @@ auto DrmConnector::Init()-> bool {
 
   GetOptionalConnectorProperty("content type", &content_type_property_);
 
+  GetOptionalConnectorProperty("HDR_OUTPUT_METADATA",
+                               &hdr_output_metadata_property_);
+
   if (GetOptionalConnectorProperty("panel orientation", &panel_orientation_)) {
     panel_orientation_
         .AddEnumToMapReverse("Normal",

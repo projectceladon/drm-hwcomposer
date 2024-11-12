@@ -24,6 +24,8 @@ extern "C" {
 }
 #endif
 
+#include <ui/GraphicTypes.h>
+
 #include "drm/DrmUnique.h"
 #include "utils/log.h"
 
@@ -35,6 +37,16 @@ class EdidWrapper {
   EdidWrapper() = default;
   EdidWrapper(const EdidWrapper &) = delete;
   virtual ~EdidWrapper() = default;
+
+  virtual void GetSupportedHdrTypes(std::vector<ui::Hdr> &types) {
+    types.clear();
+  };
+  virtual void GetHdrCapabilities(std::vector<ui::Hdr> &types,
+                                  const float * /*max_luminance*/,
+                                  const float * /*max_average_luminance*/,
+                                  const float * /*min_luminance*/) {
+    GetSupportedHdrTypes(types);
+  };
 };
 
 #if HAS_LIBDISPLAY_INFO
@@ -42,26 +54,23 @@ class EdidWrapper {
 class LibdisplayEdidWrapper final : public EdidWrapper {
  public:
   LibdisplayEdidWrapper() = delete;
-  LibdisplayEdidWrapper(di_info *info) : info_(info) {
-  }
   ~LibdisplayEdidWrapper() override {
     di_info_destroy(info_);
   }
   static auto Create(DrmModePropertyBlobUnique blob)
-      -> std::unique_ptr<LibdisplayEdidWrapper> {
-    if (!blob)
-      return nullptr;
+      -> std::unique_ptr<LibdisplayEdidWrapper>;
 
-    auto *info = di_info_parse_edid(blob->data, blob->length);
-    if (!info) {
-      ALOGW("Failed to parse edid blob.");
-      return nullptr;
-    }
+  void GetSupportedHdrTypes(std::vector<ui::Hdr> &types) override;
 
-    return std::make_unique<LibdisplayEdidWrapper>(std::move(info));
-  }
+  void GetHdrCapabilities(std::vector<ui::Hdr> &types,
+                          const float *max_luminance,
+                          const float *max_average_luminance,
+                          const float *min_luminance) override;
 
  private:
+  LibdisplayEdidWrapper(di_info *info) : info_(std::move(info)) {
+  }
+
   di_info *info_{};
 };
 #endif

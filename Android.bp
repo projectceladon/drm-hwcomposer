@@ -104,6 +104,7 @@ filegroup {
 
         "utils/fd.cpp",
         "utils/properties.cpp",
+        "utils/LibdisplayEdidWrapper.cpp",
     ],
 }
 

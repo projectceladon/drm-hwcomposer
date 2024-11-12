@@ -150,6 +150,21 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       return -EINVAL;
   }
 
+  if (args.hdr_metadata && connector->GetHdrOutputMetadataProperty()) {
+    auto blob = drm->RegisterUserPropertyBlob(args.hdr_metadata.get(),
+                                              sizeof(hdr_output_metadata));
+    new_frame_state.hdr_metadata_blob = std::move(blob);
+    if (!new_frame_state.hdr_metadata_blob) {
+      ALOGE("Failed to create %s blob",
+            connector->GetHdrOutputMetadataProperty().GetName().c_str());
+      return -EINVAL;
+    }
+
+    if (!connector->GetHdrOutputMetadataProperty()
+             .AtomicSet(*pset, *new_frame_state.hdr_metadata_blob))
+      return -EINVAL;
+  }
+
   auto unused_planes = new_frame_state.used_planes;
 
   if (args.composition) {

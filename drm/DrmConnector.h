@@ -115,6 +115,10 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return content_type_property_;
   }
 
+  auto &GetHdrOutputMetadataProperty() const {
+    return hdr_output_metadata_property_;
+  }
+
   auto &GetWritebackFbIdProperty() const {
     return writeback_fb_id_;
   }
@@ -169,6 +173,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmProperty edid_property_;
   DrmProperty colorspace_property_;
   DrmProperty content_type_property_;
+  DrmProperty hdr_output_metadata_property_;
 
   DrmProperty link_status_property_;
   DrmProperty writeback_pixel_formats_;
