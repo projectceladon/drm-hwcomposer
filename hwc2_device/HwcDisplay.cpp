@@ -614,9 +614,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   if (!current_plan_) {
-    if (!a_args.test_only) {
-      ALOGE("Failed to create DrmKmsPlan");
-    }
+    ALOGE_IF(!a_args.test_only, "Failed to create DrmKmsPlan");
     return HWC2::Error::BadConfig;
   }
 
@@ -625,8 +623,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   auto ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 
   if (ret) {
-    if (!a_args.test_only)
-      ALOGE("Failed to apply the frame composition ret=%d", ret);
+    ALOGE_IF(!a_args.test_only, "Failed to apply the frame composition ret=%d", ret);
     return HWC2::Error::BadParameter;
   }
 
