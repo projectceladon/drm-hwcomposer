@@ -603,11 +603,16 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     return;
   }
 
+  if (command.brightness) {
+    // TODO: Implement support for display brightness.
+    cmd_result_writer_->AddError(hwc3::Error::kUnsupported);
+    return;
+  }
+
   for (const auto& layer_cmd : command.layers) {
     DispatchLayerCommand(command.display, layer_cmd);
   }
 
-  // TODO: Implement support for display brightness.
   if (command.colorTransformMatrix) {
     ExecuteSetDisplayColorTransform(command.display,
                                     *command.colorTransformMatrix);
