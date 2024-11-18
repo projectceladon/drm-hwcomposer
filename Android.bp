@@ -49,9 +49,18 @@ cc_defaults {
         "libsync",
         "libui",
         "libutils",
+        "libva",
+        "libva-android",
     ],
 
-    include_dirs: ["vendor/intel/external/drm-hwcomposer"],
+    include_dirs: [
+        "vendor/intel/external/drm-hwcomposer",
+        "vendor/intel/external/drm-hwcomposer/va",
+        "vendor/intel/external/drm-hwcomposer/include",
+        "hardware/intel/external/minigbm-intel/cros_gralloc",
+        "hardware/intel/external/libva",
+        "hardware/intel/external/drm-intel/android",
+    ],
 
     header_libs: [
         "android.hardware.graphics.composer3-command-buffer",
@@ -68,6 +77,7 @@ cc_defaults {
         "-DHWC2_USE_CPP11",
         "-std=c++17",
         "-DUSE_IMAPPER4_METADATA_API",
+        "-DUSE_GRALLOC1",
     ],
 
     product_variables: {
@@ -111,6 +121,11 @@ filegroup {
         "hwc2_device/HwcDisplayConfigs.cpp",
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
+
+        "va/varenderer.cpp",
+        "va/vautils.cpp",
+        "utils/autolock.cpp",
+        "gralloc1/gralloc1bufferhandler.cpp",
     ],
 }
 
