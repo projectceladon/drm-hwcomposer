@@ -21,7 +21,9 @@
 
 #include "bufferinfo/BufferInfoGetter.h"
 #include "compositor/LayerData.h"
-
+#include "va/varenderer.h"
+#include <cros_gralloc_helpers.h>
+#include <i915_private_android_types.h>
 namespace android {
 
 class HwcDisplay;
@@ -41,6 +43,12 @@ class HwcLayer {
   }
   void SetValidatedType(HWC2::Composition type) {
     validated_type_ = type;
+  }
+  void SetUseVPPCompose(bool use_vpp_compose) {
+    use_vpp_compose_ = use_vpp_compose;
+  }
+  bool GetUseVPPCompose() {
+    return use_vpp_compose_;
   }
   bool IsTypeChanged() const {
     return sf_type_ != validated_type_;
@@ -81,7 +89,7 @@ class HwcLayer {
                                      const int32_t *keys,
                                      const float *metadata);
 
- private:
+ protected:
   // sf_type_ stores the initial type given to us by surfaceflinger,
   // validated_type_ stores the type after running ValidateDisplay
   HWC2::Composition sf_type_ = HWC2::Composition::Invalid;
@@ -106,20 +114,23 @@ class HwcLayer {
   buffer_handle_t buffer_handle_{};
   bool buffer_handle_updated_{};
 
-  bool prior_buffer_scanout_flag_{};
+  bool prior_buffer_scanout_flag_;
 
   HwcDisplay *const parent_;
 
   /* Layer state */
  public:
+  BufferBlendMode GetBlendMode() {return blend_mode_;}
   void PopulateLayerData(bool test);
-
   buffer_handle_t GetBufferHandle() {return buffer_handle_;}
   bool IsLayerUsableAsDevice() const {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
-
- private:
+  bool IsProtectedLayer() {
+    auto gr_handle = (const struct cros_gralloc_handle*)GetBufferHandle();
+    return gr_handle && gr_handle->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;//GRALLOC_USAGE_PROTECTED
+  }
+ protected:
   void ImportFb();
   bool bi_get_failed_{};
   bool fb_import_failed_{};
@@ -128,7 +139,7 @@ class HwcLayer {
  public:
   void SwChainClearCache();
 
- private:
+ protected:
   struct SwapChainElement {
     std::optional<BufferInfo> bi;
     std::shared_ptr<DrmFbIdHandle> fb;
@@ -141,8 +152,26 @@ class HwcLayer {
   std::map<int /*seq_no*/, SwapChainElement> swchain_cache_;
   std::map<BufferUniqueId, int /*seq_no*/> swchain_lookup_table_;
   bool swchain_reassembled_{};
+  bool use_vpp_compose_ = false;
 };
 
+class HwcVaLayer : public HwcLayer{
+public:
+  explicit HwcVaLayer(HwcDisplay *parent_display);
+
+  void addVaLayerMapData(int zorder, HwcLayer* layer){
+    va_z_map.emplace(std::make_pair(zorder, layer));
+  }
+  std::map<uint32_t, HwcLayer *, std::greater<int>>& getVaLayerMapData(){
+    return va_z_map;
+  }
+  void vaPopulateLayerData(bool test);
+private:
+  void vaImportFb();
+private:
+  std::map<uint32_t, HwcLayer *, std::greater<int>> va_z_map;
+  std::unique_ptr<VARenderer> media_renderer_ = nullptr;
+};
 }  // namespace android
 
 #endif

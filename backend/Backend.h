@@ -36,6 +36,7 @@ class Backend {
                              size_t first_z, size_t size);
   static void MarkValidated(std::vector<HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size);
+  static void vaMarkValidated(std::vector<HwcLayer *> &layers);
   static std::tuple<int, int> GetExtraClientRange(
       HwcDisplay *display, const std::vector<HwcLayer *> &layers,
       int client_start, size_t client_size);
