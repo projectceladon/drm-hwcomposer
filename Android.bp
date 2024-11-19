@@ -163,14 +163,13 @@ cc_library_shared {
     ],
 }
 
-cc_binary {
-    name: "android.hardware.composer.hwc3-service.drm",
+cc_defaults {
+    name: "android.hardware.composer.hwc3-service.drm.defaults",
 
     srcs: [
         ":drm_hwcomposer_common",
         ":drm_hwcomposer_hwc3",
         ":drm_hwcomposer_service",
-        "bufferinfo/legacy/BufferInfoLibdrm.cpp",
     ],
 
     defaults: [
@@ -186,16 +185,25 @@ cc_binary {
     ],
 
     cflags: [
+        "-DUSE_IMAPPER4_METADATA_API",
         "-Wall",
         "-Werror",
-
-        "-DUSE_IMAPPER4_METADATA_API",
     ],
 
     cppflags: [
         "-DHWC2_INCLUDE_STRINGIFICATION",
         "-DHWC2_USE_CPP11",
     ],
+}
+
+cc_binary {
+    name: "android.hardware.composer.hwc3-service.drm",
+
+    defaults: [
+        "android.hardware.composer.hwc3-service.drm.defaults",
+    ],
+
+    srcs: ["bufferinfo/legacy/BufferInfoLibdrm.cpp"],
 
     relative_install_path: "hw",
     vendor: true,
