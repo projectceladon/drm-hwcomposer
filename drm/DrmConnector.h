@@ -147,6 +147,10 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   auto Init() -> bool;
   auto GetConnectorProperty(const char *prop_name, DrmProperty *property,
                             bool is_optional = false) -> bool;
+  auto GetOptionalConnectorProperty(const char *prop_name,
+                                    DrmProperty *property) -> bool {
+    return GetConnectorProperty(prop_name, property, /*is_optional=*/true);
+  }
 
   const uint32_t index_in_res_array_;
 

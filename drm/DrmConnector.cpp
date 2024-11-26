@@ -99,8 +99,7 @@ auto DrmConnector::Init()-> bool {
     return false;
   }
 
-  if (GetConnectorProperty("Colorspace", &colorspace_property_,
-                           /*is_optional=*/true)) {
+  if (GetOptionalConnectorProperty("Colorspace", &colorspace_property_)) {
     colorspace_property_.AddEnumToMap("Default", Colorspace::kDefault,
                                       colorspace_enum_map_);
     colorspace_property_.AddEnumToMap("SMPTE_170M_YCC", Colorspace::kSmpte170MYcc,
@@ -135,11 +134,9 @@ auto DrmConnector::Init()-> bool {
                                       colorspace_enum_map_);
   }
 
-  GetConnectorProperty("content type", &content_type_property_,
-                       /*is_optional=*/true);
+  GetOptionalConnectorProperty("content type", &content_type_property_);
 
-  if (GetConnectorProperty("panel orientation", &panel_orientation_,
-                           /*is_optional=*/true)) {
+  if (GetOptionalConnectorProperty("panel orientation", &panel_orientation_)) {
     panel_orientation_
         .AddEnumToMapReverse("Normal",
                              PanelOrientation::kModePanelOrientationNormal,
@@ -162,9 +159,7 @@ auto DrmConnector::Init()-> bool {
 }
 
 int DrmConnector::UpdateEdidProperty() {
-  return GetConnectorProperty("EDID", &edid_property_, /*is_optional=*/true)
-             ? 0
-             : -EINVAL;
+  return GetOptionalConnectorProperty("EDID", &edid_property_) ? 0 : -EINVAL;
 }
 
 auto DrmConnector::GetEdidBlob() -> DrmModePropertyBlobUnique {
