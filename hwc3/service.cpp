@@ -46,9 +46,14 @@ int main(int /*argc*/, char* argv[]) {
   const std::string instance = std::string() + Composer::descriptor +
                                "/default";
   ALOGI("HWC3 service name %s", instance.c_str());
+#if __ANDROID_API__ >= 34
   auto status = AServiceManager_addServiceWithFlags(
       composer->asBinder().get(), instance.c_str(),
       AServiceManager_AddServiceFlag::ADD_SERVICE_ALLOW_ISOLATED);
+#else
+  auto status = AServiceManager_addService(composer->asBinder().get(),
+                                           instance.c_str());
+#endif
   if (status != STATUS_OK) {
     ALOGE("Failed to register service. Error %d", (int)status);
     return -EINVAL;

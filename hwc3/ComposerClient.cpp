@@ -154,7 +154,9 @@ bool IsSupportedCompositionType(
     // DisplayCommand and return.
     case Composition::DISPLAY_DECORATION:
     case Composition::SIDEBAND:
+#if __ANDROID_API__ >= 34
     case Composition::REFRESH_RATE_INDICATOR:
+#endif
       return false;
   }
 }
@@ -188,7 +190,9 @@ std::optional<HWC2::Composition> AidlToCompositionType(
     // Unsupported composition types.
     case Composition::DISPLAY_DECORATION:
     case Composition::SIDEBAND:
+#if __ANDROID_API__ >= 34
     case Composition::REFRESH_RATE_INDICATOR:
+#endif
       ALOGE("Unsupported composition type: %s",
             toString(composition->composition).c_str());
       return std::nullopt;
@@ -1242,6 +1246,8 @@ ndk::ScopedAStatus ComposerClient::setIdleTimerEnabled(int64_t /*display_id*/,
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
+#if __ANDROID_API__ >= 34
+
 ndk::ScopedAStatus ComposerClient::getOverlaySupport(
     OverlayProperties* /*out_overlay_properties*/) {
   return ToBinderStatus(hwc3::Error::kUnsupported);
@@ -1262,6 +1268,8 @@ ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(
     int64_t /*display*/, bool /*enabled*/) {
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
+
+#endif
 
 #if __ANDROID_API__ >= 35
 
