@@ -59,7 +59,7 @@ ci: ## Run presubmit within the docker container
 	@echo "\n\e[32m --- SUCCESS ---\n"
 
 ci_cleanup: ## Cleanup after 'make ci'
-	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -f .ci/Makefile clean	"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -f .ci/Makefile clean"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/build"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/install"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "rm -rf ~/aospless/out_src"
@@ -69,14 +69,11 @@ build_deploy: ## Build for Andoid and deploy onto the target device (require act
 	$(if $(filter $(shell adb shell getprop ro.bionic.arch),arm64),,$(error arm64 only is supported at the moment))
 	adb root && adb remount vendor
 	mkdir -p .out/arm64
-	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless all"
+	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "make -C ~/aospless install"
 	$(DOCKER_BIN) exec -it $(IMAGE_NAME) bash -c "cp -r ~/aospless/install/* ~/drm_hwcomposer/.out/arm64"
-	adb push .out/arm64/vendor/lib64/hw/hwcomposer.drm.so /vendor/lib64/hw/hwcomposer.drm.so
+	adb push .out/arm64/vendor/bin/hw/android.hardware.composer.hwc3-service.drm /vendor/bin/hw/android.hardware.composer.hwc3-service.drm
 	adb shell stop
-	adb shell stop vendor.hwcomposer-2-1 && adb shell start vendor.hwcomposer-2-1 || true
-	adb shell stop vendor.hwcomposer-2-2 && adb shell start vendor.hwcomposer-2-2 || true
-	adb shell stop vendor.hwcomposer-2-3 && adb shell start vendor.hwcomposer-2-3 || true
-	adb shell stop vendor.hwcomposer-2-4 && adb shell start vendor.hwcomposer-2-4 || true
+	adb shell stop vendor.hwcomposer-3 && adb shell start vendor.hwcomposer-3 || true
 	bash -c '[[ "$$HWCLOG" -eq "1" ]] && adb logcat -c || true'
 	adb shell start
 	bash -c '[[ "$$HWCLOG" -eq "1" ]] && adb logcat | grep -i hwc || true'
