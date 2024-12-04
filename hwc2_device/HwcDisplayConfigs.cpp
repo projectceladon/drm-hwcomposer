@@ -23,6 +23,7 @@
 
 #include "drm/DrmConnector.h"
 #include "utils/log.h"
+#include "utils/properties.h"
 
 constexpr uint32_t kHeadlessModeDisplayWidthMm = 163;
 constexpr uint32_t kHeadlessModeDisplayHeightMm = 122;
@@ -113,17 +114,20 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
 
   auto first_config_id = last_config_id;
   uint32_t last_group_id = 1;
+  const bool use_config_groups = Properties::UseConfigGroups();
 
   /* Group modes */
   for (const auto &mode : connector.GetModes()) {
     /* Find group for the new mode or create new group */
     uint32_t group_found = 0;
-    for (auto &hwc_config : hwc_configs) {
-      if (mode.GetRawMode().hdisplay ==
-              hwc_config.second.mode.GetRawMode().hdisplay &&
-          mode.GetRawMode().vdisplay ==
-              hwc_config.second.mode.GetRawMode().vdisplay) {
-        group_found = hwc_config.second.group_id;
+    if (use_config_groups) {
+      for (auto &hwc_config : hwc_configs) {
+        if (mode.GetRawMode().hdisplay ==
+                hwc_config.second.mode.GetRawMode().hdisplay &&
+            mode.GetRawMode().vdisplay ==
+                hwc_config.second.mode.GetRawMode().vdisplay) {
+          group_found = hwc_config.second.group_id;
+        }
       }
     }
     if (group_found == 0) {

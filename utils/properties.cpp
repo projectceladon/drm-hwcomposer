@@ -25,3 +25,7 @@ auto Properties::IsPresentFenceNotReliable() -> bool {
   return (property_get_bool("ro.vendor.hwc.drm.present_fence_not_reliable",
                             0) != 0);
 }
+
+auto Properties::UseConfigGroups() -> bool {
+  return (property_get_bool("ro.vendor.hwc.drm.use_config_groups", 1) != 0);
+}
