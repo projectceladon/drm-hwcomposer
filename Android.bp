@@ -102,9 +102,9 @@ filegroup {
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
 
+        "utils/LibdisplayEdidWrapper.cpp",
         "utils/fd.cpp",
         "utils/properties.cpp",
-        "utils/LibdisplayEdidWrapper.cpp",
     ],
 }
 

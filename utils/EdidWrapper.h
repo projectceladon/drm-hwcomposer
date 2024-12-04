@@ -16,8 +16,6 @@
 
 #pragma once
 
-#define LOG_TAG "drmhwc"
-
 #if HAS_LIBDISPLAY_INFO
 extern "C" {
 #include <libdisplay-info/info.h>
@@ -26,8 +24,8 @@ extern "C" {
 
 #include <ui/GraphicTypes.h>
 
+#include "compositor/DisplayInfo.h"
 #include "drm/DrmUnique.h"
-#include "utils/log.h"
 
 namespace android {
 
@@ -46,6 +44,9 @@ class EdidWrapper {
                                   const float * /*max_average_luminance*/,
                                   const float * /*min_luminance*/) {
     GetSupportedHdrTypes(types);
+  };
+  virtual void GetColorModes(std::vector<Colormode> &color_modes) {
+    color_modes.clear();
   };
 };
 
@@ -66,6 +67,8 @@ class LibdisplayEdidWrapper final : public EdidWrapper {
                           const float *max_luminance,
                           const float *max_average_luminance,
                           const float *min_luminance) override;
+
+  void GetColorModes(std::vector<Colormode> &color_modes) override;
 
  private:
   LibdisplayEdidWrapper(di_info *info) : info_(std::move(info)) {

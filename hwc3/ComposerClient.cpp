@@ -941,8 +941,28 @@ ndk::ScopedAStatus ComposerClient::getHdrCapabilities(int64_t display_id,
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  /* No HDR capabilities */
-  caps->types.clear();
+  uint32_t num_types = 0;
+  hwc3::Error error = Hwc2toHwc3Error(
+      display->GetHdrCapabilities(&num_types, nullptr, nullptr, nullptr,
+                                  nullptr));
+  if (error != hwc3::Error::kNone) {
+    return ToBinderStatus(error);
+  }
+
+  std::vector<int32_t> out_types(num_types);
+  error = Hwc2toHwc3Error(
+      display->GetHdrCapabilities(&num_types, out_types.data(),
+                                  &caps->maxLuminance,
+                                  &caps->maxAverageLuminance,
+                                  &caps->minLuminance));
+  if (error != hwc3::Error::kNone) {
+    return ToBinderStatus(error);
+  }
+
+  caps->types.reserve(num_types);
+  for (const auto type : out_types)
+    caps->types.emplace_back(Hwc2HdrTypeToHwc3(type));
+
   return ndk::ScopedAStatus::ok();
 }
 

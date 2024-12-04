@@ -18,6 +18,31 @@
 
 #include <cstdint>
 
+/*
+ * Display colorimetry enums.
+ */
+// NOLINTBEGIN(readability-identifier-naming)
+enum class Colormode : int32_t {
+  kNative,
+  kBt601_625,
+  kBt601_625Unadjusted,
+  kBt601_525,
+  kBt601_525Unadjusted,
+  kBt709,
+  kDciP3,
+  kSrgb,
+  kAdobeRgb,
+  kDisplayP3,
+  kBt2020,
+  kBt2100Pq,
+  kBt2100Hlg,
+  kDisplayBt2020,
+};
+// NOLINTEND(readability-identifier-naming)
+
+/**
+ * Display panel colorspace property values.
+ */
 enum class Colorspace : int32_t {
   kDefault,
   kSmpte170MYcc,

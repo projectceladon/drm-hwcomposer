@@ -22,6 +22,8 @@
 #include <optional>
 #include <sstream>
 
+#include <ui/GraphicTypes.h>
+
 #include "HwcDisplayConfigs.h"
 #include "compositor/DisplayInfo.h"
 #include "compositor/FlatteningController.h"

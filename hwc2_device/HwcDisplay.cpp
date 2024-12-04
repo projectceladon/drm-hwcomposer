@@ -613,11 +613,23 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
 }
 
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
-  if (!modes)
-    *num_modes = 1;
+  if (!modes) {
+    std::vector<Colormode> temp_modes;
+    GetEdid()->GetColorModes(temp_modes);
+    *num_modes = temp_modes.size();
+    return HWC2::Error::None;
+  }
 
-  if (modes)
-    *modes = HAL_COLOR_MODE_NATIVE;
+  std::vector<Colormode> temp_modes;
+  std::vector<int32_t> out_modes(modes, modes + *num_modes);
+  GetEdid()->GetColorModes(temp_modes);
+  if (temp_modes.empty()) {
+    out_modes.emplace_back(HAL_COLOR_MODE_NATIVE);
+    return HWC2::Error::None;
+  }
+
+  for (auto &c : temp_modes)
+    out_modes.emplace_back(static_cast<int32_t>(c));
 
   return HWC2::Error::None;
 }
@@ -733,12 +745,35 @@ HWC2::Error HwcDisplay::GetDozeSupport(int32_t *support) {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types,
-                                           int32_t * /*types*/,
-                                           float * /*max_luminance*/,
-                                           float * /*max_average_luminance*/,
-                                           float * /*min_luminance*/) {
-  *num_types = 0;
+HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
+                                           float *max_luminance,
+                                           float *max_average_luminance,
+                                           float *min_luminance) {
+  if (!types) {
+    std::vector<ui::Hdr> temp_types;
+    float lums[3] = {0.F};
+    GetEdid()->GetHdrCapabilities(temp_types, &lums[0], &lums[1], &lums[2]);
+    *num_types = temp_types.size();
+    return HWC2::Error::None;
+  }
+
+  std::vector<ui::Hdr> temp_types;
+  std::vector<int32_t> out_types(types, types + *num_types);
+  GetEdid()->GetHdrCapabilities(temp_types, max_luminance,
+                                max_average_luminance, min_luminance);
+  for (auto &t : temp_types) {
+    switch (t) {
+      case ui::Hdr::HDR10:
+        out_types.emplace_back(HAL_HDR_HDR10);
+        break;
+      case ui::Hdr::HLG:
+        out_types.emplace_back(HAL_HDR_HLG);
+        break;
+      default:
+        // Ignore any other HDR types
+        break;
+    }
+  }
   return HWC2::Error::None;
 }
 
@@ -983,18 +1018,6 @@ HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
   staged_mode_change_time_ = change_time;
   staged_mode_config_id_ = config;
 
-  std::vector<ui::Hdr> hdr_types;
-  GetEdid()->GetSupportedHdrTypes(hdr_types);
-  if (hdr_types.empty()) {
-    hdr_metadata_.reset();
-    colorspace_ = Colorspace::kDefault;
-  } else {
-    auto ret = SetHdrOutputMetadata(hdr_types.front());
-    if (ret != HWC2::Error::None)
-      return ret;
-    colorspace_ = Colorspace::kBt2020Rgb;
-  }
-
   return HWC2::Error::None;
 }
 
@@ -1056,29 +1079,47 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
   /* Maps to the Colorspace DRM connector property:
    * https://elixir.bootlin.com/linux/v6.11/source/include/drm/drm_connector.h#L538
    */
-  if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_P3)
+  if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_BT2020)
     return HWC2::Error::BadParameter;
 
   switch (mode) {
     case HAL_COLOR_MODE_NATIVE:
+      hdr_metadata_.reset();
       colorspace_ = Colorspace::kDefault;
       break;
     case HAL_COLOR_MODE_STANDARD_BT601_625:
     case HAL_COLOR_MODE_STANDARD_BT601_625_UNADJUSTED:
     case HAL_COLOR_MODE_STANDARD_BT601_525:
     case HAL_COLOR_MODE_STANDARD_BT601_525_UNADJUSTED:
+      hdr_metadata_.reset();
       // The DP spec does not say whether this is the 525 or the 625 line version.
       colorspace_ = Colorspace::kBt601Ycc;
       break;
     case HAL_COLOR_MODE_STANDARD_BT709:
     case HAL_COLOR_MODE_SRGB:
+      hdr_metadata_.reset();
       colorspace_ = Colorspace::kBt709Ycc;
       break;
     case HAL_COLOR_MODE_DCI_P3:
     case HAL_COLOR_MODE_DISPLAY_P3:
+      hdr_metadata_.reset();
       colorspace_ = Colorspace::kDciP3RgbD65;
       break;
+    case HAL_COLOR_MODE_DISPLAY_BT2020: {
+      std::vector<ui::Hdr> hdr_types;
+      GetEdid()->GetSupportedHdrTypes(hdr_types);
+      if (!hdr_types.empty()) {
+        auto ret = SetHdrOutputMetadata(hdr_types.front());
+        if (ret != HWC2::Error::None)
+          return ret;
+      }
+      colorspace_ = Colorspace::kBt2020Rgb;
+      break;
+    }
     case HAL_COLOR_MODE_ADOBE_RGB:
+    case HAL_COLOR_MODE_BT2020:
+    case HAL_COLOR_MODE_BT2100_PQ:
+    case HAL_COLOR_MODE_BT2100_HLG:
     default:
       return HWC2::Error::Unsupported;
   }

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <aidl/android/hardware/graphics/common/Hdr.h>
 #include <aidl/android/hardware/graphics/composer3/IComposerClient.h>
 #include <hardware/hwcomposer2.h>
 #include <log/log.h>
@@ -163,6 +164,14 @@ inline int32_t Hwc3PowerModeToHwc2(PowerMode power_mode) {
 // https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.1.h;l=22;drc=7d940ae4afa450696afa25e07982f3a95e17e9b2
 inline int32_t Hwc3DataspaceToHwc2(common::Dataspace dataspace) {
   return static_cast<int32_t>(dataspace);
+}
+
+// Values appear to match.
+// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/graphics/common/aidl/android/hardware/graphics/common/Hdr.aidl
+// https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.0.h;l=130;drc=7d940ae4afa450696afa25e07982f3a95e17e9b2
+// https://cs.android.com/android/platform/superproject/main/+/main:system/core/libsystem/include/system/graphics-base-v1.2.h;l=12;drc=af7be7616859f8e9e57710b9c37c66cf880a6643
+inline common::Hdr Hwc2HdrTypeToHwc3(int32_t hdr_type) {
+  return static_cast<common::Hdr>(hdr_type);
 }
 
 };  // namespace aidl::android::hardware::graphics::composer3

@@ -17,6 +17,7 @@
 #define LOG_TAG "drmhwc"
 
 #if HAS_LIBDISPLAY_INFO
+
 #include "utils/EdidWrapper.h"
 #include "utils/log.h"
 
@@ -61,6 +62,37 @@ void LibdisplayEdidWrapper::GetHdrCapabilities(
   max_average_luminance = &hdr_static_meta
                                ->desired_content_max_frame_avg_luminance;
   min_luminance = &hdr_static_meta->desired_content_min_luminance;
+}
+
+void LibdisplayEdidWrapper::GetColorModes(std::vector<Colormode> &color_modes) {
+  color_modes.clear();
+  color_modes.emplace_back(Colormode::kNative);
+
+  const auto *hdr_static_meta = di_info_get_hdr_static_metadata(info_);
+  const auto *colorimetries = di_info_get_supported_signal_colorimetry(info_);
+
+  /* Rec. ITU-R BT.2020 constant luminance YCbCr */
+  /* Rec. ITU-R BT.2020 non-constant luminance YCbCr */
+  if (colorimetries->bt2020_cycc || colorimetries->bt2020_ycc)
+    color_modes.emplace_back(Colormode::kBt2020);
+
+  /* Rec. ITU-R BT.2020 RGB */
+  if (colorimetries->bt2020_rgb)
+    color_modes.emplace_back(Colormode::kDisplayBt2020);
+
+  /* SMPTE ST 2113 RGB: P3D65 and P3DCI */
+  if (colorimetries->st2113_rgb) {
+    color_modes.emplace_back(Colormode::kDciP3);
+    color_modes.emplace_back(Colormode::kDisplayP3);
+  }
+
+  /* Rec. ITU-R BT.2100 ICtCp HDR (with PQ and/or HLG) */
+  if (colorimetries->ictcp) {
+    if (hdr_static_meta->pq)
+      color_modes.emplace_back(Colormode::kBt2100Pq);
+    if (hdr_static_meta->hlg)
+      color_modes.emplace_back(Colormode::kBt2100Hlg);
+  }
 }
 
 }  // namespace android
