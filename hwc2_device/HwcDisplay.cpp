@@ -231,6 +231,7 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
 
   ALOGV("Blocking config succeeded.");
   configs_.active_config_id = config;
+  staged_mode_config_id_.reset();
   return ConfigError::kNone;
 }
 
