@@ -183,12 +183,38 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
     return false;
   }
 
+  hwc_rect_t frame = layer->pi.display_frame;
+  if (!IsResolutionSupported(frame)) {
+    ALOGV("Plane %d does not supports %dx%d resolution",
+          GetId(), int (frame.right - frame.left), int (frame.bottom - frame.top));
+    return false;
+  }
+
   return true;
 }
 
 bool DrmPlane::IsFormatSupported(uint32_t format) const {
   return std::find(std::begin(formats_), std::end(formats_), format) !=
          std::end(formats_) || format == DRM_FORMAT_NV12_INTEL;
+}
+
+bool DrmPlane::IsResolutionSupported(hwc_rect_t display_frame) {
+  std::pair<uint32_t, uint32_t> min = drm_->GetMinResolution();
+  std::pair<uint32_t, uint32_t> max = drm_->GetMaxResolution();
+
+  /* virtio-gpu's current min/max width/heiht is 32/8192,
+     TODO: i915 min/max width/height is 6/5120, hasn't implemented in i915 kernel driver
+  */
+  auto width = float(display_frame.right - display_frame.left);
+  auto height = float(display_frame.bottom - display_frame.top);
+
+  if (width < min.first || height < min.second)
+    return false;
+
+  if (width > max.first || height > max.second)
+    return false;
+
+  return true;
 }
 
 bool DrmPlane::HasNonRgbFormat() const {
