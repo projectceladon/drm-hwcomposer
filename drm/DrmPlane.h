@@ -47,6 +47,7 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
   }
 
   bool IsFormatSupported(uint32_t format) const;
+  bool IsResolutionSupported(hwc_rect_t display_frame);
   bool HasNonRgbFormat() const;
 
   auto AtomicSetState(drmModeAtomicReq &pset, LayerData &layer, uint32_t zpos,
