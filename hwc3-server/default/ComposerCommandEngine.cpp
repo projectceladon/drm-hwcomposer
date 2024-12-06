@@ -132,6 +132,7 @@ void ComposerCommandEngine::dispatchLayerCommand(int64_t display, const LayerCom
 }
 
 int32_t ComposerCommandEngine::executeValidateDisplayInternal(int64_t display) {
+    ATRACE_CALL();
     std::vector<int64_t> changedLayers;
     std::vector<Composition> compositionTypes;
     uint32_t displayRequestMask = 0x0;
@@ -159,6 +160,7 @@ int32_t ComposerCommandEngine::executeValidateDisplayInternal(int64_t display) {
 
 void ComposerCommandEngine::executeSetColorTransform(int64_t display,
                                                      const std::vector<float>& matrix) {
+    ATRACE_CALL();
     auto err = mHal->setColorTransform(display, matrix);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -167,6 +169,7 @@ void ComposerCommandEngine::executeSetColorTransform(int64_t display,
 }
 
 void ComposerCommandEngine::executeSetClientTarget(int64_t display, const ClientTarget& command) {
+    ATRACE_CALL();
     bool useCache = !command.buffer.handle;
     buffer_handle_t handle = useCache
                              ? nullptr
@@ -189,6 +192,7 @@ void ComposerCommandEngine::executeSetClientTarget(int64_t display, const Client
 }
 
 void ComposerCommandEngine::executeSetOutputBuffer(uint64_t display, const Buffer& buffer) {
+    ATRACE_CALL();
     bool useCache = !buffer.handle;
     buffer_handle_t handle = useCache
                              ? nullptr
@@ -211,17 +215,20 @@ void ComposerCommandEngine::executeSetOutputBuffer(uint64_t display, const Buffe
 
 void ComposerCommandEngine::executeSetExpectedPresentTimeInternal(
         int64_t display, const std::optional<ClockMonotonicTimestamp> expectedPresentTime) {
+    ATRACE_CALL();
     mHal->setExpectedPresentTime(display, expectedPresentTime);
 }
 
 void ComposerCommandEngine::executeValidateDisplay(
         int64_t display, const std::optional<ClockMonotonicTimestamp> expectedPresentTime) {
+    ATRACE_CALL();
     executeSetExpectedPresentTimeInternal(display, expectedPresentTime);
     executeValidateDisplayInternal(display);
 }
 
 void ComposerCommandEngine::executeSetDisplayBrightness(uint64_t display,
                                         const DisplayBrightness& command) {
+    ATRACE_CALL();
     auto err = mHal->setDisplayBrightness(display, command.brightness);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -231,6 +238,7 @@ void ComposerCommandEngine::executeSetDisplayBrightness(uint64_t display,
 
 void ComposerCommandEngine::executePresentOrValidateDisplay(
         int64_t display, const std::optional<ClockMonotonicTimestamp> expectedPresentTime) {
+    ATRACE_CALL();
     executeSetExpectedPresentTimeInternal(display, expectedPresentTime);
 
     int err;
@@ -251,6 +259,7 @@ void ComposerCommandEngine::executePresentOrValidateDisplay(
 }
 
 void ComposerCommandEngine::executeAcceptDisplayChanges(int64_t display) {
+    ATRACE_CALL();
     auto err = mHal->acceptDisplayChanges(display);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -259,6 +268,7 @@ void ComposerCommandEngine::executeAcceptDisplayChanges(int64_t display) {
 }
 
 int ComposerCommandEngine::executePresentDisplay(int64_t display) {
+    ATRACE_CALL();
     ndk::ScopedFileDescriptor presentFence;
     std::vector<int64_t> layers;
     std::vector<ndk::ScopedFileDescriptor> fences;
@@ -275,6 +285,7 @@ int ComposerCommandEngine::executePresentDisplay(int64_t display) {
 
 void ComposerCommandEngine::executeSetLayerCursorPosition(int64_t display, int64_t layer,
                                        const common::Point& cursorPosition) {
+    ATRACE_CALL();
     auto err = mHal->setLayerCursorPosition(display, layer, cursorPosition.x, cursorPosition.y);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -284,6 +295,7 @@ void ComposerCommandEngine::executeSetLayerCursorPosition(int64_t display, int64
 
 void ComposerCommandEngine::executeSetLayerBuffer(int64_t display, int64_t layer,
                                                   const Buffer& buffer) {
+    ATRACE_CALL();
     bool useCache = !buffer.handle;
     buffer_handle_t handle = useCache
                              ? nullptr
@@ -306,6 +318,7 @@ void ComposerCommandEngine::executeSetLayerBuffer(int64_t display, int64_t layer
 
 void ComposerCommandEngine::executeSetLayerSurfaceDamage(int64_t display, int64_t layer,
                               const std::vector<std::optional<common::Rect>>& damage) {
+    ATRACE_CALL();
     auto err = mHal->setLayerSurfaceDamage(display, layer, damage);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -315,6 +328,7 @@ void ComposerCommandEngine::executeSetLayerSurfaceDamage(int64_t display, int64_
 
 void ComposerCommandEngine::executeSetLayerBlendMode(int64_t display, int64_t layer,
                                                      const ParcelableBlendMode& blendMode) {
+    ATRACE_CALL();
     auto err = mHal->setLayerBlendMode(display, layer, blendMode.blendMode);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -324,6 +338,7 @@ void ComposerCommandEngine::executeSetLayerBlendMode(int64_t display, int64_t la
 
 void ComposerCommandEngine::executeSetLayerColor(int64_t display, int64_t layer,
                                                  const Color& color) {
+    ATRACE_CALL();
     auto err = mHal->setLayerColor(display, layer, color);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -333,6 +348,7 @@ void ComposerCommandEngine::executeSetLayerColor(int64_t display, int64_t layer,
 
 void ComposerCommandEngine::executeSetLayerComposition(int64_t display, int64_t layer,
                                                        const ParcelableComposition& composition) {
+    ATRACE_CALL();
     auto err = mHal->setLayerCompositionType(display, layer, composition.composition);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -342,6 +358,7 @@ void ComposerCommandEngine::executeSetLayerComposition(int64_t display, int64_t 
 
 void ComposerCommandEngine::executeSetLayerDataspace(int64_t display, int64_t layer,
                                                      const ParcelableDataspace& dataspace) {
+    ATRACE_CALL();
     auto err = mHal->setLayerDataspace(display, layer, dataspace.dataspace);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -351,6 +368,7 @@ void ComposerCommandEngine::executeSetLayerDataspace(int64_t display, int64_t la
 
 void ComposerCommandEngine::executeSetLayerDisplayFrame(int64_t display, int64_t layer,
                                                         const common::Rect& rect) {
+    ATRACE_CALL();
     auto err = mHal->setLayerDisplayFrame(display, layer, rect);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -360,6 +378,7 @@ void ComposerCommandEngine::executeSetLayerDisplayFrame(int64_t display, int64_t
 
 void ComposerCommandEngine::executeSetLayerPlaneAlpha(int64_t display, int64_t layer,
                                                       const PlaneAlpha& planeAlpha) {
+    ATRACE_CALL();
     auto err = mHal->setLayerPlaneAlpha(display, layer, planeAlpha.alpha);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -369,6 +388,7 @@ void ComposerCommandEngine::executeSetLayerPlaneAlpha(int64_t display, int64_t l
 
 void ComposerCommandEngine::executeSetLayerSidebandStream(int64_t display, int64_t layer,
                                                  const AidlNativeHandle& sidebandStream) {
+    ATRACE_CALL();
     buffer_handle_t handle = ::android::makeFromAidl(sidebandStream);
     buffer_handle_t stream;
 
@@ -386,6 +406,7 @@ void ComposerCommandEngine::executeSetLayerSidebandStream(int64_t display, int64
 
 void ComposerCommandEngine::executeSetLayerSourceCrop(int64_t display, int64_t layer,
                                                       const common::FRect& sourceCrop) {
+    ATRACE_CALL();
     auto err = mHal->setLayerSourceCrop(display, layer, sourceCrop);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -395,6 +416,7 @@ void ComposerCommandEngine::executeSetLayerSourceCrop(int64_t display, int64_t l
 
 void ComposerCommandEngine::executeSetLayerTransform(int64_t display, int64_t layer,
                                                      const ParcelableTransform& transform) {
+    ATRACE_CALL();
     auto err = mHal->setLayerTransform(display, layer, transform.transform);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -404,6 +426,7 @@ void ComposerCommandEngine::executeSetLayerTransform(int64_t display, int64_t la
 
 void ComposerCommandEngine::executeSetLayerVisibleRegion(int64_t display, int64_t layer,
                           const std::vector<std::optional<common::Rect>>& visibleRegion) {
+    ATRACE_CALL();
     auto err = mHal->setLayerVisibleRegion(display, layer, visibleRegion);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -413,6 +436,7 @@ void ComposerCommandEngine::executeSetLayerVisibleRegion(int64_t display, int64_
 
 void ComposerCommandEngine::executeSetLayerZOrder(int64_t display, int64_t layer,
                                                   const ZOrder& zOrder) {
+    ATRACE_CALL();
     auto err = mHal->setLayerZOrder(display, layer, zOrder.z);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -422,6 +446,7 @@ void ComposerCommandEngine::executeSetLayerZOrder(int64_t display, int64_t layer
 
 void ComposerCommandEngine::executeSetLayerPerFrameMetadata(int64_t display, int64_t layer,
                 const std::vector<std::optional<PerFrameMetadata>>& perFrameMetadata) {
+    ATRACE_CALL();
     auto err = mHal->setLayerPerFrameMetadata(display, layer, perFrameMetadata);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -431,6 +456,7 @@ void ComposerCommandEngine::executeSetLayerPerFrameMetadata(int64_t display, int
 
 void ComposerCommandEngine::executeSetLayerColorTransform(int64_t display, int64_t layer,
                                                        const std::vector<float>& matrix) {
+    ATRACE_CALL();
     auto err = mHal->setLayerColorTransform(display, layer, matrix);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -440,6 +466,7 @@ void ComposerCommandEngine::executeSetLayerColorTransform(int64_t display, int64
 
 void ComposerCommandEngine::executeSetLayerBrightness(int64_t display, int64_t layer,
                                                       const LayerBrightness& brightness) {
+    ATRACE_CALL();
     auto err = mHal->setLayerBrightness(display, layer, brightness.brightness);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
@@ -449,6 +476,7 @@ void ComposerCommandEngine::executeSetLayerBrightness(int64_t display, int64_t l
 
 void ComposerCommandEngine::executeSetLayerPerFrameMetadataBlobs(int64_t display, int64_t layer,
                       const std::vector<std::optional<PerFrameMetadataBlob>>& metadata) {
+    ATRACE_CALL();
     auto err = mHal->setLayerPerFrameMetadataBlobs(display, layer, metadata);
     if (err) {
         LOG(ERROR) << __func__ << ": err " << err;
