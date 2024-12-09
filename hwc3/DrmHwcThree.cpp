@@ -28,8 +28,6 @@
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
-using ::android::HwcDisplay;
-
 DrmHwcThree::~DrmHwcThree() {
   /* Display deinit routine is handled by resource manager */
   GetResMan().DeInit();
@@ -95,51 +93,6 @@ void DrmHwcThree::SendHotplugEventToClient(
 
 #endif
 
-void DrmHwcThree::CleanDisplayResources(uint64_t display_id) {
-  DEBUG_FUNC();
-  HwcDisplay* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    return;
-  }
-
-  display->SetPowerMode(static_cast<int32_t>(PowerMode::OFF));
-
-  size_t cache_size = 0;
-  auto err = composer_resources_->GetDisplayClientTargetCacheSize(display_id,
-                                                                  &cache_size);
-  if (err != hwc3::Error::kNone) {
-    ALOGE("%s: Could not clear target buffer cache for display: %" PRIu64,
-          __func__, display_id);
-    return;
-  }
-
-  for (size_t slot = 0; slot < cache_size; slot++) {
-    buffer_handle_t buffer_handle = nullptr;
-    auto buf_releaser = ComposerResources::CreateResourceReleaser(true);
-
-    Buffer buf{};
-    buf.slot = static_cast<int32_t>(slot);
-    err = composer_resources_->GetDisplayClientTarget(display_id, buf,
-                                                      &buffer_handle,
-                                                      buf_releaser.get());
-    if (err != hwc3::Error::kNone) {
-      continue;
-    }
-
-    err = Hwc2toHwc3Error(
-        display->SetClientTarget(buffer_handle, -1,
-                                 static_cast<int32_t>(
-                                     common::Dataspace::UNKNOWN),
-                                 {}));
-    if (err != hwc3::Error::kNone) {
-      ALOGE(
-          "%s: Could not clear slot %zu of the target buffer cache for "
-          "display %" PRIu64,
-          __func__, slot, display_id);
-    }
-  }
-}
-
 void DrmHwcThree::HandleDisplayHotplugEvent(uint64_t display_id,
                                             bool connected) {
   DEBUG_FUNC();
@@ -148,12 +101,14 @@ void DrmHwcThree::HandleDisplayHotplugEvent(uint64_t display_id,
     return;
   }
 
-  if (composer_resources_->HasDisplay(display_id)) {
-    /* Cleanup existing display resources */
-    CleanDisplayResources(display_id);
-    composer_resources_->RemoveDisplay(display_id);
+  /* The second or any subsequent hotplug event with connected status enabled is
+   * a special way to inform the client (SF) that the display has changed its
+   * dimensions. In this case, the client removes all layers and re-creates
+   * them. In this case, we keep the display resources.
+   */
+  if (!composer_resources_->HasDisplay(display_id)) {
+    composer_resources_->AddPhysicalDisplay(display_id);
   }
-  composer_resources_->AddPhysicalDisplay(display_id);
 }
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl

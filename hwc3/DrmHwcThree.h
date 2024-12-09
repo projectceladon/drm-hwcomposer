@@ -42,7 +42,6 @@ class DrmHwcThree : public ::android::DrmHwc {
                                 DrmHwc::DisplayStatus display_status) override;
 
  private:
-  void CleanDisplayResources(uint64_t display_id);
   void HandleDisplayHotplugEvent(uint64_t display_id, bool connected);
 
   std::shared_ptr<IComposerCallback> composer_callback_;
