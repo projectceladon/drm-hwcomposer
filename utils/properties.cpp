@@ -29,3 +29,15 @@ auto Properties::IsPresentFenceNotReliable() -> bool {
 auto Properties::UseConfigGroups() -> bool {
   return (property_get_bool("ro.vendor.hwc.drm.use_config_groups", 1) != 0);
 }
+
+auto Properties::UseOverlayPlanes() -> bool {
+  return (property_get_bool("ro.vendor.hwc.use_overlay_planes", 1) != 0);
+}
+
+auto Properties::ScaleWithGpu() -> bool {
+  return (property_get_bool("vendor.hwc.drm.scale_with_gpu", 0) != 0);
+}
+
+auto Properties::EnableVirtualDisplay() -> bool {
+  return (property_get_bool("vendor.hwc.drm.enable_virtual_display", 0) != 0);
+}

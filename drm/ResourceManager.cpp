@@ -76,10 +76,9 @@ void ResourceManager::Init() {
     }
   }
 
-  char proptext[PROPERTY_VALUE_MAX];
-  property_get("vendor.hwc.drm.scale_with_gpu", proptext, "0");
-  scale_with_gpu_ = bool(strncmp(proptext, "0", 1));
+  scale_with_gpu_ = Properties::ScaleWithGpu();
 
+  char proptext[PROPERTY_VALUE_MAX];
   constexpr char kDrmOrGpu[] = "DRM_OR_GPU";
   constexpr char kDrmOrIgnore[] = "DRM_OR_IGNORE";
   property_get("vendor.hwc.drm.ctm", proptext, kDrmOrGpu);

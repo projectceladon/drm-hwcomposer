@@ -78,4 +78,7 @@ class Properties {
  public:
   static auto IsPresentFenceNotReliable() -> bool;
   static auto UseConfigGroups() -> bool;
+  static auto UseOverlayPlanes() -> bool;
+  static auto ScaleWithGpu() -> bool;
+  static auto EnableVirtualDisplay() -> bool;
 };

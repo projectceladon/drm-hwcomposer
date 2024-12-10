@@ -158,22 +158,12 @@ auto DrmDisplayPipeline::CreatePipeline(DrmConnector &connector)
   return {};
 }
 
-static bool ReadUseOverlayProperty() {
-  char use_overlay_planes_prop[PROPERTY_VALUE_MAX];
-  property_get("vendor.hwc.drm.use_overlay_planes", use_overlay_planes_prop,
-               "1");
-  constexpr int kStrtolBase = 10;
-  return strtol(use_overlay_planes_prop, nullptr, kStrtolBase) != 0;
-}
-
 auto DrmDisplayPipeline::GetUsablePlanes()
     -> std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> {
   std::vector<std::shared_ptr<BindingOwner<DrmPlane>>> planes;
   planes.emplace_back(primary_plane);
 
-  const static bool kUseOverlayPlanes = ReadUseOverlayProperty();
-
-  if (kUseOverlayPlanes) {
+  if (Properties::UseOverlayPlanes()) {
     for (const auto &plane : device->GetPlanes()) {
       if (plane->IsCrtcSupported(*crtc->Get())) {
         if (plane->GetType() == DRM_PLANE_TYPE_OVERLAY) {

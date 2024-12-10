@@ -200,7 +200,7 @@ uint32_t DrmHwc::GetMaxVirtualDisplayCount() {
   /* Virtual display is an experimental feature.
    * Unless explicitly set to true, return 0 for no support.
    */
-  if (0 == property_get_bool("vendor.hwc.drm.enable_virtual_display", 0)) {
+  if (!Properties::EnableVirtualDisplay()) {
     return 0;
   }
 
