@@ -297,6 +297,9 @@ class HwcDisplay {
   HWC2::Error Init();
 
   HWC2::Error SetActiveConfigInternal(uint32_t config, int64_t change_time);
+  auto GetEdid() -> EdidWrapperUnique & {
+    return GetPipe().connector->Get()->GetParsedEdid();
+  }
 };
 
 }  // namespace android

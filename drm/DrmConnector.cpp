@@ -89,6 +89,12 @@ auto DrmConnector::Init()-> bool {
   }
 
   UpdateEdidProperty();
+#if HAS_LIBDISPLAY_INFO
+  auto edid = LibdisplayEdidWrapper::Create(GetEdidBlob());
+  edid_wrapper_ = edid ? std::move(edid) : std::make_unique<EdidWrapper>();
+#else
+  edid_wrapper_ = std::make_unique<EdidWrapper>();
+#endif
 
   if (IsWriteback() &&
       (!GetConnectorProperty("WRITEBACK_PIXEL_FORMATS",
@@ -128,7 +134,8 @@ auto DrmConnector::Init()-> bool {
                                       colorspace_enum_map_);
     colorspace_property_.AddEnumToMap("RGB_WIDE_FIXED", Colorspace::kRgbWideFixed,
                                       colorspace_enum_map_);
-    colorspace_property_.AddEnumToMap("RGB_WIDE_FLOAT", Colorspace::kRgbWideFloat,
+    colorspace_property_.AddEnumToMap("RGB_WIDE_FLOAT",
+                                      Colorspace::kRgbWideFloat,
                                       colorspace_enum_map_);
     colorspace_property_.AddEnumToMap("BT601_YCC", Colorspace::kBt601Ycc,
                                       colorspace_enum_map_);
