@@ -108,17 +108,17 @@ int DrmPlane::Init() {
   GetPlaneProperty("IN_FENCE_FD", in_fence_fd_property_, Presence::kOptional);
 
   if (HasNonRgbFormat()) {
-    if (GetPlaneProperty("COLOR_ENCODING", color_encoding_propery_,
+    if (GetPlaneProperty("COLOR_ENCODING", color_encoding_property_,
                          Presence::kOptional)) {
-      color_encoding_propery_.AddEnumToMap("ITU-R BT.709 YCbCr",
-                                           BufferColorSpace::kItuRec709,
-                                           color_encoding_enum_map_);
-      color_encoding_propery_.AddEnumToMap("ITU-R BT.601 YCbCr",
-                                           BufferColorSpace::kItuRec601,
-                                           color_encoding_enum_map_);
-      color_encoding_propery_.AddEnumToMap("ITU-R BT.2020 YCbCr",
-                                           BufferColorSpace::kItuRec2020,
-                                           color_encoding_enum_map_);
+      color_encoding_property_.AddEnumToMap("ITU-R BT.709 YCbCr",
+                                            BufferColorSpace::kItuRec709,
+                                            color_encoding_enum_map_);
+      color_encoding_property_.AddEnumToMap("ITU-R BT.601 YCbCr",
+                                            BufferColorSpace::kItuRec601,
+                                            color_encoding_enum_map_);
+      color_encoding_property_.AddEnumToMap("ITU-R BT.2020 YCbCr",
+                                            BufferColorSpace::kItuRec2020,
+                                            color_encoding_enum_map_);
     }
 
     if (GetPlaneProperty("COLOR_RANGE", color_range_property_,
@@ -146,7 +146,7 @@ bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
     // any CRTC already, which is protected by the plane_switching_crtc function
     // in the kernel drivers/gpu/drm/drm_atomic.c file.
     // The current drm_hwc design is not ready to support such scenario yet,
-    // so adding the CRTC status check here to workaorund for now.
+    // so adding the CRTC status check here to workaround for now.
     return false;
   }
 
@@ -302,7 +302,7 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
   }
 
   if (color_encoding_enum_map_.count(layer.bi->color_space) != 0 &&
-      !color_encoding_propery_
+      !color_encoding_property_
            .AtomicSet(pset, color_encoding_enum_map_[layer.bi->color_space])) {
     return -EINVAL;
   }

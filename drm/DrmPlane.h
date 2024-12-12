@@ -90,7 +90,7 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
   DrmProperty alpha_property_;
   DrmProperty blend_property_;
   DrmProperty in_fence_fd_property_;
-  DrmProperty color_encoding_propery_;
+  DrmProperty color_encoding_property_;
   DrmProperty color_range_property_;
 
   std::map<BufferBlendMode, uint64_t> blending_enum_map_;
