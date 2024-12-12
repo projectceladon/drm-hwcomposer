@@ -24,16 +24,22 @@
 #include <string>
 #include <vector>
 
+#include "drm/DrmUnique.h"
+#include "utils/fd.h"
+#include "utils/log.h"
+
 namespace android {
 
 class DrmProperty {
  public:
   DrmProperty() = default;
-  DrmProperty(uint32_t obj_id, drmModePropertyPtr p, uint64_t value);
+  DrmProperty(const SharedFd &fd, uint32_t obj_id, drmModePropertyPtr p,
+              uint64_t value);
   DrmProperty(const DrmProperty &) = delete;
   DrmProperty &operator=(const DrmProperty &) = delete;
 
-  auto Init(uint32_t obj_id, drmModePropertyPtr p, uint64_t value) -> void;
+  auto Init(const SharedFd &fd, uint32_t obj_id, drmModePropertyPtr p,
+            uint64_t value) -> void;
   std::tuple<uint64_t, int> GetEnumValueWithName(const std::string &name) const;
 
   auto GetId() const {
@@ -80,6 +86,12 @@ class DrmProperty {
 
   auto GetEnumNameFromValue(uint64_t value) const -> std::optional<std::string>;
 
+  bool IsBlob() const {
+    return id_ != 0 && (flags_ & DRM_MODE_PROP_BLOB) != 0;
+  }
+  template <typename T>
+  bool GetBlobData(std::vector<T> &data_out) const;
+
  private:
   class DrmPropertyEnum {
    public:
@@ -90,6 +102,7 @@ class DrmProperty {
     std::string name;
   };
 
+  SharedFd fd_ = nullptr;
   uint32_t obj_id_ = 0;
   uint32_t id_ = 0;
 
@@ -128,6 +141,45 @@ auto DrmProperty::AddEnumToMapReverse(const std::string &name, E value,
   }
 
   return false;
+}
+
+template <typename T>
+bool DrmProperty::GetBlobData(std::vector<T> &data_out) const {
+  auto value = GetValue();
+  if (!fd_) {
+    ALOGE("Could not read blob data from property %s: No fd", name_.c_str());
+    return false;
+  }
+  if (!IsBlob()) {
+    ALOGE("Property %s is not blob type", name_.c_str());
+    return false;
+  }
+  if (!value.has_value()) {
+    ALOGE("Could not read blob data from property %s: No blob id",
+          name_.c_str());
+    return false;
+  }
+
+  auto blob = MakeDrmModePropertyBlobUnique(*fd_, value.value());
+  if (blob == nullptr) {
+    ALOGE("Failed to read blob with id=%d from property %s", value.value(),
+          name_.c_str());
+    return false;
+  }
+
+  if (blob->length % sizeof(T) != 0) {
+    ALOGE(
+        "Property %s blob size of %zu bytes is not divisible by type argument "
+        "size of %zu bytes",
+        name_.c_str(), blob->length, sizeof(T));
+    return false;
+  }
+
+  auto cast_data = static_cast<T *>(blob->data);
+  size_t cast_data_length = blob->length / sizeof(T);
+  data_out.assign(cast_data, cast_data + cast_data_length);
+
+  return true;
 }
 
 }  // namespace android

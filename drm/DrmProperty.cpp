@@ -35,12 +35,14 @@ DrmProperty::DrmPropertyEnum::DrmPropertyEnum(drm_mode_property_enum *e)
     : value(e->value), name(e->name) {
 }
 
-DrmProperty::DrmProperty(uint32_t obj_id, drmModePropertyPtr p,
-                         uint64_t value) {
-  Init(obj_id, p, value);
+DrmProperty::DrmProperty(const SharedFd &fd, uint32_t obj_id,
+                         drmModePropertyPtr p, uint64_t value) {
+  Init(fd, obj_id, p, value);
 }
 
-void DrmProperty::Init(uint32_t obj_id, drmModePropertyPtr p, uint64_t value) {
+void DrmProperty::Init(const SharedFd &fd, uint32_t obj_id,
+                       drmModePropertyPtr p, uint64_t value) {
+  fd_ = fd;
   obj_id_ = obj_id;
   id_ = p->prop_id;
   flags_ = p->flags;
