@@ -132,6 +132,12 @@ int DrmPlane::Init() {
     }
   }
 
+  if (type_ == DRM_PLANE_TYPE_CURSOR &&
+      GetPlaneProperty("SIZE_HINTS", size_hints_property_,
+                       Presence::kOptional)) {
+    size_hints_property_.GetBlobData(size_hints_);
+  }
+
   return 0;
 }
 
