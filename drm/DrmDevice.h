@@ -106,6 +106,10 @@ class DrmDevice {
   int GetProperty(uint32_t obj_id, uint32_t obj_type, const char *prop_name,
                   DrmProperty *property) const;
 
+  const std::optional<std::pair<uint64_t, uint64_t>> &GetCapCursorSize() const {
+    return cap_cursor_size_;
+  }
+
  private:
   explicit DrmDevice(ResourceManager *res_man, uint32_t index);
   auto Init(const char *path) -> int;
@@ -123,6 +127,7 @@ class DrmDevice {
 
   std::pair<uint32_t, uint32_t> min_resolution_;
   std::pair<uint32_t, uint32_t> max_resolution_;
+  std::optional<std::pair<uint64_t, uint64_t>> cap_cursor_size_;
 
   bool HasAddFb2ModifiersSupport_{};
 
@@ -130,4 +135,5 @@ class DrmDevice {
 
   ResourceManager *const res_man_;
 };
+
 }  // namespace android
