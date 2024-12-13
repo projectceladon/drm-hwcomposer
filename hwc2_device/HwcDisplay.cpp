@@ -265,8 +265,7 @@ auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
   staged_mode_config_id_ = config;
 
   // Enable vsync events until the mode has been applied.
-  last_vsync_ts_ = 0;
-  vsync_tracking_en_ = true;
+  vsync_worker_->SetVsyncTimestampTracking(true);
   vsync_worker_->VSyncControl(true);
 
   return ConfigError::kNone;
@@ -324,10 +323,7 @@ HWC2::Error HwcDisplay::Init() {
               GetDisplayVsyncPeriod(&period_ns);
               hwc_->SendVsyncEventToClient(handle_, timestamp, period_ns);
             }
-            if (vsync_tracking_en_) {
-              last_vsync_ts_ = timestamp;
-            }
-            if (!vsync_event_en_ && !vsync_tracking_en_) {
+            if (!vsync_event_en_) {
               vsync_worker_->VSyncControl(false);
             }
           },
@@ -776,10 +772,12 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   if (new_vsync_period_ns) {
     vsync_worker_->SetVsyncPeriodNs(new_vsync_period_ns.value());
     staged_mode_config_id_.reset();
-    vsync_tracking_en_ = false;
-    if (last_vsync_ts_ != 0) {
+
+    vsync_worker_->SetVsyncTimestampTracking(false);
+    uint32_t last_vsync_ts = vsync_worker_->GetLastVsyncTimestamp();
+    if (last_vsync_ts != 0) {
       hwc_->SendVsyncPeriodTimingChangedEventToClient(handle_,
-                                                      last_vsync_ts_ +
+                                                      last_vsync_ts +
                                                           prev_vperiod_ns);
     }
   }
@@ -1167,8 +1165,7 @@ HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
   outTimeline->newVsyncAppliedTimeNanos = vsyncPeriodChangeConstraints
                                               ->desiredTimeNanos;
 
-  last_vsync_ts_ = 0;
-  vsync_tracking_en_ = true;
+  vsync_worker_->SetVsyncTimestampTracking(true);
   vsync_worker_->VSyncControl(true);
 
   return HWC2::Error::None;

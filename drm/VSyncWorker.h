@@ -43,6 +43,12 @@ class VSyncWorker {
   // Set the expected vsync period.
   void SetVsyncPeriodNs(uint32_t vsync_period_ns);
 
+  // Enable vsync timestamp tracking. GetLastVsyncTimestamp will return 0 if
+  // vsync tracking is disabled, or if no vsync has happened since it was
+  // enabled.
+  void SetVsyncTimestampTracking(bool enabled);
+  uint32_t GetLastVsyncTimestamp();
+
   void StopThread();
 
  private:
@@ -66,6 +72,8 @@ class VSyncWorker {
   static constexpr uint32_t kDefaultVSPeriodNs = 16666666;
   // Needs to be threadsafe.
   uint32_t vsync_period_ns_ = kDefaultVSPeriodNs;
+  bool enable_vsync_timestamps_ = false;
+  uint32_t last_vsync_timestamp_ = 0;
 
   std::condition_variable cv_;
   std::thread vswt_;
