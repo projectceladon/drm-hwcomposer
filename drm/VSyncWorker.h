@@ -41,8 +41,6 @@ class VSyncWorker {
                              VSyncWorkerCallbacks &callbacks)
       -> std::shared_ptr<VSyncWorker>;
 
-  void VSyncControl(bool enabled);
-
   // Set the expected vsync period.
   void SetVsyncPeriodNs(uint32_t vsync_period_ns);
 
@@ -64,6 +62,10 @@ class VSyncWorker {
 
   int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const;
   int SyntheticWaitVBlank(int64_t *timestamp);
+
+  // Must hold the lock before calling these.
+  void UpdateVSyncControl();
+  bool ShouldEnable() const;
 
   VSyncWorkerCallbacks callbacks_;
 

@@ -48,10 +48,10 @@ auto VSyncWorker::CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe,
   return vsw;
 }
 
-void VSyncWorker::VSyncControl(bool enabled) {
+void VSyncWorker::UpdateVSyncControl() {
   {
     const std::lock_guard<std::mutex> lock(mutex_);
-    enabled_ = enabled;
+    enabled_ = ShouldEnable();
     last_timestamp_ = -1;
   }
 
@@ -64,13 +64,16 @@ void VSyncWorker::SetVsyncPeriodNs(uint32_t vsync_period_ns) {
 }
 
 void VSyncWorker::SetVsyncTimestampTracking(bool enabled) {
-  const std::lock_guard<std::mutex> lock(mutex_);
-  enable_vsync_timestamps_ = enabled;
-  if (enabled) {
-    // Reset the last timestamp so the caller knows if a vsync timestamp is
-    // fresh or not.
-    last_vsync_timestamp_ = 0;
+  {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    enable_vsync_timestamps_ = enabled;
+    if (enabled) {
+      // Reset the last timestamp so the caller knows if a vsync timestamp is
+      // fresh or not.
+      last_vsync_timestamp_ = 0;
+    }
   }
+  UpdateVSyncControl();
 }
 
 uint32_t VSyncWorker::GetLastVsyncTimestamp() {
@@ -80,8 +83,11 @@ uint32_t VSyncWorker::GetLastVsyncTimestamp() {
 
 void VSyncWorker::SetTimestampCallback(
     std::optional<VsyncTimestampCallback> &&callback) {
-  const std::lock_guard<std::mutex> lock(mutex_);
-  callback_ = std::move(callback);
+  {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    callback_ = std::move(callback);
+  }
+  UpdateVSyncControl();
 }
 
 void VSyncWorker::StopThread() {
@@ -94,6 +100,10 @@ void VSyncWorker::StopThread() {
 
   cv_.notify_all();
 }
+
+bool VSyncWorker::ShouldEnable() const {
+  return enable_vsync_timestamps_ || callback_.has_value();
+};
 
 /*
  * Returns the timestamp of the next vsync in phase with last_timestamp_.

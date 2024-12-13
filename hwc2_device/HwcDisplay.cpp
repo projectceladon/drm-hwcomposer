@@ -266,7 +266,6 @@ auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
 
   // Enable vsync events until the mode has been applied.
   vsync_worker_->SetVsyncTimestampTracking(true);
-  vsync_worker_->VSyncControl(true);
 
   return ConfigError::kNone;
 }
@@ -314,15 +313,7 @@ void HwcDisplay::Deinit() {
 HWC2::Error HwcDisplay::Init() {
   ChosePreferredConfig();
 
-  auto vsw_callbacks = (VSyncWorkerCallbacks){
-      .out_event =
-          [this](int64_t timestamp) {
-            const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
-            if (!vsync_event_en_) {
-              vsync_worker_->VSyncControl(false);
-            }
-          },
-  };
+  auto vsw_callbacks = (VSyncWorkerCallbacks){};
 
   if (type_ != HWC2::DisplayType::Virtual) {
     vsync_worker_ = VSyncWorker::CreateInstance(pipeline_, vsw_callbacks);
@@ -1071,7 +1062,6 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
       hwc->SendVsyncEventToClient(id, timestamp, period_ns);
     };
     vsync_worker_->SetTimestampCallback(callback);
-    vsync_worker_->VSyncControl(true);
   } else {
     vsync_worker_->SetTimestampCallback(std::nullopt);
   }
@@ -1171,7 +1161,6 @@ HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
                                               ->desiredTimeNanos;
 
   vsync_worker_->SetVsyncTimestampTracking(true);
-  vsync_worker_->VSyncControl(true);
 
   return HWC2::Error::None;
 }
