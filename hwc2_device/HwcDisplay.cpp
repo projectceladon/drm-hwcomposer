@@ -318,11 +318,6 @@ HWC2::Error HwcDisplay::Init() {
       .out_event =
           [this](int64_t timestamp) {
             const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
-            if (vsync_event_en_) {
-              uint32_t period_ns{};
-              GetDisplayVsyncPeriod(&period_ns);
-              hwc_->SendVsyncEventToClient(handle_, timestamp, period_ns);
-            }
             if (!vsync_event_en_) {
               vsync_worker_->VSyncControl(false);
             }
@@ -1067,8 +1062,18 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
   }
 
   vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
+
   if (vsync_event_en_) {
+    DrmHwc *hwc = hwc_;
+    hwc2_display_t id = handle_;
+    // Callback will be called from the vsync thread.
+    auto callback = [hwc, id](int64_t timestamp, uint32_t period_ns) {
+      hwc->SendVsyncEventToClient(id, timestamp, period_ns);
+    };
+    vsync_worker_->SetTimestampCallback(callback);
     vsync_worker_->VSyncControl(true);
+  } else {
+    vsync_worker_->SetTimestampCallback(std::nullopt);
   }
   return HWC2::Error::None;
 }

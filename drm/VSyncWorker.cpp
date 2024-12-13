@@ -78,6 +78,12 @@ uint32_t VSyncWorker::GetLastVsyncTimestamp() {
   return last_vsync_timestamp_;
 }
 
+void VSyncWorker::SetTimestampCallback(
+    std::optional<VsyncTimestampCallback> &&callback) {
+  const std::lock_guard<std::mutex> lock(mutex_);
+  callback_ = std::move(callback);
+}
+
 void VSyncWorker::StopThread() {
   {
     const std::lock_guard<std::mutex> lock(mutex_);
@@ -173,6 +179,7 @@ void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
     }
 
     decltype(callbacks_.out_event) callback;
+    std::optional<VsyncTimestampCallback> vsync_callback;
 
     {
       const std::lock_guard<std::mutex> lock(mutex_);
@@ -182,6 +189,11 @@ void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
       if (enable_vsync_timestamps_) {
         last_vsync_timestamp_ = timestamp;
       }
+      vsync_callback = callback_;
+    }
+
+    if (vsync_callback) {
+      vsync_callback.value()(timestamp, vsync_period_ns_);
     }
 
     if (callback)

@@ -32,6 +32,9 @@ struct VSyncWorkerCallbacks {
 
 class VSyncWorker {
  public:
+  using VsyncTimestampCallback = std::function<void(int64_t /*timestamp*/,
+                                                    uint32_t /*period*/)>;
+
   ~VSyncWorker() = default;
 
   auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe,
@@ -42,6 +45,9 @@ class VSyncWorker {
 
   // Set the expected vsync period.
   void SetVsyncPeriodNs(uint32_t vsync_period_ns);
+
+  // Set or clear a callback to be fired on vsync.
+  void SetTimestampCallback(std::optional<VsyncTimestampCallback> &&callback);
 
   // Enable vsync timestamp tracking. GetLastVsyncTimestamp will return 0 if
   // vsync tracking is disabled, or if no vsync has happened since it was
@@ -74,6 +80,7 @@ class VSyncWorker {
   uint32_t vsync_period_ns_ = kDefaultVSPeriodNs;
   bool enable_vsync_timestamps_ = false;
   uint32_t last_vsync_timestamp_ = 0;
+  std::optional<VsyncTimestampCallback> callback_;
 
   std::condition_variable cv_;
   std::thread vswt_;
