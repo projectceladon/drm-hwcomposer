@@ -232,6 +232,8 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
   ALOGV("Blocking config succeeded.");
   configs_.active_config_id = config;
   staged_mode_config_id_.reset();
+  vsync_worker_->SetVsyncPeriodNs(new_config->mode.GetVSyncPeriodNs());
+  // set new vsync period
   return ConfigError::kNone;
 }
 
@@ -329,11 +331,6 @@ HWC2::Error HwcDisplay::Init() {
               vsync_worker_->VSyncControl(false);
             }
           },
-      .get_vperiod_ns = [this]() -> uint32_t {
-        uint32_t outVsyncPeriod = 0;
-        GetDisplayVsyncPeriod(&outVsyncPeriod);
-        return outVsyncPeriod;
-      },
   };
 
   if (type_ != HWC2::DisplayType::Virtual) {
@@ -698,6 +695,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
                      .bottom = int(staged_config->mode.GetRawMode().vdisplay)});
 
     configs_.active_config_id = staged_mode_config_id_.value();
+    vsync_worker_->SetVsyncPeriodNs(staged_config->mode.GetVSyncPeriodNs());
 
     a_args.display_mode = staged_config->mode;
     if (!a_args.test_only) {

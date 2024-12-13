@@ -28,7 +28,6 @@ namespace android {
 
 struct VSyncWorkerCallbacks {
   std::function<void(uint64_t /*timestamp*/)> out_event;
-  std::function<uint32_t()> get_vperiod_ns;
 };
 
 class VSyncWorker {
@@ -40,6 +39,10 @@ class VSyncWorker {
       -> std::shared_ptr<VSyncWorker>;
 
   void VSyncControl(bool enabled);
+
+  // Set the expected vsync period.
+  void SetVsyncPeriodNs(uint32_t vsync_period_ns);
+
   void StopThread();
 
  private:
@@ -58,6 +61,9 @@ class VSyncWorker {
   bool enabled_ = false;
   bool thread_exit_ = false;
   int64_t last_timestamp_ = -1;
+
+  // Needs to be threadsafe.
+  uint32_t vsync_period_ns_ = 0;
 
   std::condition_variable cv_;
   std::thread vswt_;

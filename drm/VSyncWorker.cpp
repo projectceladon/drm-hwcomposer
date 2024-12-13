@@ -58,6 +58,11 @@ void VSyncWorker::VSyncControl(bool enabled) {
   cv_.notify_all();
 }
 
+void VSyncWorker::SetVsyncPeriodNs(uint32_t vsync_period_ns) {
+  const std::lock_guard<std::mutex> lock(mutex_);
+  vsync_period_ns_ = vsync_period_ns;
+}
+
 void VSyncWorker::StopThread() {
   {
     const std::lock_guard<std::mutex> lock(mutex_);
@@ -97,9 +102,7 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
 
   // Default to 60Hz refresh rate
   constexpr uint32_t kDefaultVSPeriodNs = 16666666;
-  auto period_ns = kDefaultVSPeriodNs;
-  if (callbacks_.get_vperiod_ns && callbacks_.get_vperiod_ns() != 0)
-    period_ns = callbacks_.get_vperiod_ns();
+  auto period_ns = vsync_period_ns_ ? vsync_period_ns_ : kDefaultVSPeriodNs;
 
   auto phased_timestamp = GetPhasedVSync(period_ns, time_now);
   struct timespec vsync {};
