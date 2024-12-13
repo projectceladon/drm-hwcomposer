@@ -315,6 +315,7 @@ int DrmConnector::UpdateModes() {
 
 void DrmConnector::UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes) {
   if (new_modes.size() == 1 && connector_->count_modes > 0) {
+      bool demo_system = property_get_bool("ro.boot.demo", false);
       DrmMode mode = new_modes[0];
       drm_->ResetModeId();
       new_modes.clear();
@@ -322,6 +323,8 @@ void DrmConnector::UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes) 
           drmModeModeInfo info = connector_->modes[i];
           if (info.hdisplay == mode.h_display() && info.vdisplay == mode.v_display()) {
             DrmMode mode(&info);
+            if (demo_system && mode.v_refresh() < 58.8f)
+                continue;
             mode.SetId(drm_->GetNextModeId());
             new_modes.push_back(mode);
           }
