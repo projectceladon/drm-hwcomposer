@@ -26,10 +26,6 @@
 
 namespace android {
 
-struct VSyncWorkerCallbacks {
-  std::function<void(uint64_t /*timestamp*/)> out_event;
-};
-
 class VSyncWorker {
  public:
   using VsyncTimestampCallback = std::function<void(int64_t /*timestamp*/,
@@ -37,8 +33,7 @@ class VSyncWorker {
 
   ~VSyncWorker() = default;
 
-  auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe,
-                             VSyncWorkerCallbacks &callbacks)
+  auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)
       -> std::shared_ptr<VSyncWorker>;
 
   // Set the expected vsync period.
@@ -66,8 +61,6 @@ class VSyncWorker {
   // Must hold the lock before calling these.
   void UpdateVSyncControl();
   bool ShouldEnable() const;
-
-  VSyncWorkerCallbacks callbacks_;
 
   SharedFd drm_fd_;
   uint32_t high_crtc_ = 0;

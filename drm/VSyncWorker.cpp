@@ -30,12 +30,9 @@
 
 namespace android {
 
-auto VSyncWorker::CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe,
-                                 VSyncWorkerCallbacks &callbacks)
+auto VSyncWorker::CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)
     -> std::shared_ptr<VSyncWorker> {
   auto vsw = std::shared_ptr<VSyncWorker>(new VSyncWorker());
-
-  vsw->callbacks_ = callbacks;
 
   if (pipe) {
     vsw->high_crtc_ = pipe->crtc->Get()->GetIndexInResArray()
@@ -95,7 +92,6 @@ void VSyncWorker::StopThread() {
     const std::lock_guard<std::mutex> lock(mutex_);
     thread_exit_ = true;
     enabled_ = false;
-    callbacks_ = {};
   }
 
   cv_.notify_all();
@@ -188,14 +184,12 @@ void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
                   (int64_t)vblank.reply.tval_usec * kUsToNsMul;
     }
 
-    decltype(callbacks_.out_event) callback;
     std::optional<VsyncTimestampCallback> vsync_callback;
 
     {
       const std::lock_guard<std::mutex> lock(mutex_);
       if (!enabled_)
         continue;
-      callback = callbacks_.out_event;
       if (enable_vsync_timestamps_) {
         last_vsync_timestamp_ = timestamp;
       }
@@ -205,10 +199,6 @@ void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
     if (vsync_callback) {
       vsync_callback.value()(timestamp, vsync_period_ns_);
     }
-
-    if (callback)
-      callback(timestamp);
-
     last_timestamp_ = timestamp;
   }
 

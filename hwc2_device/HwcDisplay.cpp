@@ -313,10 +313,8 @@ void HwcDisplay::Deinit() {
 HWC2::Error HwcDisplay::Init() {
   ChosePreferredConfig();
 
-  auto vsw_callbacks = (VSyncWorkerCallbacks){};
-
   if (type_ != HWC2::DisplayType::Virtual) {
-    vsync_worker_ = VSyncWorker::CreateInstance(pipeline_, vsw_callbacks);
+    vsync_worker_ = VSyncWorker::CreateInstance(pipeline_);
     if (!vsync_worker_) {
       ALOGE("Failed to create event worker for d=%d\n", int(handle_));
       return HWC2::Error::BadDisplay;
