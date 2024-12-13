@@ -695,8 +695,6 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
                      .bottom = int(staged_config->mode.GetRawMode().vdisplay)});
 
     configs_.active_config_id = staged_mode_config_id_.value();
-    vsync_worker_->SetVsyncPeriodNs(staged_config->mode.GetVSyncPeriodNs());
-
     a_args.display_mode = staged_config->mode;
     if (!a_args.test_only) {
       mode_update_commited_ = true;
@@ -776,6 +774,11 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   if (mode_update_commited_) {
+    const HwcDisplayConfig *new_config = GetCurrentConfig();
+    uint32_t new_vsync_period_ns = new_config
+                                       ? new_config->mode.GetVSyncPeriodNs()
+                                       : 0;
+    vsync_worker_->SetVsyncPeriodNs(new_vsync_period_ns);
     staged_mode_config_id_.reset();
     vsync_tracking_en_ = false;
     if (last_vsync_ts_ != 0) {
