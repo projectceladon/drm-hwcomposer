@@ -320,17 +320,8 @@ bool ComposerClient::Init() {
 ComposerClient::~ComposerClient() {
   DEBUG_FUNC();
   {
-    // First Deinit the displays to start shutting down the Display's dependent
-    // threads such as VSyncWorker.
     const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
     hwc_->DeinitDisplays();
-  }
-  // Sleep to wait for threads to complete and exit.
-  const int time_for_threads_to_exit_us = 200000;
-  usleep(time_for_threads_to_exit_us);
-  {
-    // Hold the lock while destructing the hwc_ and the objects that it owns.
-    const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
     hwc_.reset();
   }
   LOG(DEBUG) << "removed composer client";

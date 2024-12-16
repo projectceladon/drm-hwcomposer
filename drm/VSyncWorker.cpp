@@ -31,8 +31,8 @@
 namespace android {
 
 auto VSyncWorker::CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)
-    -> std::shared_ptr<VSyncWorker> {
-  auto vsw = std::shared_ptr<VSyncWorker>(new VSyncWorker());
+    -> std::unique_ptr<VSyncWorker> {
+  auto vsw = std::unique_ptr<VSyncWorker>(new VSyncWorker());
 
   if (pipe) {
     vsw->high_crtc_ = pipe->crtc->Get()->GetIndexInResArray()
@@ -40,9 +40,15 @@ auto VSyncWorker::CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)
     vsw->drm_fd_ = pipe->device->GetFd();
   }
 
-  std::thread(&VSyncWorker::ThreadFn, vsw.get(), vsw).detach();
+  vsw->vswt_ = std::thread(&VSyncWorker::ThreadFn, vsw.get());
 
   return vsw;
+}
+
+VSyncWorker::~VSyncWorker() {
+  StopThread();
+
+  vswt_.join();
 }
 
 void VSyncWorker::UpdateVSyncControl() {
@@ -143,17 +149,17 @@ int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
   return 0;
 }
 
-void VSyncWorker::ThreadFn(const std::shared_ptr<VSyncWorker> &vsw) {
+void VSyncWorker::ThreadFn() {
   int ret = 0;
 
   for (;;) {
     {
-      std::unique_lock<std::mutex> lock(vsw->mutex_);
+      std::unique_lock<std::mutex> lock(mutex_);
       if (thread_exit_)
         break;
 
       if (!enabled_)
-        vsw->cv_.wait(lock);
+        cv_.wait(lock);
 
       if (!enabled_)
         continue;

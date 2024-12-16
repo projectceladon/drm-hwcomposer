@@ -31,10 +31,10 @@ class VSyncWorker {
   using VsyncTimestampCallback = std::function<void(int64_t /*timestamp*/,
                                                     uint32_t /*period*/)>;
 
-  ~VSyncWorker() = default;
+  ~VSyncWorker();
 
   auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)
-      -> std::shared_ptr<VSyncWorker>;
+      -> std::unique_ptr<VSyncWorker>;
 
   // Set the expected vsync period.
   void SetVsyncPeriodNs(uint32_t vsync_period_ns);
@@ -53,7 +53,7 @@ class VSyncWorker {
  private:
   VSyncWorker() = default;
 
-  void ThreadFn(const std::shared_ptr<VSyncWorker> &vsw);
+  void ThreadFn();
 
   int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const;
   int SyntheticWaitVBlank(int64_t *timestamp);
