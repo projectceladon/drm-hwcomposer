@@ -100,11 +100,7 @@ static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
 int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
   auto time_now = ResourceManager::GetTimeMonotonicNs();
 
-  // Default to 60Hz refresh rate
-  constexpr uint32_t kDefaultVSPeriodNs = 16666666;
-  auto period_ns = vsync_period_ns_ ? vsync_period_ns_ : kDefaultVSPeriodNs;
-
-  auto phased_timestamp = GetPhasedVSync(period_ns, time_now);
+  auto phased_timestamp = GetPhasedVSync(vsync_period_ns_, time_now);
   struct timespec vsync {};
   vsync.tv_sec = int(phased_timestamp / kOneSecondNs);
   vsync.tv_nsec = int(phased_timestamp - (vsync.tv_sec * kOneSecondNs));

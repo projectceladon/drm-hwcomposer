@@ -62,8 +62,10 @@ class VSyncWorker {
   bool thread_exit_ = false;
   int64_t last_timestamp_ = -1;
 
+  // Default to 60Hz refresh rate
+  static constexpr uint32_t kDefaultVSPeriodNs = 16666666;
   // Needs to be threadsafe.
-  uint32_t vsync_period_ns_ = 0;
+  uint32_t vsync_period_ns_ = kDefaultVSPeriodNs;
 
   std::condition_variable cv_;
   std::thread vswt_;
