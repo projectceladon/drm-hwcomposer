@@ -131,9 +131,13 @@ int64_t VSyncWorker::GetPhasedVSync(int64_t frame_ns, int64_t current) const {
 static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
 
 int VSyncWorker::SyntheticWaitVBlank(int64_t *timestamp) {
-  auto time_now = ResourceManager::GetTimeMonotonicNs();
+  int64_t phased_timestamp = 0;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    int64_t time_now = ResourceManager::GetTimeMonotonicNs();
+    phased_timestamp = GetPhasedVSync(vsync_period_ns_, time_now);
+  }
 
-  auto phased_timestamp = GetPhasedVSync(vsync_period_ns_, time_now);
   struct timespec vsync {};
   vsync.tv_sec = int(phased_timestamp / kOneSecondNs);
   vsync.tv_nsec = int(phased_timestamp - (vsync.tv_sec * kOneSecondNs));
@@ -191,6 +195,7 @@ void VSyncWorker::ThreadFn() {
     }
 
     std::optional<VsyncTimestampCallback> vsync_callback;
+    int64_t vsync_period_ns = 0;
 
     {
       const std::lock_guard<std::mutex> lock(mutex_);
@@ -200,12 +205,13 @@ void VSyncWorker::ThreadFn() {
         last_vsync_timestamp_ = timestamp;
       }
       vsync_callback = callback_;
+      vsync_period_ns = vsync_period_ns_;
+      last_timestamp_ = timestamp;
     }
 
     if (vsync_callback) {
-      vsync_callback.value()(timestamp, vsync_period_ns_);
+      vsync_callback.value()(timestamp, vsync_period_ns);
     }
-    last_timestamp_ = timestamp;
   }
 
   ALOGI("VSyncWorker thread exit");
