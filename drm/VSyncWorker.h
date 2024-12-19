@@ -23,6 +23,7 @@
 #include <thread>
 
 #include "DrmDevice.h"
+#include "utils/thread_annotations.h"
 
 namespace android {
 
@@ -55,27 +56,26 @@ class VSyncWorker {
 
   void ThreadFn();
 
-  int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const;
+  int64_t GetPhasedVSync(int64_t frame_ns, int64_t current) const
+      REQUIRES(mutex_);
   int SyntheticWaitVBlank(int64_t *timestamp);
 
-  // Must hold the lock before calling these.
   void UpdateVSyncControl();
-  bool ShouldEnable() const;
+  bool ShouldEnable() const REQUIRES(mutex_);
 
   SharedFd drm_fd_;
   uint32_t high_crtc_ = 0;
 
-  bool enabled_ = false;
-  bool thread_exit_ = false;
-  int64_t last_timestamp_ = -1;
+  bool enabled_ GUARDED_BY(mutex_) = false;
+  bool thread_exit_ GUARDED_BY(mutex_) = false;
+  int64_t last_timestamp_ GUARDED_BY(mutex_) = -1;
 
   // Default to 60Hz refresh rate
   static constexpr uint32_t kDefaultVSPeriodNs = 16666666;
-  // Needs to be threadsafe.
-  uint32_t vsync_period_ns_ = kDefaultVSPeriodNs;
-  bool enable_vsync_timestamps_ = false;
-  uint32_t last_vsync_timestamp_ = 0;
-  std::optional<VsyncTimestampCallback> callback_;
+  uint32_t vsync_period_ns_ GUARDED_BY(mutex_) = kDefaultVSPeriodNs;
+  bool enable_vsync_timestamps_ GUARDED_BY(mutex_) = false;
+  uint32_t last_vsync_timestamp_ GUARDED_BY(mutex_) = 0;
+  std::optional<VsyncTimestampCallback> callback_ GUARDED_BY(mutex_);
 
   std::condition_variable cv_;
   std::thread vswt_;

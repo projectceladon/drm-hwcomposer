@@ -159,6 +159,9 @@ void VSyncWorker::ThreadFn() {
   for (;;) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
+      // Thread safety analysis doesn't understand std::unique_lock.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-analysis"
       if (thread_exit_)
         break;
 
@@ -167,6 +170,7 @@ void VSyncWorker::ThreadFn() {
 
       if (!enabled_)
         continue;
+#pragma clang diagnostic pop
     }
 
     ret = -EAGAIN;
