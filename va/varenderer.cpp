@@ -275,37 +275,38 @@ int VARenderer::getSurfaceIn(buffer_handle_t bufferHandle, VADisplay display, VA
     return -1;
   }
 
-  VASurfaceAttribExternalBuffers external;
-  memset(&external, 0, sizeof(external));
-  int32_t numplanes = gr_handle->numFds;
-  if (numplanes > 1)
-    --numplanes;
-  uint32_t rt_format = DrmFormatToRTFormat(format);
-  uint32_t total_planes = numplanes;
-  external.pixel_format = DrmFormatToVAFormat(format);
-  external.width = width;
-  external.height = height;
-  external.num_planes = total_planes;
-  uintptr_t prime_fds[total_planes];
-  for (unsigned int i = 0; i < total_planes; i++) {
-    external.pitches[i] = gr_handle->strides[i];
-    external.offsets[i] = gr_handle->offsets[i];
-    prime_fds[i] = gr_handle->fds[i];
+  auto bi = BufferInfoGetter::GetInstance()->GetBoInfo(bufferHandle);
+  const uint32_t rt_format = DrmFormatToRTFormat(format);
+  std::array<VASurfaceAttrib, 2> attribs;
+  VADRMPRIMESurfaceDescriptor desc{};
+
+  desc.fourcc = DrmFormatToVAFormat(format);
+  desc.width = width;
+  desc.height = height;
+  desc.num_objects = 1;
+  desc.objects[0].fd = gr_handle->fds[0];
+  desc.objects[0].size = gr_handle->total_size;
+  desc.objects[0].drm_format_modifier = bi->modifiers[0];
+  desc.num_layers = 1;
+  desc.layers[0].drm_format = format;
+  desc.layers[0].num_planes = gr_handle->numFds;
+  desc.layers[0].object_index[0] = 0;
+  for (unsigned i = 0; i < gr_handle->numFds; ++i) {
+    desc.layers[0].offset[i] = gr_handle->offsets[i];
+    desc.layers[0].pitch[i] = gr_handle->strides[i];
   }
-  external.num_buffers = total_planes;
-  external.buffers = prime_fds;
-  external.data_size = gr_handle->total_size;
-  VASurfaceAttrib attribs[2];
+
+  attribs[0].type = (VASurfaceAttribType)VASurfaceAttribMemoryType;
   attribs[0].flags = VA_SURFACE_ATTRIB_SETTABLE;
-  attribs[0].type = VASurfaceAttribMemoryType;
   attribs[0].value.type = VAGenericValueTypeInteger;
-  attribs[0].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
-  attribs[1].flags = VA_SURFACE_ATTRIB_SETTABLE;
+  attribs[0].value.value.i = VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2;
   attribs[1].type = VASurfaceAttribExternalBufferDescriptor;
+  attribs[1].flags = VA_SURFACE_ATTRIB_SETTABLE;
   attribs[1].value.type = VAGenericValueTypePointer;
-  attribs[1].value.value.p = &external;
-  VAStatus ret = vaCreateSurfaces(display, rt_format, external.width, external.height,
-				 surface, 1, attribs, 2);
+  attribs[1].value.value.p = (void *)&desc;
+
+  VAStatus ret = vaCreateSurfaces(display, rt_format, width, height,
+				 surface, 1, attribs.data(), attribs.size());
   if (ret != VA_STATUS_SUCCESS)
     ALOGE("Failed to create VASurface from drmbuffer with ret %d", ret);
   return ret;
