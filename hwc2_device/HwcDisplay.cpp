@@ -92,7 +92,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
     : hwc2_(hwc2),
       handle_(handle),
       type_(type),
-      client_layer_(this),
+      client_layer_(this, false),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
@@ -193,7 +193,10 @@ HWC2::Error HwcDisplay::AcceptDisplayChanges() {
 }
 
 HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(this));
+  bool allow_p2p = !IsInHeadlessMode() && GetPipe().crtc->Get()
+      && GetPipe().crtc->Get()->GetAllowP2P();
+  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_),
+                  HwcLayer(this, allow_p2p));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
@@ -705,6 +708,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
+  client_layer_.SetAllowP2P(GetPipe().crtc->Get()->GetAllowP2P());
   client_layer_.PopulateLayerData(/*test = */ true);
   if (!client_layer_.IsLayerUsableAsDevice()) {
     ALOGE("Client layer must be always usable by DRM/KMS");
