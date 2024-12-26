@@ -18,8 +18,7 @@
 #define ANDROID_DRM_CRTC_H_
 #include <cstdint>
 #include <xf86drmMode.h>
-
-
+#include <xf86drm.h>
 
 #include "DrmDisplayPipeline.h"
 #include "DrmMode.h"
@@ -79,6 +78,9 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
    return gamma_lut_size_property_;
  }
 
+ bool GetAllowP2P() const {
+   return allow_p2p_;
+ }
  private:
   DrmCrtc(DrmModeCrtcUnique crtc, uint32_t index)
       : crtc_(std::move(crtc)), index_in_res_array_(index){};
@@ -95,6 +97,7 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmProperty gamma_lut_size_property_;
 
   uint32_t connector_id_ = 0;
+  bool allow_p2p_ = false;
 };
 }  // namespace android
 
