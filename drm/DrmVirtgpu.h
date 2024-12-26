@@ -48,8 +48,8 @@ extern "C" {
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
 
-#define VIRTGPU_PARAM_RESOURCE_BLOB_BIT (1ull << VIRTGPU_PARAM_RESOURCE_BLOB)
-#define VIRTGPU_PARAM_QUERY_DEV_BIT (1ull << VIRTGPU_PARAM_QUERY_DEV)
+#define VIRTGPU_PARAM_RESOURCE_BLOB_BIT	(1ull << VIRTGPU_PARAM_RESOURCE_BLOB)
+#define VIRTGPU_PARAM_QUERY_DEV_BIT	(1ull << VIRTGPU_PARAM_QUERY_DEV)
 
 struct virtgpu_param {
   uint64_t param;

@@ -24,6 +24,7 @@
 #include <cstdint>
 
 #include "DrmDevice.h"
+#include "DrmVirtgpu.h"
 
 namespace android {
 
@@ -78,6 +79,21 @@ auto DrmCrtc::CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
     if (ret != 0) {
       ALOGE("Failed to get GAMMA_LUT_SIZE property");
       return {};
+    }
+  }
+
+  if (dev.GetName() == "virtio_gpu") {
+    uint64_t value = 0;
+    struct drm_virtgpu_getparam get_param = {
+      .param = VIRTGPU_PARAM_ALLOW_P2P,
+      .value = (uint64_t) &value
+    };
+
+    ret = drmIoctl(dev.GetFd(), DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
+    if (ret == 0 && value & (1UL << (index + 16))) {
+      ALOGI("set allow p2p for crtc %u, bitmask = 0x%lx\n",
+            index, (unsigned long) value);
+      c->allow_p2p_ = true;
     }
   }
 
