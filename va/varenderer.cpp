@@ -289,9 +289,16 @@ int VARenderer::getSurfaceIn(buffer_handle_t bufferHandle, VADisplay display, VA
   desc.objects[0].drm_format_modifier = bi->modifiers[0];
   desc.num_layers = 1;
   desc.layers[0].drm_format = format;
-  desc.layers[0].num_planes = gr_handle->numFds;
+  int planes = 1;
+  if (gr_handle->numFds > 1) {
+    for (int i = 1; i < gr_handle->numFds; i++) {
+      if (gr_handle->offsets[i] > 0)
+        ++planes;
+    }
+  }
+  desc.layers[0].num_planes = planes;
   desc.layers[0].object_index[0] = 0;
-  for (unsigned i = 0; i < gr_handle->numFds; ++i) {
+  for (unsigned i = 0; i < desc.layers[0].num_planes; ++i) {
     desc.layers[0].offset[i] = gr_handle->offsets[i];
     desc.layers[0].pitch[i] = gr_handle->strides[i];
   }
