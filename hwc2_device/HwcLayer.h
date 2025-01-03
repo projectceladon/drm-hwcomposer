@@ -28,7 +28,8 @@ class HwcDisplay;
 
 class HwcLayer {
  public:
-  explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};
+  explicit HwcLayer(HwcDisplay *parent_display, bool allow_p2p)
+    : parent_(parent_display), allow_p2p_(allow_p2p) {}
 
   HWC2::Composition GetSfType() const {
     return sf_type_;
@@ -52,6 +53,10 @@ class HwcLayer {
 
   void SetPriorBufferScanOutFlag(bool state) {
     prior_buffer_scanout_flag_ = state;
+  }
+
+  void SetAllowP2P(bool allow_p2p) {
+    allow_p2p_ = allow_p2p;
   }
 
   uint32_t GetZOrder() const {
@@ -142,6 +147,7 @@ class HwcLayer {
   std::map<int /*seq_no*/, SwapChainElement> swchain_cache_;
   std::map<BufferUniqueId, int /*seq_no*/> swchain_lookup_table_;
   bool swchain_reassembled_{};
+  bool allow_p2p_ = false;
 };
 
 }  // namespace android
