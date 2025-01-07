@@ -1047,20 +1047,21 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
   if (type_ == HWC2::DisplayType::Virtual) {
     return HWC2::Error::None;
   }
+  if (!vsync_worker_) {
+    return HWC2::Error::NoResources;
+  }
 
   vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
-
+  std::optional<VSyncWorker::VsyncTimestampCallback> callback = std::nullopt;
   if (vsync_event_en_) {
     DrmHwc *hwc = hwc_;
     hwc2_display_t id = handle_;
     // Callback will be called from the vsync thread.
-    auto callback = [hwc, id](int64_t timestamp, uint32_t period_ns) {
+    callback = [hwc, id](int64_t timestamp, uint32_t period_ns) {
       hwc->SendVsyncEventToClient(id, timestamp, period_ns);
     };
-    vsync_worker_->SetTimestampCallback(callback);
-  } else {
-    vsync_worker_->SetTimestampCallback(std::nullopt);
   }
+  vsync_worker_->SetTimestampCallback(std::move(callback));
   return HWC2::Error::None;
 }
 
