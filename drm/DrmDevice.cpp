@@ -253,7 +253,7 @@ auto DrmDevice::IsIvshmDev(int fd) -> bool {
     get_param.value = (uint64_t)(uintptr_t)&params[i].value;
     int ret = drmIoctl(fd, DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
     if (ret == 0) {
-      if ((strcmp(params[i].name, "VIRTGPU_PARAM_QUERY_DEV") == 0) && (params[i].value != 1)) {
+      if ((strcmp(params[i].name, "VIRTGPU_PARAM_QUERY_DEV") == 0) && (params[i].value == 1)) {
         return true;
       }
     }
