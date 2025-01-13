@@ -26,12 +26,13 @@ build:
     - cd ..
     - rm -f aospless_drm_hwcomposer_arm64.tar.xz
     - rm -rf aospless/*
-    - wget https://gitlab.freedesktop.org/-/project/5/uploads/97f99b51143107ba02a51cf1c0ddb542/aospless_drm_hwcomposer_arm64.tar.xz
+    - wget https://gitlab.freedesktop.org/-/project/5/uploads/fc5d1db3b2acfd4de41b86fead784ebe/aospless_drm_hwcomposer_arm64.tar.xz
     - tar xf aospless_drm_hwcomposer_arm64.tar.xz
     - rm -rf aospless/src
     - ln -s ../drm-hwcomposer/ aospless/src
     - make -C ./aospless install
     - cp -r aospless/install/* drm-hwcomposer/install/arm64
+    - ls drm-hwcomposer/install/arm64
 
   artifacts:
     paths:
@@ -44,7 +45,7 @@ tidy:
     - cd ..
     - rm -f aospless_drm_hwcomposer_arm64.tar.xz
     - rm -rf aospless/*
-    - wget https://gitlab.freedesktop.org/-/project/5/uploads/97f99b51143107ba02a51cf1c0ddb542/aospless_drm_hwcomposer_arm64.tar.xz
+    - wget https://gitlab.freedesktop.org/-/project/5/uploads/fc5d1db3b2acfd4de41b86fead784ebe/aospless_drm_hwcomposer_arm64.tar.xz
     - tar xf aospless_drm_hwcomposer_arm64.tar.xz
     - cd -
     - make -j$(nproc) -k -f .ci/Makefile
