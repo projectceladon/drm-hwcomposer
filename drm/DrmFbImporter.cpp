@@ -49,7 +49,9 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
   int *fds = bo->use_shadow_fds ? bo->shadow_fds : bo->prime_fds;
   local->use_shadow_buffers_ = bo->use_shadow_fds;
   if (local->use_shadow_buffers_) {
-    local->intel_fd_ = bo->blitter->GetFd();
+    local->blitter_ = bo->blitter;
+    local->shadow_fds_[0] = bo->shadow_fds[0];
+    local->shadow_handles_[0] = bo->shadow_buffer_handles[0];
   }
 
   /* Framebuffer object creation require gem handle for every used plane */
@@ -164,7 +166,7 @@ DrmFbIdHandle::~DrmFbIdHandle() {
     }
     if (use_shadow_buffers_) {
       gem_close.handle = shadow_handles_[i];
-      err = drmIoctl(intel_fd_, DRM_IOCTL_GEM_CLOSE, &gem_close);
+      err = drmIoctl(blitter_->GetFd(), DRM_IOCTL_GEM_CLOSE, &gem_close);
       if (err != 0) {
         ALOGE("Failed to close shadow handle %d, errno: %d", gem_handles_[i], errno);
       }
