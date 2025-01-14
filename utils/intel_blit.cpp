@@ -95,10 +95,6 @@ struct i915_device {
   struct iris_memregion vram, sys;
 };
 
-static struct i915_device dev = {
-  .initialized = false,
-};
-
 static void batch_reset(struct intel_info *info) {
   info->cur = info->vaddr;
 }
@@ -180,7 +176,7 @@ static void batch_destroy(struct intel_info *info) {
   }
 }
 
-static int intel_update_meminfo(int fd) {
+static int intel_update_meminfo(int fd, struct i915_device &dev) {
   if (dev.initialized) {
     return 0;
   }
@@ -241,7 +237,8 @@ static int intel_dgpu_fd_new() {
       close(fd);
       continue;
     }
-    intel_update_meminfo(fd);
+    struct i915_device dev{};
+    intel_update_meminfo(fd, dev);
     if (dev.has_local_mem) {
       drmFreeVersion(version);
       return fd;
@@ -649,6 +646,8 @@ int intel_create_buffer(struct intel_info *info, uint32_t width, uint32_t height
   const uint32_t bpp = 4;
   uint32_t aligned_height, stride = width * bpp;
   static uint32_t alloc_count = 0;
+  struct i915_device dev{};
+  intel_update_meminfo(fd, dev);
 
   switch (modifier) {
   case DRM_FORMAT_MOD_LINEAR:
