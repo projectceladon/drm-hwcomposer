@@ -16,8 +16,6 @@ CXXARGS := $(shell cat $(BASE_DIR)/toolchain_wrapper/sharedlib.cppflags)
 CXXARGS := $(subst [BASE_DIR],$(BASE_DIR),$(CXXARGS))
 # clang-tidy doesn't like -mcpu=xxx flag
 CXXARGS := $(patsubst -mcpu=%,,$(CXXARGS))
-# TODO: build aospless with gtest enabled and remove line below
-CXXARGS := $(subst -nostdlibinc,,$(CXXARGS))
 CXXARGS += -I. -I./tests/test_include $(CXXFLAGS)
 
 TIDY_FILES_OVERRIDE := \
