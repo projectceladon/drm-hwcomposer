@@ -168,8 +168,6 @@ class ComposerClient : public BnComposerClient {
 
   // Display commands
   void ExecuteDisplayCommand(const DisplayCommand& command);
-  void ExecuteSetDisplayColorTransform(uint64_t display_id,
-                                       const std::vector<float>& matrix);
   void ExecuteSetDisplayClientTarget(uint64_t display_id,
                                      const ClientTarget& command);
   void ExecuteSetDisplayOutputBuffer(uint64_t display_id, const Buffer& buffer);

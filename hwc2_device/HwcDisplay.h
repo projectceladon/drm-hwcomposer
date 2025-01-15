@@ -52,6 +52,9 @@ class HwcDisplay {
   HwcDisplay(const HwcDisplay &) = delete;
   ~HwcDisplay();
 
+  void SetColorTransformMatrix(
+      const std::array<float, 16> &color_transform_matrix);
+
   /* SetPipeline should be carefully used only by DrmHwcTwo hotplug handlers */
   void SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline);
 
@@ -260,8 +263,6 @@ class HwcDisplay {
   uint16_t virtual_disp_width_{};
   uint16_t virtual_disp_height_{};
   int32_t color_mode_{};
-  static constexpr int kCtmRows = 3;
-  static constexpr int kCtmCols = 3;
   std::shared_ptr<drm_color_ctm> color_matrix_;
   android_color_transform_t color_transform_hint_{};
   int32_t content_type_{};

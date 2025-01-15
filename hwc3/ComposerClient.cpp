@@ -60,8 +60,12 @@ using ::android::LayerTransform;
 namespace aidl::android::hardware::graphics::composer3::impl {
 namespace {
 
+constexpr int kCtmRows = 4;
+constexpr int kCtmColumns = 4;
+constexpr int kCtmSize = kCtmRows * kCtmColumns;
+
 // clang-format off
-constexpr std::array<float, 16> kIdentityMatrix = {
+constexpr std::array<float, kCtmSize> kIdentityMatrix = {
     1.0F, 0.0F, 0.0F, 0.0F,
     0.0F, 1.0F, 0.0F, 0.0F,
     0.0F, 0.0F, 1.0F, 0.0F,
@@ -89,12 +93,8 @@ std::optional<BufferBlendMode> AidlToBlendMode(
 }
 
 std::optional<BufferColorSpace> AidlToColorSpace(
-    const std::optional<ParcelableDataspace>& dataspace) {
-  if (!dataspace) {
-    return std::nullopt;
-  }
-
-  int32_t standard = static_cast<int32_t>(dataspace->dataspace) &
+    const common::Dataspace& dataspace) {
+  int32_t standard = static_cast<int32_t>(dataspace) &
                      static_cast<int32_t>(common::Dataspace::STANDARD_MASK);
   switch (standard) {
     case static_cast<int32_t>(common::Dataspace::STANDARD_BT709):
@@ -116,13 +116,17 @@ std::optional<BufferColorSpace> AidlToColorSpace(
   }
 }
 
-std::optional<BufferSampleRange> AidlToSampleRange(
+std::optional<BufferColorSpace> AidlToColorSpace(
     const std::optional<ParcelableDataspace>& dataspace) {
   if (!dataspace) {
     return std::nullopt;
   }
+  return AidlToColorSpace(dataspace->dataspace);
+}
 
-  int32_t sample_range = static_cast<int32_t>(dataspace->dataspace) &
+std::optional<BufferSampleRange> AidlToSampleRange(
+    const common::Dataspace& dataspace) {
+  int32_t sample_range = static_cast<int32_t>(dataspace) &
                          static_cast<int32_t>(common::Dataspace::RANGE_MASK);
   switch (sample_range) {
     case static_cast<int32_t>(common::Dataspace::RANGE_FULL):
@@ -135,6 +139,14 @@ std::optional<BufferSampleRange> AidlToSampleRange(
       ALOGE("Unsupported sample range: %d", sample_range);
       return std::nullopt;
   }
+}
+
+std::optional<BufferSampleRange> AidlToSampleRange(
+    const std::optional<ParcelableDataspace>& dataspace) {
+  if (!dataspace) {
+    return std::nullopt;
+  }
+  return AidlToSampleRange(dataspace->dataspace);
 }
 
 bool IsSupportedCompositionType(
@@ -161,12 +173,46 @@ bool IsSupportedCompositionType(
   }
 }
 
+hwc3::Error ValidateColorTransformMatrix(
+    const std::optional<std::vector<float>>& color_transform_matrix) {
+  if (!color_transform_matrix) {
+    return hwc3::Error::kNone;
+  }
+
+  if (color_transform_matrix->size() != kCtmSize) {
+    ALOGE("Expected color transform matrix of size %d, got size %d.", kCtmSize,
+          (int)color_transform_matrix->size());
+    return hwc3::Error::kBadParameter;
+  }
+
+  // Without HW support, we cannot correctly process matrices with an offset.
+  constexpr int kOffsetIndex = kCtmColumns * 3;
+  for (int i = kOffsetIndex; i < kOffsetIndex + 3; i++) {
+    if (color_transform_matrix.value()[i] != 0.F)
+      return hwc3::Error::kUnsupported;
+  }
+  return hwc3::Error::kNone;
+}
+
 bool ValidateLayerBrightness(const std::optional<LayerBrightness>& brightness) {
   if (!brightness) {
     return true;
   }
   return !(std::signbit(brightness->brightness) ||
            std::isnan(brightness->brightness));
+}
+
+std::optional<std::array<float, kCtmSize>> AidlToColorTransformMatrix(
+    const std::optional<std::vector<float>>& aidl_color_transform_matrix) {
+  if (!aidl_color_transform_matrix ||
+      aidl_color_transform_matrix->size() < kCtmSize) {
+    return std::nullopt;
+  }
+
+  std::array<float, kCtmSize> color_transform_matrix = kIdentityMatrix;
+  std::copy(aidl_color_transform_matrix->begin(),
+            aidl_color_transform_matrix->end(), color_transform_matrix.begin());
+  return color_transform_matrix;
 }
 
 std::optional<HWC2::Composition> AidlToCompositionType(
@@ -591,7 +637,8 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
 
 void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
   const int64_t display_id = command.display;
-  if (hwc_->GetDisplay(display_id) == nullptr) {
+  HwcDisplay* display = hwc_->GetDisplay(display_id);
+  if (display == nullptr) {
     cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
     return;
   }
@@ -602,14 +649,18 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     return;
   }
 
+  hwc3::Error error = ValidateColorTransformMatrix(
+      command.colorTransformMatrix);
+  if (error != hwc3::Error::kNone) {
+    ALOGE("Invalid color transform matrix.");
+    cmd_result_writer_->AddError(error);
+    return;
+  }
+
   for (const auto& layer_cmd : command.layers) {
     DispatchLayerCommand(command.display, layer_cmd);
   }
 
-  if (command.colorTransformMatrix) {
-    ExecuteSetDisplayColorTransform(command.display,
-                                    *command.colorTransformMatrix);
-  }
   if (command.clientTarget) {
     ExecuteSetDisplayClientTarget(command.display, *command.clientTarget);
   }
@@ -617,6 +668,13 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     ExecuteSetDisplayOutputBuffer(command.display,
                                   *command.virtualDisplayOutputBuffer);
   }
+
+  std::optional<std::array<float, kCtmSize>> ctm = AidlToColorTransformMatrix(
+      command.colorTransformMatrix);
+  if (ctm) {
+    display->SetColorTransformMatrix(ctm.value());
+  }
+
   if (command.validateDisplay) {
     ExecuteValidateDisplay(command.display, command.expectedPresentTime);
   }
@@ -1316,29 +1374,6 @@ hwc3::Error ComposerClient::ImportLayerBuffer(int64_t display_id,
   return err;
 }
 
-void ComposerClient::ExecuteSetDisplayColorTransform(
-    uint64_t display_id, const std::vector<float>& matrix) {
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
-    return;
-  }
-
-  auto almost_equal = [](auto a, auto b) {
-    const float epsilon = 0.001F;
-    return std::abs(a - b) < epsilon;
-  };
-  const bool is_identity = std::equal(matrix.begin(), matrix.end(),
-                                      kIdentityMatrix.begin(), almost_equal);
-
-  const int32_t hint = is_identity ? HAL_COLOR_TRANSFORM_IDENTITY
-                                   : HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX;
-
-  auto error = Hwc2toHwc3Error(display->SetColorTransform(matrix.data(), hint));
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
-  }
-}
 void ComposerClient::ExecuteSetDisplayClientTarget(
     uint64_t display_id, const ClientTarget& command) {
   auto* display = GetDisplay(display_id);

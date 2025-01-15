@@ -21,6 +21,8 @@
 
 #include <cinttypes>
 
+#include <xf86drmMode.h>
+
 #include <hardware/gralloc.h>
 #include <ui/GraphicBufferAllocator.h>
 #include <ui/GraphicBufferMapper.h>
@@ -41,6 +43,56 @@ using ::android::DrmDisplayPipeline;
 namespace android {
 
 namespace {
+
+constexpr int kCtmRows = 3;
+constexpr int kCtmCols = 3;
+
+constexpr std::array<float, 16> kIdentityMatrix = {
+    1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F,
+    0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F,
+};
+
+uint64_t To3132FixPt(float in) {
+  constexpr uint64_t kSignMask = (1ULL << 63);
+  constexpr uint64_t kValueMask = ~(1ULL << 63);
+  constexpr auto kValueScale = static_cast<float>(1ULL << 32);
+  if (in < 0)
+    return (static_cast<uint64_t>(-in * kValueScale) & kValueMask) | kSignMask;
+  return static_cast<uint64_t>(in * kValueScale) & kValueMask;
+}
+
+auto ToColorTransform(const std::array<float, 16> &color_transform_matrix) {
+  /* HAL provides a 4x4 float type matrix:
+   * | 0  1  2  3|
+   * | 4  5  6  7|
+   * | 8  9 10 11|
+   * |12 13 14 15|
+   *
+   * R_out = R*0 + G*4 + B*8 + 12
+   * G_out = R*1 + G*5 + B*9 + 13
+   * B_out = R*2 + G*6 + B*10 + 14
+   *
+   * DRM expects a 3x3 s31.32 fixed point matrix:
+   * out   matrix    in
+   * |R|   |0 1 2|   |R|
+   * |G| = |3 4 5| x |G|
+   * |B|   |6 7 8|   |B|
+   *
+   * R_out = R*0 + G*1 + B*2
+   * G_out = R*3 + G*4 + B*5
+   * B_out = R*6 + G*7 + B*8
+   */
+  auto color_matrix = std::make_shared<drm_color_ctm>();
+  for (int i = 0; i < kCtmCols; i++) {
+    for (int j = 0; j < kCtmRows; j++) {
+      constexpr int kInCtmRows = 4;
+      color_matrix->matrix[i * kCtmRows + j] = To3132FixPt(
+          color_transform_matrix[j * kInCtmRows + i]);
+    }
+  }
+  return color_matrix;
+}
+
 // Allocate a black buffer that can be used for an initial modeset when there.
 // is no appropriate client buffer available to be used.
 // Caller must free the returned buffer with GraphicBufferAllocator::free.
@@ -175,6 +227,24 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
     : hwc_(hwc), handle_(handle), type_(type), client_layer_(this) {
   if (type_ == HWC2::DisplayType::Virtual) {
     writeback_layer_ = std::make_unique<HwcLayer>(this);
+  }
+}
+
+void HwcDisplay::SetColorTransformMatrix(
+    const std::array<float, 16> &color_transform_matrix) {
+  auto almost_equal = [](auto a, auto b) {
+    const float epsilon = 0.001F;
+    return std::abs(a - b) < epsilon;
+  };
+  const bool is_identity = std::equal(color_transform_matrix.begin(),
+                                      color_transform_matrix.end(),
+                                      kIdentityMatrix.begin(), almost_equal);
+  color_transform_hint_ = is_identity ? HAL_COLOR_TRANSFORM_IDENTITY
+                                      : HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX;
+  if (color_transform_hint_ == is_identity) {
+    SetColorMatrixToIdentity();
+  } else {
+    color_matrix_ = ToColorTransform(color_transform_matrix);
   }
 }
 
@@ -939,17 +1009,6 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
   return HWC2::Error::None;
 }
 
-#include <xf86drmMode.h>
-
-static uint64_t To3132FixPt(float in) {
-  constexpr uint64_t kSignMask = (1ULL << 63);
-  constexpr uint64_t kValueMask = ~(1ULL << 63);
-  constexpr auto kValueScale = static_cast<float>(1ULL << 32);
-  if (in < 0)
-    return (static_cast<uint64_t>(-in * kValueScale) & kValueMask) | kSignMask;
-  return static_cast<uint64_t>(in * kValueScale) & kValueMask;
-}
-
 HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
   if (hint < HAL_COLOR_TRANSFORM_IDENTITY ||
       hint > HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA)
@@ -972,37 +1031,14 @@ HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
       break;
     case HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX:
       // Without HW support, we cannot correctly process matrices with an offset.
-      for (int i = 12; i < 14; i++) {
-        if (matrix[i] != 0.F)
-          return HWC2::Error::Unsupported;
-      }
-
-      /* HAL provides a 4x4 float type matrix:
-       * | 0  1  2  3|
-       * | 4  5  6  7|
-       * | 8  9 10 11|
-       * |12 13 14 15|
-       *
-       * R_out = R*0 + G*4 + B*8 + 12
-       * G_out = R*1 + G*5 + B*9 + 13
-       * B_out = R*2 + G*6 + B*10 + 14
-       *
-       * DRM expects a 3x3 s31.32 fixed point matrix:
-       * out   matrix    in
-       * |R|   |0 1 2|   |R|
-       * |G| = |3 4 5| x |G|
-       * |B|   |6 7 8|   |B|
-       *
-       * R_out = R*0 + G*1 + B*2
-       * G_out = R*3 + G*4 + B*5
-       * B_out = R*6 + G*7 + B*8
-       */
-      color_matrix_ = std::make_shared<drm_color_ctm>();
-      for (int i = 0; i < kCtmCols; i++) {
-        for (int j = 0; j < kCtmRows; j++) {
-          constexpr int kInCtmRows = 4;
-          color_matrix_->matrix[i * kCtmRows + j] = To3132FixPt(matrix[j * kInCtmRows + i]);
+      {
+        for (int i = 12; i < 14; i++) {
+          if (matrix[i] != 0.F)
+            return HWC2::Error::Unsupported;
         }
+        std::array<float, 16> aidl_matrix = kIdentityMatrix;
+        memcpy(aidl_matrix.data(), matrix, aidl_matrix.size() * sizeof(float));
+        color_matrix_ = ToColorTransform(aidl_matrix);
       }
       break;
     default:
