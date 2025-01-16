@@ -20,6 +20,7 @@
 
 #include "aidl/android/hardware/graphics/composer3/BnComposerClient.h"
 #include "aidl/android/hardware/graphics/composer3/LayerCommand.h"
+#include "hwc2_device/HwcLayer.h"
 #include "hwc3/CommandResultWriter.h"
 #include "hwc3/ComposerResources.h"
 #include "hwc3/Utils.h"
@@ -29,10 +30,7 @@ using AidlPixelFormat = aidl::android::hardware::graphics::common::PixelFormat;
 using AidlNativeHandle = aidl::android::hardware::common::NativeHandle;
 
 namespace android {
-
 class HwcDisplay;
-class HwcLayer;
-
 }  // namespace android
 
 namespace aidl::android::hardware::graphics::composer3::impl {
@@ -163,7 +161,7 @@ class ComposerClient : public BnComposerClient {
  private:
   hwc3::Error ImportLayerBuffer(int64_t display_id, int64_t layer_id,
                                 const Buffer& buffer,
-                                buffer_handle_t* out_imported_buffer);
+                                ::android::HwcLayer::Buffer* out_buffer);
 
   // Layer commands
   void DispatchLayerCommand(int64_t display_id, const LayerCommand& command);

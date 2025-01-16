@@ -553,13 +553,11 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
   if (command.buffer) {
     HwcLayer::Buffer buffer;
     auto err = ImportLayerBuffer(display_id, command.layer, *command.buffer,
-                                 &buffer.buffer_handle);
+                                 &buffer);
     if (err != hwc3::Error::kNone) {
       cmd_result_writer_->AddError(err);
       return;
     }
-    buffer.acquire_fence = ::android::MakeSharedFd(
-        command.buffer->fence.dup().release());
     properties.buffer.emplace(buffer);
   }
 
@@ -1305,15 +1303,16 @@ std::string ComposerClient::Dump() {
   return binder;
 }
 
-hwc3::Error ComposerClient::ImportLayerBuffer(
-    int64_t display_id, int64_t layer_id, const Buffer& buffer,
-    buffer_handle_t* out_imported_buffer) {
-  *out_imported_buffer = nullptr;
-
+hwc3::Error ComposerClient::ImportLayerBuffer(int64_t display_id,
+                                              int64_t layer_id,
+                                              const Buffer& buffer,
+                                              HwcLayer::Buffer* out_buffer) {
   auto releaser = composer_resources_->CreateResourceReleaser(true);
   auto err = composer_resources_->GetLayerBuffer(display_id, layer_id, buffer,
-                                                 out_imported_buffer,
+                                                 &out_buffer->buffer_handle,
                                                  releaser.get());
+  out_buffer->acquire_fence = ::android::MakeSharedFd(
+      buffer.fence.dup().release());
   return err;
 }
 
