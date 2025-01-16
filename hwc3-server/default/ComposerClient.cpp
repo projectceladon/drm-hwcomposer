@@ -419,6 +419,19 @@ ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(int
     return TO_BINDER_STATUS(EX_UNSUPPORTED);
 }
 
+ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
+        int64_t display, int32_t maxFrameIntervalNs, std::vector<DisplayConfiguration>* configs) {
+    DEBUG_FUNC();
+    auto err = mHal->getDisplayConfigurations(display, maxFrameIntervalNs, configs);
+    return TO_BINDER_STATUS(err);
+}
+
+ndk::ScopedAStatus ComposerClient::notifyExpectedPresent(int64_t, const ClockMonotonicTimestamp&,
+                                                         int32_t) {
+    return TO_BINDER_STATUS(EX_UNSUPPORTED);
+}
+
+
 void ComposerClient::HalEventCallback::onHotplug(int64_t display, bool connected) {
     DEBUG_FUNC();
     if (connected) {
