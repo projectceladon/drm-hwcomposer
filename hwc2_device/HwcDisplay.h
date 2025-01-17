@@ -89,6 +89,12 @@ class HwcDisplay {
   // Get the HwcDisplayConfig, or nullptor if none.
   auto GetConfig(hwc2_config_t config_id) const -> const HwcDisplayConfig *;
 
+  // To be called after SetDisplayProperties. Returns an empty vector if the
+  // requested layers have been validated, otherwise the vector describes
+  // the requested composition type changes.
+  using ChangedLayer = std::pair<hwc2_layer_t, HWC2::Composition>;
+  auto ValidateStagedComposition() -> std::vector<ChangedLayer>;
+
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);

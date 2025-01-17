@@ -368,6 +368,39 @@ auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
   return ConfigError::kNone;
 }
 
+auto HwcDisplay::ValidateStagedComposition() -> std::vector<ChangedLayer> {
+  if (IsInHeadlessMode()) {
+    return {};
+  }
+
+  /* In current drm_hwc design in case previous frame layer was not validated as
+   * a CLIENT, it is used by display controller (Front buffer). We have to store
+   * this state to provide the CLIENT with the release fences for such buffers.
+   */
+  for (auto &l : layers_) {
+    l.second.SetPriorBufferScanOutFlag(l.second.GetValidatedType() !=
+                                       HWC2::Composition::Client);
+  }
+
+  // ValidateDisplay returns the number of layers that may be changed.
+  uint32_t num_types = 0;
+  uint32_t num_requests = 0;
+  backend_->ValidateDisplay(this, &num_types, &num_requests);
+
+  if (num_types == 0) {
+    return {};
+  }
+
+  // Iterate through the layers to find which layers actually changed.
+  std::vector<ChangedLayer> changed_layers;
+  for (auto &l : layers_) {
+    if (l.second.IsTypeChanged()) {
+      changed_layers.emplace_back(l.first, l.second.GetValidatedType());
+    }
+  }
+  return changed_layers;
+}
+
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
 

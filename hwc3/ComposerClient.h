@@ -171,23 +171,8 @@ class ComposerClient : public BnComposerClient {
   void ExecuteSetDisplayClientTarget(uint64_t display_id,
                                      const ClientTarget& command);
   void ExecuteSetDisplayOutputBuffer(uint64_t display_id, const Buffer& buffer);
-  void ExecuteValidateDisplay(
-      int64_t display_id,
-      std::optional<ClockMonotonicTimestamp> expected_present_time);
   void ExecuteAcceptDisplayChanges(int64_t display_id);
   void ExecutePresentDisplay(int64_t display_id);
-  void ExecutePresentOrValidateDisplay(
-      int64_t display_id,
-      std::optional<ClockMonotonicTimestamp> expected_present_time);
-
-  static hwc3::Error ValidateDisplayInternal(
-      ::android::HwcDisplay& display, std::vector<int64_t>* out_changed_layers,
-      std::vector<Composition>* out_composition_types,
-      int32_t* out_display_request_mask,
-      std::vector<int64_t>* out_requested_layers,
-      std::vector<int32_t>* out_request_masks,
-      ClientTargetProperty* out_client_target_property,
-      DimmingStage* out_dimming_stage);
 
   hwc3::Error PresentDisplayInternal(
       uint64_t display_id, ::android::base::unique_fd& out_display_fence,

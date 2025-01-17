@@ -456,68 +456,6 @@ ndk::ScopedAStatus ComposerClient::destroyVirtualDisplay(int64_t display_id) {
   return ToBinderStatus(err);
 }
 
-hwc3::Error ComposerClient::ValidateDisplayInternal(
-    HwcDisplay& display, std::vector<int64_t>* out_changed_layers,
-    std::vector<Composition>* out_composition_types,
-    int32_t* out_display_request_mask,
-    std::vector<int64_t>* out_requested_layers,
-    std::vector<int32_t>* out_request_masks,
-    ClientTargetProperty* /*out_client_target_property*/,
-    DimmingStage* /*out_dimming_stage*/) {
-  DEBUG_FUNC();
-
-  uint32_t num_types = 0;
-  uint32_t num_requests = 0;
-  const HWC2::Error hwc2_error = display.ValidateDisplay(&num_types,
-                                                         &num_requests);
-
-  /* Check if display has pending changes and no errors */
-  if (hwc2_error != HWC2::Error::None &&
-      hwc2_error != HWC2::Error::HasChanges) {
-    return Hwc2toHwc3Error(hwc2_error);
-  }
-
-  hwc3::Error error = Hwc2toHwc3Error(
-      display.GetChangedCompositionTypes(&num_types, nullptr, nullptr));
-  if (error != hwc3::Error::kNone) {
-    return error;
-  }
-
-  std::vector<hwc2_layer_t> hwc_changed_layers(num_types);
-  std::vector<int32_t> hwc_composition_types(num_types);
-  error = Hwc2toHwc3Error(
-      display.GetChangedCompositionTypes(&num_types, hwc_changed_layers.data(),
-                                         hwc_composition_types.data()));
-  if (error != hwc3::Error::kNone) {
-    return error;
-  }
-
-  int32_t display_reqs = 0;
-  out_request_masks->resize(num_requests);
-  std::vector<hwc2_layer_t> hwc_requested_layers(num_requests);
-  error = Hwc2toHwc3Error(
-      display.GetDisplayRequests(&display_reqs, &num_requests,
-                                 hwc_requested_layers.data(),
-                                 out_request_masks->data()));
-  if (error != hwc3::Error::kNone) {
-    return error;
-  }
-
-  for (const auto& layer : hwc_changed_layers) {
-    out_changed_layers->emplace_back(Hwc2LayerToHwc3(layer));
-  }
-  for (const auto& type : hwc_composition_types) {
-    out_composition_types->emplace_back(Hwc2CompositionTypeToHwc3(type));
-  }
-  for (const auto& layer : hwc_requested_layers) {
-    out_requested_layers->emplace_back(Hwc2LayerToHwc3(layer));
-  }
-  *out_display_request_mask = display_reqs;
-
-  /* Client target property/dimming stage unsupported */
-  return hwc3::Error::kNone;
-}
-
 hwc3::Error ComposerClient::PresentDisplayInternal(
     uint64_t display_id, ::android::base::unique_fd& out_display_fence,
     std::unordered_map<int64_t, ::android::base::unique_fd>&
@@ -661,6 +599,10 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     DispatchLayerCommand(command.display, layer_cmd);
   }
 
+  if (cmd_result_writer_->HasError()) {
+    return;
+  }
+
   if (command.clientTarget) {
     ExecuteSetDisplayClientTarget(command.display, *command.clientTarget);
   }
@@ -675,18 +617,35 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     display->SetColorTransformMatrix(ctm.value());
   }
 
-  if (command.validateDisplay) {
-    ExecuteValidateDisplay(command.display, command.expectedPresentTime);
+  if (command.validateDisplay || command.presentOrValidateDisplay) {
+    std::vector<HwcDisplay::ChangedLayer>
+        changed_layers = display->ValidateStagedComposition();
+    DisplayChanges changes{};
+    for (auto [layer_id, composition_type] : changed_layers) {
+      changes.AddLayerCompositionChange(command.display,
+                                        Hwc2LayerToHwc3(layer_id),
+                                        static_cast<Composition>(
+                                            composition_type));
+    }
+    cmd_result_writer_->AddChanges(changes);
+    composer_resources_->SetDisplayMustValidateState(display_id, false);
+
+    // TODO: DisplayRequests are not implemented.
+
+    /* TODO: Add check if it's possible to skip display validation for
+     * presentOrValidateDisplay */
+    if (command.presentOrValidateDisplay) {
+      cmd_result_writer_
+          ->AddPresentOrValidateResult(display_id,
+                                       PresentOrValidate::Result::Validated);
+    }
   }
+
   if (command.acceptDisplayChanges) {
     ExecuteAcceptDisplayChanges(command.display);
   }
   if (command.presentDisplay) {
     ExecutePresentDisplay(command.display);
-  }
-  if (command.presentOrValidateDisplay) {
-    ExecutePresentOrValidateDisplay(command.display,
-                                    command.expectedPresentTime);
   }
 }
 
@@ -1442,68 +1401,6 @@ void ComposerClient::ExecuteSetDisplayOutputBuffer(uint64_t display_id,
     return;
   }
 }
-void ComposerClient::ExecuteValidateDisplay(
-    int64_t display_id,
-    std::optional<ClockMonotonicTimestamp> /*expected_present_time*/
-) {
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
-    return;
-  }
-
-  /* TODO: Handle expectedPresentTime */
-  /* This can be implemented in multiple ways. For example, the expected present
-   * time property can be implemented by the DRM driver directly as a CRTC
-   * property. See:
-   * https://cs.android.com/android/platform/superproject/main/+/b8b3b1646e64d0235f77b9e717a3e4082e26f2a8:hardware/google/graphics/common/libhwc2.1/libdrmresource/drm/drmcrtc.cpp;drc=468f6172546ab98983de18210222f231f16b21e1;l=88
-   * Unfortunately there doesn't seem to be a standardised way of delaying
-   * presentation with a timestamp in the DRM API. What we can do alternatively
-   * is to spawn a separate presentation thread that could handle the VBlank
-   * events by using DRM_MODE_PAGE_FLIP_EVENT and schedule them appropriately.
-   */
-
-  std::vector<int64_t> changed_layers;
-  std::vector<Composition> composition_types;
-  int32_t display_request_mask = 0;
-  std::vector<int64_t> requested_layers;
-  std::vector<int32_t> request_masks;
-
-  const hwc3::Error error = ValidateDisplayInternal(*display, &changed_layers,
-                                                    &composition_types,
-                                                    &display_request_mask,
-                                                    &requested_layers,
-                                                    &request_masks, nullptr,
-                                                    nullptr);
-
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
-  }
-
-  // If a CommandError has been been set for the current DisplayCommand, then
-  // no other results should be returned besides the error.
-  if (cmd_result_writer_->HasError()) {
-    return;
-  }
-
-  DisplayChanges changes{};
-  for (size_t i = 0; i < composition_types.size(); i++) {
-    changes.AddLayerCompositionChange(display_id, changed_layers[i],
-                                      composition_types[i]);
-  }
-
-  std::vector<DisplayRequest::LayerRequest> layer_requests;
-  for (size_t i = 0; i < requested_layers.size(); i++) {
-    layer_requests.push_back({requested_layers[i], request_masks[i]});
-  }
-
-  const DisplayRequest request_changes{display_id, display_request_mask,
-                                       layer_requests};
-  changes.display_request_changes = request_changes;
-
-  cmd_result_writer_->AddChanges(changes);
-  composer_resources_->SetDisplayMustValidateState(display_id, false);
-}
 
 void ComposerClient::ExecuteAcceptDisplayChanges(int64_t display_id) {
   auto* display = GetDisplay(display_id);
@@ -1539,33 +1436,6 @@ void ComposerClient::ExecutePresentDisplay(int64_t display_id) {
 
   cmd_result_writer_->AddPresentFence(display_id, std::move(display_fence));
   cmd_result_writer_->AddReleaseFence(display_id, release_fences);
-}
-
-void ComposerClient::ExecutePresentOrValidateDisplay(
-    int64_t display_id,
-    std::optional<ClockMonotonicTimestamp> expected_present_time) {
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
-    return;
-  }
-
-  /* TODO: Handle expectedPresentTime */
-  /* This can be implemented in multiple ways. For example, the expected present
-   * time property can be implemented by the DRM driver directly as a CRTC
-   * property. See:
-   * https://cs.android.com/android/platform/superproject/main/+/b8b3b1646e64d0235f77b9e717a3e4082e26f2a8:hardware/google/graphics/common/libhwc2.1/libdrmresource/drm/drmcrtc.cpp;drc=468f6172546ab98983de18210222f231f16b21e1;l=88
-   * Unfortunately there doesn't seem to be a standardised way of delaying
-   * presentation with a timestamp in the DRM API. What we can do alternatively
-   * is to spawn a separate presentation thread that could handle the VBlank
-   * events by using DRM_MODE_PAGE_FLIP_EVENT and schedule them appropriately.
-   */
-
-  /* TODO: Add check if it's possible to skip display validation */
-  ExecuteValidateDisplay(display_id, expected_present_time);
-  cmd_result_writer_
-      ->AddPresentOrValidateResult(display_id,
-                                   PresentOrValidate::Result::Validated);
 }
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl
