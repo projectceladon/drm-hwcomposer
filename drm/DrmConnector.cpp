@@ -75,12 +75,10 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
 
   if (!GetConnectorProperty(dev, *c, "Content Protection", &c->hdcp_id_property_)) {
     ALOGE("%s GetHDCPConnectorProperty check failed!", __FUNCTION__);
-    return {};
   }
 
   if (!GetConnectorProperty(dev, *c, "HDCP Content Type", &c->hdcp_type_property_)) {
     ALOGE("%s GetHDCPTypeProperty check failed!", __FUNCTION__);
-    return {};
   }
 
   if (!GetConnectorProperty(dev, *c, "DPMS", &c->dpms_property_) ||
