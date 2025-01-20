@@ -319,7 +319,7 @@ bool ComposerClient::Init() {
 
 ComposerClient::~ComposerClient() {
   DEBUG_FUNC();
-  {
+  if (hwc_) {
     const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
     hwc_->DeinitDisplays();
     hwc_.reset();
