@@ -37,9 +37,13 @@
 #include <pthread.h>
 #include "utils/autolock.h"
 #include <string.h>
-// #include "drmhwcomposer.h"
+#include <utils/Trace.h>
+
 #include "hwc2_device/HwcLayer.h"
 namespace android {
+  #undef ATRACE_TAG
+#define ATRACE_TAG ATRACE_TAG_GRAPHICS
+
 #define ANDROID_DISPLAY_HANDLE 0x18C34078
 #define CHECK_SYMBOL(func) { if (!func) printf("func %s not found\n", #func); return VA_STATUS_ERROR_UNKNOWN; }
 #define DEVICE_NAME "/dev/dri/renderD128"
@@ -483,12 +487,17 @@ bool VARenderer::startRender(HwcVaLayer* layer,uint32_t format){
     ALOGE("Failed to vaRenderPicture, ret = %d\n", ret);
     return false;
   }
-
-  ret |= vaEndPicture(va_display_, va_context_);
+  {
+    ATRACE_NAME("vaEndPicture");
+    ret |= vaEndPicture(va_display_, va_context_);
+  }
   if (ret != VA_STATUS_SUCCESS) {
     ALOGE(" Failed to vaEndPicture, ret = %d\n", ret);
   }
-  vaSyncSurface(va_display_, surface_out);
+  {
+    ATRACE_NAME("vaSyncSurface");
+    vaSyncSurface(va_display_, surface_out);
+  }
   current_handle_position++;
   if (current_handle_position >= NATIVE_BUFFER_VECTOR_SIZE)
     current_handle_position = 0;

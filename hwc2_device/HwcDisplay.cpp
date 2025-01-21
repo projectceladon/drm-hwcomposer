@@ -508,6 +508,7 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
 }
 
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
+  ATRACE_NAME("CreateComposition");
   if (IsInHeadlessMode()) {
     ALOGE("%s: Display is in headless mode, should never reach here", __func__);
     return HWC2::Error::None;
@@ -582,9 +583,12 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   std::vector<LayerData> composition_layers;
   for (std::pair<const uint32_t, HwcLayer *> &l : vpp_z_map) {
-    l.second->PopulateLayerData(a_args.test_only);
-    if (l.second->GetLayerData().acquire_fence.Get() > 0)
+    // l.second->PopulateLayerData(a_args.test_only);
+
+    if (l.second->GetLayerData().acquire_fence.Get() > 0) {
+      ATRACE_NAME("sync_wait-before-va");
       sync_wait(l.second->GetLayerData().acquire_fence.Get(), -1);
+    }
     va_compose_layer_.addVaLayerMapData(l.first, l.second);
   }
 
@@ -651,19 +655,19 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
 HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
+  ATRACE_NAME("PresentDisplay");
   if (expectedPresentTime_.has_value() && expectedPresentTime_->timestampNanos > 0) {
     static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
     struct timespec vsync {};
     clock_gettime(CLOCK_MONOTONIC, &vsync);
     int64_t timestamp = (int64_t)vsync.tv_sec * kOneSecondNs + (int64_t)vsync.tv_nsec;
-    int64_t half_period = (1E9 / staged_mode_->v_refresh()) / 2;
-    if ((expectedPresentTime_->timestampNanos - timestamp) > half_period) {
-      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - half_period) / (1000 * 1000);
+    int64_t period = (1E9 / staged_mode_->v_refresh());
+    if ((expectedPresentTime_->timestampNanos - timestamp) > period) {
+      ATRACE_NAME("Wait for expected present time");
+      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - period) / (1000 * 1000);
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
     }
     expectedPresentTime_ = std::nullopt;
-  } else {
-    std::this_thread::sleep_for(std::chrono::nanoseconds((int64_t)(1E9 / staged_mode_->v_refresh()) / 2));
   }
   if (IsInHeadlessMode()) {
     *out_present_fence = -1;
