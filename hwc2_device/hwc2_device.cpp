@@ -81,24 +81,6 @@ static int32_t DisplayHook(hwc2_device_t *dev, hwc2_display_t display_handle,
   return static_cast<int32_t>((display->*func)(std::forward<Args>(args)...));
 }
 
-template <typename HookType, HookType func, typename... Args>
-static int32_t LayerHook(hwc2_device_t *dev, hwc2_display_t display_handle,
-                         hwc2_layer_t layer_handle, Args... args) {
-  ALOGV("Display #%" PRIu64 " Layer: #%" PRIu64 " hook: %s", display_handle,
-        layer_handle, GetFuncName(__PRETTY_FUNCTION__).c_str());
-  DrmHwcTwo *hwc = ToDrmHwcTwo(dev);
-  const std::unique_lock lock(hwc->GetResMan().GetMainLock());
-  auto *display = hwc->GetDisplay(display_handle);
-  if (display == nullptr)
-    return static_cast<int32_t>(HWC2::Error::BadDisplay);
-
-  HwcLayer *layer = display->get_layer(layer_handle);
-  if (!layer)
-    return static_cast<int32_t>(HWC2::Error::BadLayer);
-
-  return static_cast<int32_t>((layer->*func)(std::forward<Args>(args)...));
-}
-
 static int HookDevClose(hw_device_t *dev) {
   // NOLINTNEXTLINE (cppcoreguidelines-pro-type-reinterpret-cast): Safe
   auto *hwc2_dev = reinterpret_cast<hwc2_device_t *>(dev);
@@ -110,6 +92,264 @@ static void HookDevGetCapabilities(hwc2_device_t * /*dev*/, uint32_t *out_count,
                                    int32_t * /*out_capabilities*/) {
   *out_count = 0;
 }
+
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
+
+#define LOCK_COMPOSER(dev)       \
+  auto *ihwc = ToDrmHwcTwo(dev); \
+  const std::unique_lock lock(ihwc->GetResMan().GetMainLock());
+
+#define GET_DISPLAY(display_id)                  \
+  auto *idisplay = ihwc->GetDisplay(display_id); \
+  if (!idisplay)                                 \
+    return static_cast<int32_t>(HWC2::Error::BadDisplay);
+
+#define GET_LAYER(layer_id)                     \
+  auto *ilayer = idisplay->get_layer(layer_id); \
+  if (!ilayer)                                  \
+    return static_cast<int32_t>(HWC2::Error::BadLayer);
+
+// NOLINTEND(cppcoreguidelines-macro-usage)
+
+static BufferColorSpace Hwc2ToColorSpace(int32_t dataspace) {
+  switch (dataspace & HAL_DATASPACE_STANDARD_MASK) {
+    case HAL_DATASPACE_STANDARD_BT709:
+      return BufferColorSpace::kItuRec709;
+    case HAL_DATASPACE_STANDARD_BT601_625:
+    case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
+    case HAL_DATASPACE_STANDARD_BT601_525:
+    case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
+      return BufferColorSpace::kItuRec601;
+    case HAL_DATASPACE_STANDARD_BT2020:
+    case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
+      return BufferColorSpace::kItuRec2020;
+    default:
+      return BufferColorSpace::kUndefined;
+  }
+}
+
+static BufferSampleRange Hwc2ToSampleRange(int32_t dataspace) {
+  switch (dataspace & HAL_DATASPACE_RANGE_MASK) {
+    case HAL_DATASPACE_RANGE_FULL:
+      return BufferSampleRange::kFullRange;
+    case HAL_DATASPACE_RANGE_LIMITED:
+      return BufferSampleRange::kLimitedRange;
+    default:
+      return BufferSampleRange::kUndefined;
+  }
+}
+
+static int32_t SetLayerBlendMode(hwc2_device_t *device, hwc2_display_t display,
+                                 hwc2_layer_t layer,
+                                 int32_t /*hwc2_blend_mode_t*/ mode) {
+  ALOGV("SetLayerBlendMode");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  BufferBlendMode blend_mode{};
+  switch (static_cast<HWC2::BlendMode>(mode)) {
+    case HWC2::BlendMode::None:
+      blend_mode = BufferBlendMode::kNone;
+      break;
+    case HWC2::BlendMode::Premultiplied:
+      blend_mode = BufferBlendMode::kPreMult;
+      break;
+    case HWC2::BlendMode::Coverage:
+      blend_mode = BufferBlendMode::kCoverage;
+      break;
+    default:
+      ALOGE("Unknown blending mode b=%d", mode);
+      blend_mode = BufferBlendMode::kUndefined;
+      break;
+  }
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.blend_mode = blend_mode;
+
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerBuffer(hwc2_device_t *device, hwc2_display_t display,
+                              hwc2_layer_t layer, buffer_handle_t buffer,
+                              int32_t acquire_fence) {
+  ALOGV("SetLayerBuffer");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.buffer = {.buffer_handle = buffer,
+                             .acquire_fence = MakeSharedFd(acquire_fence)};
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerDataspace(hwc2_device_t *device, hwc2_display_t display,
+                                 hwc2_layer_t layer,
+                                 int32_t /*android_dataspace_t*/ dataspace) {
+  ALOGV("SetLayerDataspace");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.color_space = Hwc2ToColorSpace(dataspace);
+  layer_properties.sample_range = Hwc2ToSampleRange(dataspace);
+  ilayer->SetLayerProperties(layer_properties);
+  return 0;
+}
+
+static int32_t SetCursorPosition(hwc2_device_t * /*device*/,
+                                 hwc2_display_t /*display*/,
+                                 hwc2_layer_t /*layer*/, int32_t /*x*/,
+                                 int32_t /*y*/) {
+  ALOGV("SetCursorPosition");
+  return 0;
+}
+
+static int32_t SetLayerColor(hwc2_device_t * /*device*/,
+                             hwc2_display_t /*display*/, hwc2_layer_t /*layer*/,
+                             hwc_color_t /*color*/) {
+  ALOGV("SetLayerColor");
+  return 0;
+}
+
+static int32_t SetLayerCompositionType(hwc2_device_t *device,
+                                       hwc2_display_t display,
+                                       hwc2_layer_t layer,
+                                       int32_t /*hwc2_composition_t*/ type) {
+  ALOGV("SetLayerCompositionType");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.composition_type = static_cast<HWC2::Composition>(type);
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerDisplayFrame(hwc2_device_t *device,
+                                    hwc2_display_t display, hwc2_layer_t layer,
+                                    hwc_rect_t frame) {
+  ALOGV("SetLayerDisplayFrame");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.display_frame = frame;
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerPlaneAlpha(hwc2_device_t *device, hwc2_display_t display,
+                                  hwc2_layer_t layer, float alpha) {
+  ALOGV("SetLayerPlaneAlpha");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.alpha = alpha;
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerSidebandStream(hwc2_device_t * /*device*/,
+                                      hwc2_display_t /*display*/,
+                                      hwc2_layer_t /*layer*/,
+                                      const native_handle_t * /*stream*/) {
+  ALOGV("SetLayerSidebandStream");
+  return static_cast<int32_t>(HWC2::Error::Unsupported);
+}
+
+static int32_t SetLayerSourceCrop(hwc2_device_t *device, hwc2_display_t display,
+                                  hwc2_layer_t layer, hwc_frect_t crop) {
+  ALOGV("SetLayerSourceCrop");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.source_crop = crop;
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerSurfaceDamage(hwc2_device_t * /*device*/,
+                                     hwc2_display_t /*display*/,
+                                     hwc2_layer_t /*layer*/,
+                                     hwc_region_t /*damage*/) {
+  ALOGV("SetLayerSurfaceDamage");
+  return 0;
+}
+
+static int32_t SetLayerTransform(hwc2_device_t *device, hwc2_display_t display,
+                                 hwc2_layer_t layer, int32_t transform) {
+  ALOGV("SetLayerTransform");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  uint32_t l_transform = 0;
+
+  // 270* and 180* cannot be combined with flips. More specifically, they
+  // already contain both horizontal and vertical flips, so those fields are
+  // redundant in this case. 90* rotation can be combined with either horizontal
+  // flip or vertical flip, so treat it differently
+  if (transform == HWC_TRANSFORM_ROT_270) {
+    l_transform = LayerTransform::kRotate270;
+  } else if (transform == HWC_TRANSFORM_ROT_180) {
+    l_transform = LayerTransform::kRotate180;
+  } else {
+    if ((transform & HWC_TRANSFORM_FLIP_H) != 0)
+      l_transform |= LayerTransform::kFlipH;
+    if ((transform & HWC_TRANSFORM_FLIP_V) != 0)
+      l_transform |= LayerTransform::kFlipV;
+    if ((transform & HWC_TRANSFORM_ROT_90) != 0)
+      l_transform |= LayerTransform::kRotate90;
+  }
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.transform = static_cast<LayerTransform>(l_transform);
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+static int32_t SetLayerVisibleRegion(hwc2_device_t * /*device*/,
+                                     hwc2_display_t /*display*/,
+                                     hwc2_layer_t /*layer*/,
+                                     hwc_region_t /*visible*/) {
+  ALOGV("SetLayerVisibleRegion");
+  return 0;
+}
+
+static int32_t SetLayerZOrder(hwc2_device_t *device, hwc2_display_t display,
+                              hwc2_layer_t layer, uint32_t z) {
+  ALOGV("SetLayerZOrder");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+  GET_LAYER(layer);
+
+  HwcLayer::LayerProperties layer_properties;
+  layer_properties.z_order = z;
+  ilayer->SetLayerProperties(layer_properties);
+
+  return 0;
+}
+
+/* Entry point for the HWC2 API */
+// NOLINTBEGIN(cppcoreguidelines-pro-type-cstyle-cast)
 
 static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                                                   int32_t descriptor) {
@@ -307,67 +547,40 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
 #endif
     // Layer functions
     case HWC2::FunctionDescriptor::SetCursorPosition:
-      return ToHook<HWC2_PFN_SET_CURSOR_POSITION>(
-          LayerHook<decltype(&HwcLayer::SetCursorPosition),
-                    &HwcLayer::SetCursorPosition, int32_t, int32_t>);
+      return (hwc2_function_pointer_t)SetCursorPosition;
     case HWC2::FunctionDescriptor::SetLayerBlendMode:
-      return ToHook<HWC2_PFN_SET_LAYER_BLEND_MODE>(
-          LayerHook<decltype(&HwcLayer::SetLayerBlendMode),
-                    &HwcLayer::SetLayerBlendMode, int32_t>);
+      return (hwc2_function_pointer_t)SetLayerBlendMode;
     case HWC2::FunctionDescriptor::SetLayerBuffer:
-      return ToHook<HWC2_PFN_SET_LAYER_BUFFER>(
-          LayerHook<decltype(&HwcLayer::SetLayerBuffer),
-                    &HwcLayer::SetLayerBuffer, buffer_handle_t, int32_t>);
+      return (hwc2_function_pointer_t)SetLayerBuffer;
     case HWC2::FunctionDescriptor::SetLayerColor:
-      return ToHook<HWC2_PFN_SET_LAYER_COLOR>(
-          LayerHook<decltype(&HwcLayer::SetLayerColor),
-                    &HwcLayer::SetLayerColor, hwc_color_t>);
+      return (hwc2_function_pointer_t)SetLayerColor;
     case HWC2::FunctionDescriptor::SetLayerCompositionType:
-      return ToHook<HWC2_PFN_SET_LAYER_COMPOSITION_TYPE>(
-          LayerHook<decltype(&HwcLayer::SetLayerCompositionType),
-                    &HwcLayer::SetLayerCompositionType, int32_t>);
+      return (hwc2_function_pointer_t)SetLayerCompositionType;
     case HWC2::FunctionDescriptor::SetLayerDataspace:
-      return ToHook<HWC2_PFN_SET_LAYER_DATASPACE>(
-          LayerHook<decltype(&HwcLayer::SetLayerDataspace),
-                    &HwcLayer::SetLayerDataspace, int32_t>);
+      return (hwc2_function_pointer_t)SetLayerDataspace;
     case HWC2::FunctionDescriptor::SetLayerDisplayFrame:
-      return ToHook<HWC2_PFN_SET_LAYER_DISPLAY_FRAME>(
-          LayerHook<decltype(&HwcLayer::SetLayerDisplayFrame),
-                    &HwcLayer::SetLayerDisplayFrame, hwc_rect_t>);
+      return (hwc2_function_pointer_t)SetLayerDisplayFrame;
     case HWC2::FunctionDescriptor::SetLayerPlaneAlpha:
-      return ToHook<HWC2_PFN_SET_LAYER_PLANE_ALPHA>(
-          LayerHook<decltype(&HwcLayer::SetLayerPlaneAlpha),
-                    &HwcLayer::SetLayerPlaneAlpha, float>);
+      return (hwc2_function_pointer_t)SetLayerPlaneAlpha;
     case HWC2::FunctionDescriptor::SetLayerSidebandStream:
-      return ToHook<HWC2_PFN_SET_LAYER_SIDEBAND_STREAM>(
-          LayerHook<decltype(&HwcLayer::SetLayerSidebandStream),
-                    &HwcLayer::SetLayerSidebandStream,
-                    const native_handle_t *>);
+      return (hwc2_function_pointer_t)SetLayerSidebandStream;
     case HWC2::FunctionDescriptor::SetLayerSourceCrop:
-      return ToHook<HWC2_PFN_SET_LAYER_SOURCE_CROP>(
-          LayerHook<decltype(&HwcLayer::SetLayerSourceCrop),
-                    &HwcLayer::SetLayerSourceCrop, hwc_frect_t>);
+      return (hwc2_function_pointer_t)SetLayerSourceCrop;
     case HWC2::FunctionDescriptor::SetLayerSurfaceDamage:
-      return ToHook<HWC2_PFN_SET_LAYER_SURFACE_DAMAGE>(
-          LayerHook<decltype(&HwcLayer::SetLayerSurfaceDamage),
-                    &HwcLayer::SetLayerSurfaceDamage, hwc_region_t>);
+      return (hwc2_function_pointer_t)SetLayerSurfaceDamage;
     case HWC2::FunctionDescriptor::SetLayerTransform:
-      return ToHook<HWC2_PFN_SET_LAYER_TRANSFORM>(
-          LayerHook<decltype(&HwcLayer::SetLayerTransform),
-                    &HwcLayer::SetLayerTransform, int32_t>);
+      return (hwc2_function_pointer_t)SetLayerTransform;
     case HWC2::FunctionDescriptor::SetLayerVisibleRegion:
-      return ToHook<HWC2_PFN_SET_LAYER_VISIBLE_REGION>(
-          LayerHook<decltype(&HwcLayer::SetLayerVisibleRegion),
-                    &HwcLayer::SetLayerVisibleRegion, hwc_region_t>);
+      return (hwc2_function_pointer_t)SetLayerVisibleRegion;
     case HWC2::FunctionDescriptor::SetLayerZOrder:
-      return ToHook<HWC2_PFN_SET_LAYER_Z_ORDER>(
-          LayerHook<decltype(&HwcLayer::SetLayerZOrder),
-                    &HwcLayer::SetLayerZOrder, uint32_t>);
+      return (hwc2_function_pointer_t)SetLayerZOrder;
     case HWC2::FunctionDescriptor::Invalid:
     default:
       return nullptr;
   }
 }
+
+// NOLINTEND(cppcoreguidelines-pro-type-cstyle-cast)
 
 static int HookDevOpen(const struct hw_module_t *module, const char *name,
                        struct hw_device_t **dev) {

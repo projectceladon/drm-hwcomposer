@@ -82,22 +82,6 @@ class HwcLayer {
 
   void SetLayerProperties(const LayerProperties &layer_properties);
 
-  // HWC2 Layer hooks
-  HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
-  HWC2::Error SetLayerBlendMode(int32_t mode);
-  HWC2::Error SetLayerBuffer(buffer_handle_t buffer, int32_t acquire_fence);
-  HWC2::Error SetLayerColor(hwc_color_t /*color*/);
-  HWC2::Error SetLayerCompositionType(int32_t type);
-  HWC2::Error SetLayerDataspace(int32_t dataspace);
-  HWC2::Error SetLayerDisplayFrame(hwc_rect_t frame);
-  HWC2::Error SetLayerPlaneAlpha(float alpha);
-  HWC2::Error SetLayerSidebandStream(const native_handle_t *stream);
-  HWC2::Error SetLayerSourceCrop(hwc_frect_t crop);
-  HWC2::Error SetLayerSurfaceDamage(hwc_region_t damage);
-  HWC2::Error SetLayerTransform(int32_t transform);
-  HWC2::Error SetLayerVisibleRegion(hwc_region_t visible);
-  HWC2::Error SetLayerZOrder(uint32_t order);
-
  private:
   // sf_type_ stores the initial type given to us by surfaceflinger,
   // validated_type_ stores the type after running ValidateDisplay
