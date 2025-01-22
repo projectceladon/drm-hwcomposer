@@ -171,13 +171,6 @@ class ComposerClient : public BnComposerClient {
   void ExecuteSetDisplayClientTarget(uint64_t display_id,
                                      const ClientTarget& command);
   void ExecuteSetDisplayOutputBuffer(uint64_t display_id, const Buffer& buffer);
-  void ExecuteAcceptDisplayChanges(int64_t display_id);
-  void ExecutePresentDisplay(int64_t display_id);
-
-  hwc3::Error PresentDisplayInternal(
-      uint64_t display_id, ::android::base::unique_fd& out_display_fence,
-      std::unordered_map<int64_t, ::android::base::unique_fd>&
-          out_release_fences);
 
   ::android::HwcDisplay* GetDisplay(uint64_t display_id);
 

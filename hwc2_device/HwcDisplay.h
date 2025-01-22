@@ -95,6 +95,17 @@ class HwcDisplay {
   using ChangedLayer = std::pair<hwc2_layer_t, HWC2::Composition>;
   auto ValidateStagedComposition() -> std::vector<ChangedLayer>;
 
+  // Mark previously validated properties as ready to present.
+  auto AcceptValidatedComposition() -> void;
+
+  // Present previously staged properties, and return fences to indicate when
+  // the new content has been presented, and when the previous buffers have
+  // been released.
+  using ReleaseFence = std::pair<hwc2_layer_t, int32_t>;
+  auto PresentStagedComposition(int32_t *out_present_fence,
+                                std::vector<ReleaseFence> *out_release_fences)
+      -> HWC2::Error;
+
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);

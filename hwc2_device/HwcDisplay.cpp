@@ -401,6 +401,29 @@ auto HwcDisplay::ValidateStagedComposition() -> std::vector<ChangedLayer> {
   return changed_layers;
 }
 
+auto HwcDisplay::AcceptValidatedComposition() -> void {
+  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
+    l.second.AcceptTypeChange();
+  }
+}
+
+auto HwcDisplay::PresentStagedComposition(
+    int32_t *out_present_fence, std::vector<ReleaseFence> *out_release_fences)
+    -> HWC2::Error {
+  auto error = PresentDisplay(out_present_fence);
+  if (error != HWC2::Error::None || *out_present_fence == -1) {
+    return error;
+  }
+
+  for (auto &l : layers_) {
+    if (!l.second.GetPriorBufferScanOutFlag() || !present_fence_) {
+      continue;
+    }
+    out_release_fences->emplace_back(l.first, DupFd(present_fence_));
+  }
+  return error;
+}
+
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
 

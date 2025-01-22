@@ -456,51 +456,6 @@ ndk::ScopedAStatus ComposerClient::destroyVirtualDisplay(int64_t display_id) {
   return ToBinderStatus(err);
 }
 
-hwc3::Error ComposerClient::PresentDisplayInternal(
-    uint64_t display_id, ::android::base::unique_fd& out_display_fence,
-    std::unordered_map<int64_t, ::android::base::unique_fd>&
-        out_release_fences) {
-  DEBUG_FUNC();
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    return hwc3::Error::kBadDisplay;
-  }
-
-  if (composer_resources_->MustValidateDisplay(display_id)) {
-    return hwc3::Error::kNotValidated;
-  }
-
-  int32_t present_fence = -1;
-  auto error = Hwc2toHwc3Error(display->PresentDisplay(&present_fence));
-  if (error != hwc3::Error::kNone) {
-    return error;
-  }
-  out_display_fence.reset(present_fence);
-
-  uint32_t release_fence_count = 0;
-  error = Hwc2toHwc3Error(
-      display->GetReleaseFences(&release_fence_count, nullptr, nullptr));
-  if (error != hwc3::Error::kNone) {
-    return error;
-  }
-
-  std::vector<hwc2_layer_t> hwc_layers(release_fence_count);
-  std::vector<int32_t> hwc_fences(release_fence_count);
-  error = Hwc2toHwc3Error(display->GetReleaseFences(&release_fence_count,
-                                                    hwc_layers.data(),
-                                                    hwc_fences.data()));
-  if (error != hwc3::Error::kNone) {
-    return error;
-  }
-
-  for (size_t i = 0; i < hwc_layers.size(); i++) {
-    auto layer = Hwc2LayerToHwc3(hwc_layers[i]);
-    out_release_fences[layer] = ::android::base::unique_fd{hwc_fences[i]};
-  }
-
-  return hwc3::Error::kNone;
-}
-
 ::android::HwcDisplay* ComposerClient::GetDisplay(uint64_t display_id) {
   return hwc_->GetDisplay(display_id);
 }
@@ -642,10 +597,22 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
   }
 
   if (command.acceptDisplayChanges) {
-    ExecuteAcceptDisplayChanges(command.display);
+    display->AcceptDisplayChanges();
   }
+
   if (command.presentDisplay) {
-    ExecutePresentDisplay(command.display);
+    if (composer_resources_->MustValidateDisplay(display_id)) {
+      cmd_result_writer_->AddError(hwc3::Error::kNotValidated);
+      return;
+    }
+    int32_t present_fence = -1;
+    std::vector<HwcDisplay::ReleaseFence> release_fences;
+    error = Hwc2toHwc3Error(
+        display->PresentStagedComposition(&present_fence, &release_fences));
+    if (error != hwc3::Error::kNone) {
+      cmd_result_writer_->AddError(error);
+      return;
+    }
   }
 }
 
@@ -1400,42 +1367,6 @@ void ComposerClient::ExecuteSetDisplayOutputBuffer(uint64_t display_id,
     cmd_result_writer_->AddError(error);
     return;
   }
-}
-
-void ComposerClient::ExecuteAcceptDisplayChanges(int64_t display_id) {
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
-    return;
-  }
-
-  auto error = Hwc2toHwc3Error(display->AcceptDisplayChanges());
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
-    return;
-  }
-}
-
-void ComposerClient::ExecutePresentDisplay(int64_t display_id) {
-  auto* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
-    return;
-  }
-
-  ::android::base::unique_fd display_fence;
-  std::unordered_map<int64_t, ::android::base::unique_fd> release_fences;
-  auto error = PresentDisplayInternal(display_id, display_fence,
-                                      release_fences);
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
-  }
-  if (cmd_result_writer_->HasError()) {
-    return;
-  }
-
-  cmd_result_writer_->AddPresentFence(display_id, std::move(display_fence));
-  cmd_result_writer_->AddReleaseFence(display_id, release_fences);
 }
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl
