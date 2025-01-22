@@ -25,6 +25,7 @@
 
 #include "DrmDevice.h"
 #include "bufferinfo/BufferInfoGetter.h"
+#include "compositor/LayerData.h"
 #include "utils/log.h"
 
 namespace android {
@@ -229,7 +230,8 @@ static int To1616FixPt(float in) {
 }
 
 auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
-                              uint32_t zpos, uint32_t crtc_id) -> int {
+                              uint32_t zpos, uint32_t crtc_id,
+                              DstRectInfo &whole_display_rect) -> int {
   if (!layer.fb || !layer.bi) {
     ALOGE("%s: Invalid arguments", __func__);
     return -EINVAL;
@@ -251,8 +253,24 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
     return -EINVAL;
   }
 
-  auto &disp = layer.pi.display_frame;
-  auto &src = layer.pi.source_crop;
+  auto opt_disp = layer.pi.display_frame.i_rect;
+  if (!layer.pi.display_frame.i_rect) {
+    opt_disp = whole_display_rect.i_rect;
+  }
+
+  auto opt_src = layer.pi.source_crop.f_rect;
+  if (!layer.pi.source_crop.f_rect) {
+    opt_src = {0.0F, 0.0F, float(layer.bi->width), float(layer.bi->height)};
+  }
+
+  if (!opt_disp || !opt_src) {
+    ALOGE("%s: Invalid display frame or source crop", __func__);
+    return -EINVAL;
+  }
+
+  auto disp = opt_disp.value();
+  auto src = opt_src.value();
+
   if (!crtc_property_.AtomicSet(pset, crtc_id) ||
       !fb_property_.AtomicSet(pset, layer.fb->GetFbId()) ||
       !crtc_x_property_.AtomicSet(pset, disp.left) ||

@@ -49,11 +49,13 @@
 #include "hwc3/DrmHwcThree.h"
 #include "hwc3/Utils.h"
 
+using ::android::DstRectInfo;
 using ::android::HwcDisplay;
 using ::android::HwcDisplayConfig;
 using ::android::HwcDisplayConfigs;
 using ::android::HwcLayer;
 using ::android::LayerTransform;
+using ::android::SrcRectInfo;
 
 #include "utils/log.h"
 
@@ -290,18 +292,29 @@ DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
   return aidl_configuration;
 }
 
-std::optional<hwc_rect> AidlToRect(const std::optional<common::Rect>& rect) {
+std::optional<DstRectInfo> AidlToRect(const std::optional<common::Rect>& rect) {
   if (!rect) {
     return std::nullopt;
   }
-  return hwc_rect{rect->left, rect->top, rect->right, rect->bottom};
+  DstRectInfo dst_rec;
+  dst_rec.i_rect = {.left = rect->left,
+                    .top = rect->top,
+                    .right = rect->right,
+                    .bottom = rect->bottom};
+  return dst_rec;
 }
 
-std::optional<hwc_frect> AidlToFRect(const std::optional<common::FRect>& rect) {
+std::optional<SrcRectInfo> AidlToFRect(
+    const std::optional<common::FRect>& rect) {
   if (!rect) {
     return std::nullopt;
   }
-  return hwc_frect{rect->left, rect->top, rect->right, rect->bottom};
+  SrcRectInfo src_rect;
+  src_rect.f_rect = {.left = rect->left,
+                     .top = rect->top,
+                     .right = rect->right,
+                     .bottom = rect->bottom};
+  return src_rect;
 }
 
 std::optional<float> AidlToAlpha(const std::optional<PlaneAlpha>& alpha) {

@@ -120,6 +120,9 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       return -EINVAL;
     }
 
+    auto raw_mode = args.display_mode.value().GetRawMode();
+    whole_display_rect_.i_rect = {0, 0, raw_mode.hdisplay, raw_mode.vdisplay};
+
     if (!crtc->GetModeProperty().AtomicSet(*pset, *new_frame_state.mode_blob)) {
       return -EINVAL;
     }
@@ -141,12 +144,14 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
 
   if (args.colorspace && connector->GetColorspaceProperty()) {
     if (!connector->GetColorspaceProperty()
-             .AtomicSet(*pset, connector->GetColorspacePropertyValue(*args.colorspace)))
+             .AtomicSet(*pset, connector->GetColorspacePropertyValue(
+                                   *args.colorspace)))
       return -EINVAL;
   }
 
   if (args.content_type && connector->GetContentTypeProperty()) {
-    if (!connector->GetContentTypeProperty().AtomicSet(*pset, *args.content_type))
+    if (!connector->GetContentTypeProperty().AtomicSet(*pset,
+                                                       *args.content_type))
       return -EINVAL;
   }
 
@@ -181,8 +186,8 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       auto &v = unused_planes;
       v.erase(std::remove(v.begin(), v.end(), joining.plane), v.end());
 
-      if (plane->AtomicSetState(*pset, layer, joining.z_pos, crtc->GetId()) !=
-          0) {
+      if (plane->AtomicSetState(*pset, layer, joining.z_pos, crtc->GetId(),
+                                whole_display_rect_) != 0) {
         return -EINVAL;
       }
     }

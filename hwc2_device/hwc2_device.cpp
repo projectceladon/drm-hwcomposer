@@ -244,7 +244,11 @@ static int32_t SetLayerDisplayFrame(hwc2_device_t *device,
   GET_LAYER(layer);
 
   HwcLayer::LayerProperties layer_properties;
-  layer_properties.display_frame = frame;
+  layer_properties.display_frame = {
+      .i_rect = DstRectInfo::IRect{.left = frame.left,
+                                   .top = frame.top,
+                                   .right = frame.right,
+                                   .bottom = frame.bottom}};
   ilayer->SetLayerProperties(layer_properties);
 
   return 0;
@@ -280,7 +284,11 @@ static int32_t SetLayerSourceCrop(hwc2_device_t *device, hwc2_display_t display,
   GET_LAYER(layer);
 
   HwcLayer::LayerProperties layer_properties;
-  layer_properties.source_crop = crop;
+  layer_properties.source_crop = {
+      .f_rect = SrcRectInfo::FRect{.left = crop.left,
+                                   .top = crop.top,
+                                   .right = crop.right,
+                                   .bottom = crop.bottom}};
   ilayer->SetLayerProperties(layer_properties);
 
   return 0;

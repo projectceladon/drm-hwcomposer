@@ -39,9 +39,9 @@ class HwcLayer {
     std::optional<BufferColorSpace> color_space;
     std::optional<BufferSampleRange> sample_range;
     std::optional<HWC2::Composition> composition_type;
-    std::optional<hwc_rect_t> display_frame;
+    std::optional<DstRectInfo> display_frame;
     std::optional<float> alpha;
-    std::optional<hwc_frect_t> source_crop;
+    std::optional<SrcRectInfo> source_crop;
     std::optional<LayerTransform> transform;
     std::optional<uint32_t> z_order;
   };

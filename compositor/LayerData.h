@@ -16,9 +16,6 @@
 
 #pragma once
 
-#include <hardware/hardware.h>
-#include <hardware/hwcomposer.h>
-
 #include <cmath>
 #include <cstdbool>
 #include <cstdint>
@@ -41,22 +38,51 @@ struct LayerTransform {
   bool rotate90;
 };
 
+struct SrcRectInfo {
+  struct FRect {
+    float left;
+    float top;
+    float right;
+    float bottom;
+  };
+  /* nullopt means the whole buffer */
+  std::optional<FRect> f_rect;
+};
+
+struct DstRectInfo {
+  struct IRect {
+    int32_t left;
+    int32_t top;
+    int32_t right;
+    int32_t bottom;
+  };
+  /* nullopt means the whole display */
+  std::optional<IRect> i_rect;
+};
+
 struct PresentInfo {
   LayerTransform transform{};
   uint16_t alpha = UINT16_MAX;
-  hwc_frect_t source_crop{};
-  hwc_rect_t display_frame{};
+  SrcRectInfo source_crop{};
+  DstRectInfo display_frame{};
 
   bool RequireScalingOrPhasing() const {
-    const float src_width = source_crop.right - source_crop.left;
-    const float src_height = source_crop.bottom - source_crop.top;
+    if (!source_crop.f_rect || !display_frame.i_rect) {
+      return false;
+    }
 
-    auto dest_width = float(display_frame.right - display_frame.left);
-    auto dest_height = float(display_frame.bottom - display_frame.top);
+    const auto &src = *source_crop.f_rect;
+    const auto &dst = *display_frame.i_rect;
+
+    const float src_width = src.right - src.left;
+    const float src_height = src.bottom - src.top;
+
+    auto dest_width = float(dst.right - dst.left);
+    auto dest_height = float(dst.bottom - dst.top);
 
     auto scaling = src_width != dest_width || src_height != dest_height;
-    auto phasing = (source_crop.left - std::floor(source_crop.left) != 0) ||
-                   (source_crop.top - std::floor(source_crop.top) != 0);
+    auto phasing = (src.left - std::floor(src.left) != 0) ||
+                   (src.top - std::floor(src.top) != 0);
     return scaling || phasing;
   }
 };

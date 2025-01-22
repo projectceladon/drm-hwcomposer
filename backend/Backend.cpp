@@ -108,7 +108,10 @@ uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (z_order >= first_z && z_order < first_z + size) {
       auto &df = layers[z_order]->GetLayerData().pi.display_frame;
-      pixops += (df.right - df.left) * (df.bottom - df.top);
+      if (df.i_rect) {
+        pixops += (df.i_rect->right - df.i_rect->left) *
+                  (df.i_rect->bottom - df.i_rect->top);
+      }
     }
   }
   return pixops;

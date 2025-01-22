@@ -138,25 +138,6 @@ auto GetModesetBuffer(uint32_t width, uint32_t height) -> buffer_handle_t {
   return handle;
 }
 
-auto GetModesetLayerProperties(buffer_handle_t buffer, uint32_t width,
-                               uint32_t height) -> HwcLayer::LayerProperties {
-  HwcLayer::LayerProperties properties;
-  properties.buffer = {.buffer_handle = buffer, .acquire_fence = {}};
-  properties.display_frame = {
-      .left = 0,
-      .top = 0,
-      .right = int(width),
-      .bottom = int(height),
-  };
-  properties.source_crop = (hwc_frect_t){
-      .left = 0.0F,
-      .top = 0.0F,
-      .right = static_cast<float>(width),
-      .bottom = static_cast<float>(height),
-  };
-  properties.blend_mode = BufferBlendMode::kNone;
-  return properties;
-}
 }  // namespace
 
 static BufferColorSpace Hwc2ToColorSpace(int32_t dataspace) {
@@ -308,8 +289,10 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
     buffer_handle_t modeset_buffer = GetModesetBuffer(width, height);
     if (modeset_buffer != nullptr) {
       auto modeset_layer = std::make_unique<HwcLayer>(this);
-      modeset_layer->SetLayerProperties(
-          GetModesetLayerProperties(modeset_buffer, width, height));
+      HwcLayer::LayerProperties properties;
+      properties.buffer = {.buffer_handle = modeset_buffer};
+      properties.blend_mode = BufferBlendMode::kNone;
+      modeset_layer->SetLayerProperties(properties);
       modeset_layer->PopulateLayerData();
       modeset_layer_data = modeset_layer->GetLayerData();
       GraphicBufferAllocator::get().free(modeset_buffer);
@@ -867,14 +850,6 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     if (staged_config == nullptr) {
       return HWC2::Error::BadConfig;
     }
-    HwcLayer::LayerProperties lp;
-    lp.display_frame = {
-        .left = 0,
-        .top = 0,
-        .right = int(staged_config->mode.GetRawMode().hdisplay),
-        .bottom = int(staged_config->mode.GetRawMode().vdisplay),
-    };
-    client_layer_.SetLayerProperties(lp);
 
     configs_.active_config_id = staged_mode_config_id_.value();
     a_args.display_mode = staged_config->mode;
@@ -1058,19 +1033,6 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     ALOGE("Client layer must be always usable by DRM/KMS");
     return HWC2::Error::BadLayer;
   }
-
-  auto &bi = client_layer_.GetLayerData().bi;
-  if (!bi) {
-    ALOGE("%s: Invalid state", __func__);
-    return HWC2::Error::BadLayer;
-  }
-
-  lp = {};
-  lp.source_crop = {.left = 0.0F,
-                    .top = 0.0F,
-                    .right = float(bi->width),
-                    .bottom = float(bi->height)};
-  client_layer_.SetLayerProperties(lp);
 
   return HWC2::Error::None;
 }

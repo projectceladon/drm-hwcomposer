@@ -110,6 +110,8 @@ class DrmAtomicStateManager {
   int frames_staged_{};
   int frames_tracked_{};
 
+  DstRectInfo whole_display_rect_{};
+
   void ThreadFn(const std::shared_ptr<DrmAtomicStateManager> &dasm);
   std::condition_variable cv_;
   std::mutex mutex_;
