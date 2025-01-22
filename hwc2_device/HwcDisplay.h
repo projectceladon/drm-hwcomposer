@@ -227,6 +227,7 @@ class HwcDisplay {
 
   std::map<hwc2_layer_t, HwcLayer> layers_;
   HwcLayer client_layer_;
+  HwcVaLayer  va_compose_layer_;
   int32_t color_mode_{};
   std::vector<int32_t> current_color_mode_ = {HAL_COLOR_MODE_NATIVE, HAL_COLOR_MODE_BT2020, HAL_COLOR_MODE_BT2100_PQ, HAL_COLOR_MODE_BT2100_HLG, /*HAL_COLOR_MODE_DISPLAY_BT2020*/};
   std::array<float, MATRIX_SIZE> color_transform_matrix_{};
