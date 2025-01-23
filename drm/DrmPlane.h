@@ -96,6 +96,6 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
   std::map<BufferBlendMode, uint64_t> blending_enum_map_;
   std::map<BufferColorSpace, uint64_t> color_encoding_enum_map_;
   std::map<BufferSampleRange, uint64_t> color_range_enum_map_;
-  std::map<LayerTransform, uint64_t> transform_enum_map_;
+  uint64_t transform_enum_mask_ = DRM_MODE_ROTATE_0;
 };
 }  // namespace android

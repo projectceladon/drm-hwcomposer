@@ -34,13 +34,11 @@ namespace android {
 class DrmFbIdHandle;
 
 /* Rotation is defined in the clockwise direction */
-enum LayerTransform : uint32_t {
-  kIdentity = 0,
-  kFlipH = 1 << 0,
-  kFlipV = 1 << 1,
-  kRotate90 = 1 << 2,
-  kRotate180 = 1 << 3,
-  kRotate270 = 1 << 4,
+/* The flip is done before rotation */
+struct LayerTransform {
+  bool hflip;
+  bool vflip;
+  bool rotate90;
 };
 
 struct PresentInfo {

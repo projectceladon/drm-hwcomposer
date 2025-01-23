@@ -324,28 +324,16 @@ std::optional<LayerTransform> AidlToLayerTransform(
     return std::nullopt;
   }
 
-  uint32_t transform = LayerTransform::kIdentity;
-  // 270* and 180* cannot be combined with flips. More specifically, they
-  // already contain both horizontal and vertical flips, so those fields are
-  // redundant in this case. 90* rotation can be combined with either horizontal
-  // flip or vertical flip, so treat it differently
-  if (aidl_transform->transform == common::Transform::ROT_270) {
-    transform = LayerTransform::kRotate270;
-  } else if (aidl_transform->transform == common::Transform::ROT_180) {
-    transform = LayerTransform::kRotate180;
-  } else {
-    auto aidl_transform_bits = static_cast<uint32_t>(aidl_transform->transform);
-    if ((aidl_transform_bits &
-         static_cast<uint32_t>(common::Transform::FLIP_H)) != 0)
-      transform |= LayerTransform::kFlipH;
-    if ((aidl_transform_bits &
-         static_cast<uint32_t>(common::Transform::FLIP_V)) != 0)
-      transform |= LayerTransform::kFlipV;
-    if ((aidl_transform_bits &
-         static_cast<uint32_t>(common::Transform::ROT_90)) != 0)
-      transform |= LayerTransform::kRotate90;
-  }
-  return static_cast<LayerTransform>(transform);
+  using aidl::android::hardware::graphics::common::Transform;
+
+  return (LayerTransform){
+      .hflip = (int32_t(aidl_transform->transform) &
+                int32_t(Transform::FLIP_H)) != 0,
+      .vflip = (int32_t(aidl_transform->transform) &
+                int32_t(Transform::FLIP_V)) != 0,
+      .rotate90 = (int32_t(aidl_transform->transform) &
+                   int32_t(Transform::ROT_90)) != 0,
+  };
 }
 
 }  // namespace

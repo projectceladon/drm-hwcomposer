@@ -56,7 +56,6 @@ TIDY_CHECKS_FINE := *                                   \
     -readability-math-missing-parentheses               \
     -readability-avoid-unconditional-preprocessor-if    \
     -modernize-type-traits                              \
-    -clang-analyzer-optin.core.EnumCastOutOfRange       \
     -readability-static-accessed-through-instance       \
     -misc-use-internal-linkage                          \
     -performance-avoid-endl                             \

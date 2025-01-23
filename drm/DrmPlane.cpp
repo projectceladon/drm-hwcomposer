@@ -88,22 +88,8 @@ int DrmPlane::Init() {
 
   GetPlaneProperty("zpos", zpos_property_, Presence::kOptional);
 
-  /* DRM/KMS uses counter-clockwise rotations, while HWC API uses
-   * clockwise. That's why 90 and 270 are swapped here.
-   */
   if (GetPlaneProperty("rotation", rotation_property_, Presence::kOptional)) {
-    rotation_property_.AddEnumToMap("rotate-0", LayerTransform::kIdentity,
-                                    transform_enum_map_);
-    rotation_property_.AddEnumToMap("rotate-90", LayerTransform::kRotate270,
-                                    transform_enum_map_);
-    rotation_property_.AddEnumToMap("rotate-180", LayerTransform::kRotate180,
-                                    transform_enum_map_);
-    rotation_property_.AddEnumToMap("rotate-270", LayerTransform::kRotate90,
-                                    transform_enum_map_);
-    rotation_property_.AddEnumToMap("reflect-x", LayerTransform::kFlipH,
-                                    transform_enum_map_);
-    rotation_property_.AddEnumToMap("reflect-y", LayerTransform::kFlipV,
-                                    transform_enum_map_);
+    rotation_property_.GetEnumMask(transform_enum_mask_);
   }
 
   GetPlaneProperty("alpha", alpha_property_, Presence::kOptional);
@@ -166,22 +152,40 @@ bool DrmPlane::IsCrtcSupported(const DrmCrtc &crtc) const {
   return ((1 << crtc.GetIndexInResArray()) & plane_->possible_crtcs) != 0;
 }
 
+static uint64_t ToDrmRotation(LayerTransform transform) {
+  /* DRM/KMS uses counter-clockwise rotations, while HWC API uses
+   * clockwise. That's why 90 and 270 are swapped here.
+   */
+  uint64_t rotation = DRM_MODE_ROTATE_0;
+
+  if (transform.rotate90) {
+    rotation |= DRM_MODE_ROTATE_270;
+  }
+
+  if (transform.hflip) {
+    rotation |= DRM_MODE_REFLECT_X;
+  }
+
+  if (transform.vflip) {
+    rotation |= DRM_MODE_REFLECT_Y;
+  }
+
+  // TODO(nobody): Respect transform_enum_mask_ to find alternative rotation
+  // values
+
+  return rotation;
+}
+
 bool DrmPlane::IsValidForLayer(LayerData *layer) {
   if (layer == nullptr || !layer->bi) {
     ALOGE("%s: Invalid parameters", __func__);
     return false;
   }
 
-  if (!rotation_property_) {
-    if (layer->pi.transform != LayerTransform::kIdentity) {
-      ALOGV("No rotation property on plane %d", GetId());
-      return false;
-    }
-  } else {
-    if (transform_enum_map_.count(layer->pi.transform) == 0) {
-      ALOGV("Transform is not supported on plane %d", GetId());
-      return false;
-    }
+  uint64_t drm_rotation = ToDrmRotation(layer->pi.transform);
+  if ((drm_rotation & transform_enum_mask_) != drm_rotation) {
+    ALOGV("Transform is not supported on plane %d", GetId());
+    return false;
   }
 
   if (!alpha_property_ && layer->pi.alpha != UINT16_MAX) {
@@ -216,27 +220,6 @@ bool DrmPlane::HasNonRgbFormat() const {
                           [](uint32_t format) {
                             return BufferInfoGetter::IsDrmFormatRgb(format);
                           }) != std::end(formats_);
-}
-
-static uint64_t ToDrmRotation(LayerTransform transform) {
-  uint64_t rotation = 0;
-  /* DRM/KMS uses counter-clockwise rotations, while HWC API uses
-   * clockwise. That's why 90 and 270 are swapped here.
-   */
-  if ((transform & LayerTransform::kFlipH) != 0)
-    rotation |= DRM_MODE_REFLECT_X;
-  if ((transform & LayerTransform::kFlipV) != 0)
-    rotation |= DRM_MODE_REFLECT_Y;
-  if ((transform & LayerTransform::kRotate90) != 0)
-    rotation |= DRM_MODE_ROTATE_270;
-  else if ((transform & LayerTransform::kRotate180) != 0)
-    rotation |= DRM_MODE_ROTATE_180;
-  else if ((transform & LayerTransform::kRotate270) != 0)
-    rotation |= DRM_MODE_ROTATE_90;
-  else
-    rotation |= DRM_MODE_ROTATE_0;
-
-  return rotation;
 }
 
 /* Convert float to 16.16 fixed point */

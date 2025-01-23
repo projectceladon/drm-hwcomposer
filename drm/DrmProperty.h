@@ -68,6 +68,8 @@ class DrmProperty {
   auto AddEnumToMapReverse(const std::string &name, E value,
                            std::map<uint64_t, E> &map) -> bool;
 
+  auto GetEnumMask(uint64_t &mask) -> bool;
+
   explicit operator bool() const {
     return id_ != 0;
   }

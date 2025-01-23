@@ -300,27 +300,12 @@ static int32_t SetLayerTransform(hwc2_device_t *device, hwc2_display_t display,
   GET_DISPLAY(display);
   GET_LAYER(layer);
 
-  uint32_t l_transform = 0;
-
-  // 270* and 180* cannot be combined with flips. More specifically, they
-  // already contain both horizontal and vertical flips, so those fields are
-  // redundant in this case. 90* rotation can be combined with either horizontal
-  // flip or vertical flip, so treat it differently
-  if (transform == HWC_TRANSFORM_ROT_270) {
-    l_transform = LayerTransform::kRotate270;
-  } else if (transform == HWC_TRANSFORM_ROT_180) {
-    l_transform = LayerTransform::kRotate180;
-  } else {
-    if ((transform & HWC_TRANSFORM_FLIP_H) != 0)
-      l_transform |= LayerTransform::kFlipH;
-    if ((transform & HWC_TRANSFORM_FLIP_V) != 0)
-      l_transform |= LayerTransform::kFlipV;
-    if ((transform & HWC_TRANSFORM_ROT_90) != 0)
-      l_transform |= LayerTransform::kRotate90;
-  }
-
   HwcLayer::LayerProperties layer_properties;
-  layer_properties.transform = static_cast<LayerTransform>(l_transform);
+  layer_properties.transform = {
+      .hflip = (transform & HAL_TRANSFORM_FLIP_H) != 0,
+      .vflip = (transform & HAL_TRANSFORM_FLIP_V) != 0,
+      .rotate90 = (transform & HAL_TRANSFORM_ROT_90) != 0,
+  };
   ilayer->SetLayerProperties(layer_properties);
 
   return 0;

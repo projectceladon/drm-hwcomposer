@@ -144,4 +144,19 @@ std::optional<std::string> DrmProperty::GetEnumNameFromValue(
   return {};
 }
 
+auto DrmProperty::GetEnumMask(uint64_t &mask) -> bool {
+  if (enums_.empty()) {
+    ALOGE("No enum values for property: %s", name_.c_str());
+    return false;
+  }
+
+  mask = 0;
+
+  for (const auto &it : enums_) {
+    mask |= it.value;
+  }
+
+  return true;
+}
+
 }  // namespace android
