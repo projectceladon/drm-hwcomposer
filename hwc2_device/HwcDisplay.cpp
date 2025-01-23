@@ -828,6 +828,7 @@ AtomicCommitArgs HwcDisplay::CreateModesetCommit(
   return args;
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   if (IsInHeadlessMode()) {
     ALOGE("%s: Display is in headless mode, should never reach here", __func__);
@@ -876,8 +877,23 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
         continue;
     }
   }
-  if (use_client_layer)
+  if (use_client_layer) {
     z_map.emplace(client_z_order, &client_layer_);
+
+    client_layer_.PopulateLayerData();
+    if (!client_layer_.IsLayerUsableAsDevice()) {
+      ALOGE_IF(!a_args.test_only,
+               "Client layer must be always usable by DRM/KMS");
+      /* This may be normally triggered on validation of the first frame
+       * containing CLIENT layer. At this moment client buffer is not yet
+       * provided by the CLIENT.
+       * This may be triggered once in HwcLayer lifecycle in case FB can't be
+       * imported. For example when non-contiguous buffer is imported into
+       * contiguous-only DRM/KMS driver.
+       */
+      return HWC2::Error::BadLayer;
+    }
+  }
 
   if (z_map.empty())
     return HWC2::Error::BadLayer;
@@ -892,13 +908,6 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   // now that they're ordered by z, add them to the composition
   for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
     if (!l.second->IsLayerUsableAsDevice()) {
-      /* This will be normally triggered on validation of the first frame
-       * containing CLIENT layer. At this moment client buffer is not yet
-       * provided by the CLIENT.
-       * This may be triggered once in HwcLayer lifecycle in case FB can't be
-       * imported. For example when non-contiguous buffer is imported into
-       * contiguous-only DRM/KMS driver.
-       */
       return HWC2::Error::BadLayer;
     }
     composition_layers.emplace_back(l.second->GetLayerData());
@@ -911,6 +920,11 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
                                                std::move(composition_layers));
 
   if (type_ == HWC2::DisplayType::Virtual) {
+    writeback_layer_->PopulateLayerData();
+    if (!writeback_layer_->IsLayerUsableAsDevice()) {
+      ALOGE("Output layer must be always usable by DRM/KMS");
+      return HWC2::Error::BadLayer;
+    }
     a_args.writeback_fb = writeback_layer_->GetLayerData().fb;
     a_args.writeback_release_fence = writeback_layer_->GetLayerData()
                                          .acquire_fence;
@@ -1028,12 +1042,6 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
-  client_layer_.PopulateLayerData();
-  if (!client_layer_.IsLayerUsableAsDevice()) {
-    ALOGE("Client layer must be always usable by DRM/KMS");
-    return HWC2::Error::BadLayer;
-  }
-
   return HWC2::Error::None;
 }
 
@@ -1148,12 +1156,6 @@ HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t buffer,
   lp.buffer = {.buffer_handle = buffer,
                .acquire_fence = MakeSharedFd(release_fence)};
   writeback_layer_->SetLayerProperties(lp);
-  writeback_layer_->PopulateLayerData();
-  if (!writeback_layer_->IsLayerUsableAsDevice()) {
-    ALOGE("Output layer must be always usable by DRM/KMS");
-    return HWC2::Error::BadLayer;
-  }
-  /* TODO: Check if format is supported by writeback connector */
   return HWC2::Error::None;
 }
 
