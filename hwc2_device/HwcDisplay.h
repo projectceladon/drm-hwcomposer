@@ -167,11 +167,8 @@ class HwcDisplay {
   HWC2::Error PresentDisplay(int32_t *out_present_fence);
   HWC2::Error SetActiveConfig(hwc2_config_t config);
   HWC2::Error ChosePreferredConfig();
-  HWC2::Error SetClientTarget(buffer_handle_t target, int32_t acquire_fence,
-                              int32_t dataspace, hwc_region_t damage);
   HWC2::Error SetColorMode(int32_t mode);
   HWC2::Error SetColorTransform(const float *matrix, int32_t hint);
-  HWC2::Error SetOutputBuffer(buffer_handle_t buffer, int32_t release_fence);
   HWC2::Error SetPowerMode(int32_t mode);
   HWC2::Error SetVsyncEnabled(int32_t enabled);
   HWC2::Error ValidateDisplay(uint32_t *num_types, uint32_t *num_requests);
@@ -236,6 +233,10 @@ class HwcDisplay {
 
   auto GetFlatCon() {
     return flatcon_;
+  }
+
+  auto GetClientLayer() -> HwcLayer & {
+    return client_layer_;
   }
 
   auto &GetWritebackLayer() {

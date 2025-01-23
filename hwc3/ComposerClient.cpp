@@ -1340,15 +1340,6 @@ void ComposerClient::ExecuteSetDisplayClientTarget(
     return;
   }
 
-  hwc_region_t damage_regions;
-  damage_regions.numRects = command.damage.size();
-
-  std::vector<hwc_rect_t> regions(command.damage.size());
-  for (const auto& region : command.damage) {
-    regions.push_back({region.left, region.top, region.right, region.bottom});
-  }
-  damage_regions.rects = regions.data();
-
   buffer_handle_t imported_buffer = nullptr;
   auto buf_releaser = ComposerResources::CreateResourceReleaser(true);
 
@@ -1364,13 +1355,16 @@ void ComposerClient::ExecuteSetDisplayClientTarget(
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   auto fence = const_cast<::ndk::ScopedFileDescriptor&>(command.buffer.fence)
                    .release();
-  error = Hwc2toHwc3Error(
-      display->SetClientTarget(imported_buffer, fence,
-                               Hwc3DataspaceToHwc2(command.dataspace),
-                               damage_regions));
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
-  }
+  auto& client_layer = display->GetClientLayer();
+  HwcLayer::LayerProperties properties;
+  properties.buffer = {
+      .buffer_handle = imported_buffer,
+      .acquire_fence = ::android::MakeSharedFd(fence),
+  };
+  properties.color_space = AidlToColorSpace(command.dataspace);
+  properties.sample_range = AidlToSampleRange(command.dataspace);
+
+  client_layer.SetLayerProperties(properties);
 }
 
 void ComposerClient::ExecuteSetDisplayOutputBuffer(uint64_t display_id,
@@ -1394,11 +1388,20 @@ void ComposerClient::ExecuteSetDisplayOutputBuffer(uint64_t display_id,
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   auto fence = const_cast<::ndk::ScopedFileDescriptor&>(buffer.fence).release();
-  error = Hwc2toHwc3Error(display->SetOutputBuffer(imported_buffer, fence));
-  if (error != hwc3::Error::kNone) {
-    cmd_result_writer_->AddError(error);
+
+  auto& writeback_layer = display->GetWritebackLayer();
+  if (!writeback_layer) {
+    cmd_result_writer_->AddError(hwc3::Error::kBadLayer);
     return;
   }
+
+  HwcLayer::LayerProperties properties;
+  properties.buffer = {
+      .buffer_handle = imported_buffer,
+      .acquire_fence = ::android::MakeSharedFd(fence),
+  };
+
+  writeback_layer->SetLayerProperties(properties);
 }
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl

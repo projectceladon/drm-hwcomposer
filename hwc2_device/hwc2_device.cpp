@@ -140,6 +140,57 @@ static BufferSampleRange Hwc2ToSampleRange(int32_t dataspace) {
   }
 }
 
+/* Display functions */
+
+static int32_t SetClientTarget(hwc2_device_t *device, hwc2_display_t display,
+                               buffer_handle_t target, int32_t acquire_fence,
+                               int32_t dataspace, hwc_region_t /*damage*/) {
+  ALOGV("SetClientTarget");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  if (target == nullptr) {
+    idisplay->GetClientLayer().SwChainClearCache();
+    return 0;
+  }
+
+  HwcLayer::LayerProperties lp;
+  lp.buffer = {
+      .buffer_handle = target,
+      .acquire_fence = MakeSharedFd(acquire_fence),
+  };
+  lp.color_space = Hwc2ToColorSpace(dataspace);
+  lp.sample_range = Hwc2ToSampleRange(dataspace);
+
+  idisplay->GetClientLayer().SetLayerProperties(lp);
+
+  return 0;
+}
+
+static int32_t SetOutputBuffer(hwc2_device_t *device, hwc2_display_t display,
+                               buffer_handle_t buffer, int32_t release_fence) {
+  ALOGV("SetOutputBuffer");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  auto &writeback_layer = idisplay->GetWritebackLayer();
+  if (!writeback_layer) {
+    ALOGE("Writeback layer is not available");
+    return static_cast<int32_t>(HWC2::Error::BadLayer);
+  }
+
+  HwcLayer::LayerProperties lp;
+  lp.buffer = {
+      .buffer_handle = buffer,
+      .acquire_fence = MakeSharedFd(release_fence),
+  };
+  writeback_layer->SetLayerProperties(lp);
+
+  return 0;
+}
+
+/* Layer functions */
+
 static int32_t SetLayerBlendMode(hwc2_device_t *device, hwc2_display_t display,
                                  hwc2_layer_t layer,
                                  int32_t /*hwc2_blend_mode_t*/ mode) {
@@ -450,10 +501,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
           DisplayHook<decltype(&HwcDisplay::SetActiveConfig),
                       &HwcDisplay::SetActiveConfig, hwc2_config_t>);
     case HWC2::FunctionDescriptor::SetClientTarget:
-      return ToHook<HWC2_PFN_SET_CLIENT_TARGET>(
-          DisplayHook<decltype(&HwcDisplay::SetClientTarget),
-                      &HwcDisplay::SetClientTarget, buffer_handle_t, int32_t,
-                      int32_t, hwc_region_t>);
+      return (hwc2_function_pointer_t)SetClientTarget;
     case HWC2::FunctionDescriptor::SetColorMode:
       return ToHook<HWC2_PFN_SET_COLOR_MODE>(
           DisplayHook<decltype(&HwcDisplay::SetColorMode),
@@ -463,9 +511,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
           DisplayHook<decltype(&HwcDisplay::SetColorTransform),
                       &HwcDisplay::SetColorTransform, const float *, int32_t>);
     case HWC2::FunctionDescriptor::SetOutputBuffer:
-      return ToHook<HWC2_PFN_SET_OUTPUT_BUFFER>(
-          DisplayHook<decltype(&HwcDisplay::SetOutputBuffer),
-                      &HwcDisplay::SetOutputBuffer, buffer_handle_t, int32_t>);
+      return (hwc2_function_pointer_t)SetOutputBuffer;
     case HWC2::FunctionDescriptor::SetPowerMode:
       return ToHook<HWC2_PFN_SET_POWER_MODE>(
           DisplayHook<decltype(&HwcDisplay::SetPowerMode),

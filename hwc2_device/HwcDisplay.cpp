@@ -140,34 +140,6 @@ auto GetModesetBuffer(uint32_t width, uint32_t height) -> buffer_handle_t {
 
 }  // namespace
 
-static BufferColorSpace Hwc2ToColorSpace(int32_t dataspace) {
-  switch (dataspace & HAL_DATASPACE_STANDARD_MASK) {
-    case HAL_DATASPACE_STANDARD_BT709:
-      return BufferColorSpace::kItuRec709;
-    case HAL_DATASPACE_STANDARD_BT601_625:
-    case HAL_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
-    case HAL_DATASPACE_STANDARD_BT601_525:
-    case HAL_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
-      return BufferColorSpace::kItuRec601;
-    case HAL_DATASPACE_STANDARD_BT2020:
-    case HAL_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
-      return BufferColorSpace::kItuRec2020;
-    default:
-      return BufferColorSpace::kUndefined;
-  }
-}
-
-static BufferSampleRange Hwc2ToSampleRange(int32_t dataspace) {
-  switch (dataspace & HAL_DATASPACE_RANGE_MASK) {
-    case HAL_DATASPACE_RANGE_FULL:
-      return BufferSampleRange::kFullRange;
-    case HAL_DATASPACE_RANGE_LIMITED:
-      return BufferSampleRange::kLimitedRange;
-    default:
-      return BufferSampleRange::kUndefined;
-  }
-}
-
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
     return "No stats yet";
@@ -450,7 +422,7 @@ void HwcDisplay::Deinit() {
     vsync_worker_ = {};
   }
 
-  SetClientTarget(nullptr, -1, 0, {});
+  client_layer_.SwChainClearCache();
 }
 
 HWC2::Error HwcDisplay::Init() {
@@ -1014,37 +986,6 @@ HWC2::Error HwcDisplay::SetActiveConfig(hwc2_config_t config) {
   return SetActiveConfigInternal(config, ResourceManager::GetTimeMonotonicNs());
 }
 
-/* Find API details at:
- * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1861
- */
-HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
-                                        int32_t acquire_fence,
-                                        int32_t dataspace,
-                                        hwc_region_t /*damage*/) {
-  HwcLayer::LayerProperties lp;
-  lp.buffer = {.buffer_handle = target,
-               .acquire_fence = MakeSharedFd(acquire_fence)};
-  lp.color_space = Hwc2ToColorSpace(dataspace);
-  lp.sample_range = Hwc2ToSampleRange(dataspace);
-  client_layer_.SetLayerProperties(lp);
-
-  /*
-   * target can be nullptr, this does mean the Composer Service is calling
-   * cleanDisplayResources() on after receiving HOTPLUG event. See more at:
-   * https://cs.android.com/android/platform/superproject/+/master:hardware/interfaces/graphics/composer/2.1/utils/hal/include/composer-hal/2.1/ComposerClient.h;l=350;drc=944b68180b008456ed2eb4d4d329e33b19bd5166
-   */
-  if (target == nullptr) {
-    client_layer_.SwChainClearCache();
-    return HWC2::Error::None;
-  }
-
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::None;
-  }
-
-  return HWC2::Error::None;
-}
-
 HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
   /* Maps to the Colorspace DRM connector property:
    * https://elixir.bootlin.com/linux/v6.11/source/include/drm/drm_connector.h#L538
@@ -1148,15 +1089,6 @@ bool HwcDisplay::CtmByGpu() {
     return false;
 
   return true;
-}
-
-HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t buffer,
-                                        int32_t release_fence) {
-  HwcLayer::LayerProperties lp;
-  lp.buffer = {.buffer_handle = buffer,
-               .acquire_fence = MakeSharedFd(release_fence)};
-  writeback_layer_->SetLayerProperties(lp);
-  return HWC2::Error::None;
 }
 
 HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
