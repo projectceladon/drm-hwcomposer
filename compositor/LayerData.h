@@ -60,9 +60,11 @@ struct DstRectInfo {
   std::optional<IRect> i_rect;
 };
 
+constexpr float kAlphaOpaque = 1.0F;
+
 struct PresentInfo {
   LayerTransform transform{};
-  uint16_t alpha = UINT16_MAX;
+  float alpha = kAlphaOpaque;
   SrcRectInfo source_crop{};
   DstRectInfo display_frame{};
 

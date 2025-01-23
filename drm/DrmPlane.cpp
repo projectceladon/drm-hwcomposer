@@ -289,7 +289,9 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
     return -EINVAL;
   }
 
-  if (alpha_property_ && !alpha_property_.AtomicSet(pset, layer.pi.alpha)) {
+  if (alpha_property_ &&
+      !alpha_property_.AtomicSet(pset,
+                                 std::lround(layer.pi.alpha * UINT16_MAX))) {
     return -EINVAL;
   }
 

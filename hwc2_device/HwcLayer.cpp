@@ -46,8 +46,7 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
     layer_data_.pi.display_frame = layer_properties.display_frame.value();
   }
   if (layer_properties.alpha) {
-    layer_data_.pi.alpha = std::lround(layer_properties.alpha.value() *
-                                       UINT16_MAX);
+    layer_data_.pi.alpha = layer_properties.alpha.value();
   }
   if (layer_properties.source_crop) {
     layer_data_.pi.source_crop = layer_properties.source_crop.value();
