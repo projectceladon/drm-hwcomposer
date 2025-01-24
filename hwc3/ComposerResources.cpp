@@ -25,19 +25,20 @@
 #include "hardware/hwcomposer2.h"
 #include "hwc3/Utils.h"
 
+namespace {
+using Hwc2Display = ::android::hardware::graphics::composer::V2_1::Display;
+using Hwc2Layer = ::android::hardware::graphics::composer::V2_1::Layer;
+
+auto ToHwc2Display(uint64_t display_id) -> Hwc2Display {
+  return static_cast<Hwc2Display>(display_id);
+}
+
+auto ToHwc2Layer(int64_t layer_id) -> Hwc2Layer {
+  return static_cast<Hwc2Layer>(layer_id);
+}
+}  // namespace
+
 namespace aidl::android::hardware::graphics::composer3::impl {
-
-::android::hardware::graphics::composer::V2_1::Display ToHwc2Display(
-    uint64_t display_id) {
-  return static_cast<::android::hardware::graphics::composer::V2_1::Display>(
-      display_id);
-}
-
-::android::hardware::graphics::composer::V2_1::Layer ToHwc2Layer(
-    int64_t layer_id) {
-  return static_cast<::android::hardware::graphics::composer::V2_1::Layer>(
-      layer_id);
-}
 
 std::unique_ptr<ComposerResourceReleaser>
 ComposerResources::CreateResourceReleaser(bool is_buffer) {

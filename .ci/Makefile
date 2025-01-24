@@ -57,7 +57,6 @@ TIDY_CHECKS_FINE := *                                   \
     -readability-avoid-unconditional-preprocessor-if    \
     -modernize-type-traits                              \
     -readability-static-accessed-through-instance       \
-    -misc-use-internal-linkage                          \
     -performance-avoid-endl                             \
 
 TIDY_CHECKS_NORMAL :=                                   \
