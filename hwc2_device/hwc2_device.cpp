@@ -54,6 +54,7 @@ static DrmHwcTwo *ToDrmHwcTwo(hwc2_device_t *dev) {
 
 template <typename PFN, typename T>
 static hwc2_function_pointer_t ToHook(T function) {
+  // NOLINTNEXTLINE(modernize-type-traits): ToHook is going to be removed
   static_assert(std::is_same<PFN, T>::value, "Incompatible fn pointer");
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast):
   return reinterpret_cast<hwc2_function_pointer_t>(function);

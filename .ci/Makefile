@@ -55,7 +55,6 @@ TIDY_CHECKS_FINE := *                                   \
     -cert-err33-c                                       \
     -readability-math-missing-parentheses               \
     -readability-avoid-unconditional-preprocessor-if    \
-    -modernize-type-traits                              \
 
 TIDY_CHECKS_NORMAL :=                                   \
     $(TIDY_CHECKS_FINE)                                 \
