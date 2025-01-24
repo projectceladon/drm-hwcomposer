@@ -54,7 +54,6 @@ TIDY_CHECKS_FINE := *                                   \
     -cppcoreguidelines-avoid-const-or-ref-data-members  \
     -cert-err33-c                                       \
     -readability-math-missing-parentheses               \
-    -readability-avoid-unconditional-preprocessor-if    \
 
 TIDY_CHECKS_NORMAL :=                                   \
     $(TIDY_CHECKS_FINE)                                 \
