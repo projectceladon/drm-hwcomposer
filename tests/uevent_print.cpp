@@ -7,7 +7,7 @@
 int main() {
   auto uevent = android::UEvent::CreateInstance();
   if (!uevent) {
-    std::cout << "Can't initialize UEvent class" << std::endl;
+    std::cout << "Can't initialize UEvent class\n";
     return -ENODEV;
   }
 
@@ -18,8 +18,8 @@ int main() {
       continue;
     }
 
-    std::cout << "New event #" << number++ << std::endl
-              << *msg << std::endl
-              << std::endl;
+    std::cout << "New event #" << number++ << '\n'
+              << *msg << '\n'
+              << std::flush;
   }
 }

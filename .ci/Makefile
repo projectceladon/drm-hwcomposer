@@ -56,7 +56,6 @@ TIDY_CHECKS_FINE := *                                   \
     -readability-math-missing-parentheses               \
     -readability-avoid-unconditional-preprocessor-if    \
     -modernize-type-traits                              \
-    -performance-avoid-endl                             \
 
 TIDY_CHECKS_NORMAL :=                                   \
     $(TIDY_CHECKS_FINE)                                 \
