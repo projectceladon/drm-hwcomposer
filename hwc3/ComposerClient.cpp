@@ -1279,7 +1279,7 @@ hwc3::Error ComposerClient::ImportLayerBuffer(int64_t display_id,
                                               int64_t layer_id,
                                               const Buffer& buffer,
                                               HwcLayer::Buffer* out_buffer) {
-  auto releaser = composer_resources_->CreateResourceReleaser(true);
+  auto releaser = ComposerResources::CreateResourceReleaser(true);
   auto err = composer_resources_->GetLayerBuffer(display_id, layer_id, buffer,
                                                  &out_buffer->buffer_handle,
                                                  releaser.get());
@@ -1306,7 +1306,7 @@ void ComposerClient::ExecuteSetDisplayClientTarget(
   damage_regions.rects = regions.data();
 
   buffer_handle_t imported_buffer = nullptr;
-  auto buf_releaser = composer_resources_->CreateResourceReleaser(true);
+  auto buf_releaser = ComposerResources::CreateResourceReleaser(true);
 
   auto error = composer_resources_->GetDisplayClientTarget(display_id,
                                                            command.buffer,
@@ -1338,7 +1338,7 @@ void ComposerClient::ExecuteSetDisplayOutputBuffer(uint64_t display_id,
   }
 
   buffer_handle_t imported_buffer = nullptr;
-  auto buf_releaser = composer_resources_->CreateResourceReleaser(true);
+  auto buf_releaser = ComposerResources::CreateResourceReleaser(true);
 
   auto error = composer_resources_->GetDisplayOutputBuffer(display_id, buffer,
                                                            &imported_buffer,
