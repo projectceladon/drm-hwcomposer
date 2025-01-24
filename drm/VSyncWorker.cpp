@@ -124,7 +124,7 @@ int64_t VSyncWorker::GetPhasedVSync(int64_t frame_ns, int64_t current) const {
   if (last_timestamp_ < 0)
     return current + frame_ns;
 
-  return frame_ns * ((current - last_timestamp_) / frame_ns + 1) +
+  return (frame_ns * ((current - last_timestamp_) / frame_ns + 1)) +
          last_timestamp_;
 }
 

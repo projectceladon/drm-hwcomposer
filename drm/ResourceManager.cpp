@@ -124,7 +124,7 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
   struct timespec ts {};
   clock_gettime(CLOCK_MONOTONIC, &ts);
   constexpr int64_t kNsInSec = 1000000000LL;
-  return int64_t(ts.tv_sec) * kNsInSec + int64_t(ts.tv_nsec);
+  return (int64_t(ts.tv_sec) * kNsInSec) + int64_t(ts.tv_nsec);
 }
 
 void ResourceManager::UpdateFrontendDisplays() {

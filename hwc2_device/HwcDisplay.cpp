@@ -86,8 +86,8 @@ auto ToColorTransform(const std::array<float, 16> &color_transform_matrix) {
   for (int i = 0; i < kCtmCols; i++) {
     for (int j = 0; j < kCtmRows; j++) {
       constexpr int kInCtmRows = 4;
-      color_matrix->matrix[i * kCtmRows + j] = To3132FixPt(
-          color_transform_matrix[j * kInCtmRows + i]);
+      color_matrix->matrix[(i * kCtmRows) + j] = To3132FixPt(
+          color_transform_matrix[(j * kInCtmRows) + i]);
     }
   }
   return color_matrix;
@@ -188,7 +188,7 @@ static BufferSampleRange Hwc2ToSampleRange(int32_t dataspace) {
 std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
   if (delta.total_pixops_ == 0)
     return "No stats yet";
-  auto ratio = 1.0 - double(delta.gpu_pixops_) / double(delta.total_pixops_);
+  auto ratio = 1.0 - (double(delta.gpu_pixops_) / double(delta.total_pixops_));
 
   std::stringstream ss;
   ss << " Total frames count: " << delta.total_frames_ << "\n"
@@ -253,7 +253,7 @@ void HwcDisplay::SetColorMatrixToIdentity() {
   for (int i = 0; i < kCtmCols; i++) {
     for (int j = 0; j < kCtmRows; j++) {
       constexpr uint64_t kOne = (1ULL << 32); /* 1.0 in s31.32 format */
-      color_matrix_->matrix[i * kCtmRows + j] = (i == j) ? kOne : 0;
+      color_matrix_->matrix[(i * kCtmRows) + j] = (i == j) ? kOne : 0;
     }
   }
 
