@@ -262,7 +262,19 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
     if (modeset_buffer != nullptr) {
       auto modeset_layer = std::make_unique<HwcLayer>(this);
       HwcLayer::LayerProperties properties;
-      properties.buffer = {.buffer_handle = modeset_buffer};
+      auto bi = BufferInfoGetter::GetInstance()->GetBoInfo(modeset_buffer);
+      if (!bi) {
+        ALOGE("Failed to get buffer info for modeset buffer.");
+        return ConfigError::kBadConfig;
+      }
+      properties.slot_buffer = {
+          .slot_id = 0,
+          .bi = bi,
+      };
+      properties.active_slot = {
+          .slot_id = 0,
+          .fence = {},
+      };
       properties.blend_mode = BufferBlendMode::kNone;
       modeset_layer->SetLayerProperties(properties);
       modeset_layer->PopulateLayerData();
@@ -422,7 +434,7 @@ void HwcDisplay::Deinit() {
     vsync_worker_ = {};
   }
 
-  client_layer_.SwChainClearCache();
+  client_layer_.ClearSlots();
 }
 
 HWC2::Error HwcDisplay::Init() {

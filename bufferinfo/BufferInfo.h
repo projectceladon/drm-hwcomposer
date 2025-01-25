@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 constexpr int kBufferMaxPlanes = 4;
 
@@ -40,6 +41,11 @@ enum class BufferBlendMode : int32_t {
   kCoverage,
 };
 
+class PrimeFdsSharedBase {
+ public:
+  virtual ~PrimeFdsSharedBase() = default;
+};
+
 struct BufferInfo {
   uint32_t width;
   uint32_t height;
@@ -54,4 +60,9 @@ struct BufferInfo {
   BufferColorSpace color_space;
   BufferSampleRange sample_range;
   BufferBlendMode blend_mode;
+
+  /* prime_fds field require valid file descriptors. While their lifecycle is
+   * managed elsewhere. The shared_ptr is used to ensure that the fds are not
+   * closed while the BufferInfo is still in use. */
+  std::shared_ptr<PrimeFdsSharedBase> fds_shared;
 };

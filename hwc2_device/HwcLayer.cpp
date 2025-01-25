@@ -25,10 +25,21 @@
 namespace android {
 
 void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
-  if (layer_properties.buffer) {
-    layer_data_.acquire_fence = layer_properties.buffer->acquire_fence;
-    buffer_handle_ = layer_properties.buffer->buffer_handle;
-    buffer_handle_updated_ = true;
+  if (layer_properties.slot_buffer) {
+    auto slot_id = layer_properties.slot_buffer->slot_id;
+    if (!layer_properties.slot_buffer->bi) {
+      slots_.erase(slot_id);
+    } else {
+      slots_[slot_id] = {
+          .bi = layer_properties.slot_buffer->bi.value(),
+          .fb = {},
+      };
+    }
+  }
+  if (layer_properties.active_slot) {
+    active_slot_id_ = layer_properties.active_slot->slot_id;
+    layer_data_.acquire_fence = layer_properties.active_slot->fence;
+    buffer_updated_ = true;
   }
   if (layer_properties.blend_mode) {
     blend_mode_ = layer_properties.blend_mode.value();
@@ -60,48 +71,38 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
 }
 
 void HwcLayer::ImportFb() {
-  if (!IsLayerUsableAsDevice() || !buffer_handle_updated_) {
+  if (!IsLayerUsableAsDevice() || !buffer_updated_ ||
+      !active_slot_id_.has_value()) {
     return;
   }
-  buffer_handle_updated_ = false;
+  buffer_updated_ = false;
 
-  layer_data_.fb = {};
-
-  auto unique_id = BufferInfoGetter::GetInstance()->GetUniqueId(buffer_handle_);
-  if (unique_id && SwChainGetBufferFromCache(*unique_id)) {
-    return;
-  }
-
-  layer_data_.bi = BufferInfoGetter::GetInstance()->GetBoInfo(buffer_handle_);
-  if (!layer_data_.bi) {
-    ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
-    bi_get_failed_ = true;
+  if (slots_[*active_slot_id_].fb) {
     return;
   }
 
-  layer_data_
-      .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
-      &layer_data_.bi.value());
+  auto& fb_importer = parent_->GetPipe().device->GetDrmFbImporter();
+  auto fb = fb_importer.GetOrCreateFbId(&slots_[*active_slot_id_].bi);
 
-  if (!layer_data_.fb) {
-    ALOGV("Unable to create framebuffer object for buffer 0x%p",
-          buffer_handle_);
+  if (!fb) {
+    ALOGE("Unable to create framebuffer object for layer %p", this);
     fb_import_failed_ = true;
     return;
   }
 
-  if (unique_id) {
-    SwChainAddCurrentBuffer(*unique_id);
-  }
+  slots_[*active_slot_id_].fb = fb;
 }
 
 void HwcLayer::PopulateLayerData() {
   ImportFb();
 
-  if (!layer_data_.bi) {
-    ALOGE("%s: Invalid state", __func__);
+  if (!active_slot_id_.has_value()) {
+    ALOGE("Internal error: populate layer data called without active slot");
     return;
   }
+
+  layer_data_.bi = slots_[*active_slot_id_].bi;
+  layer_data_.fb = slots_[*active_slot_id_].fb;
 
   if (blend_mode_ != BufferBlendMode::kUndefined) {
     layer_data_.bi->blend_mode = blend_mode_;
@@ -114,75 +115,9 @@ void HwcLayer::PopulateLayerData() {
   }
 }
 
-/* SwapChain Cache */
-
-bool HwcLayer::SwChainGetBufferFromCache(BufferUniqueId unique_id) {
-  if (swchain_lookup_table_.count(unique_id) == 0) {
-    return false;
-  }
-
-  auto seq = swchain_lookup_table_[unique_id];
-
-  if (swchain_cache_.count(seq) == 0) {
-    return false;
-  }
-
-  auto& el = swchain_cache_[seq];
-  if (!el.bi) {
-    return false;
-  }
-
-  layer_data_.bi = el.bi;
-  layer_data_.fb = el.fb;
-
-  return true;
-}
-
-void HwcLayer::SwChainReassemble(BufferUniqueId unique_id) {
-  if (swchain_lookup_table_.count(unique_id) != 0) {
-    if (swchain_lookup_table_[unique_id] ==
-        int(swchain_lookup_table_.size()) - 1) {
-      /* Skip same buffer */
-      return;
-    }
-    if (swchain_lookup_table_[unique_id] == 0) {
-      swchain_reassembled_ = true;
-      return;
-    }
-    /* Tracking error */
-    SwChainClearCache();
-    return;
-  }
-
-  swchain_lookup_table_[unique_id] = int(swchain_lookup_table_.size());
-}
-
-void HwcLayer::SwChainAddCurrentBuffer(BufferUniqueId unique_id) {
-  if (!swchain_reassembled_) {
-    SwChainReassemble(unique_id);
-  }
-
-  if (swchain_reassembled_) {
-    if (swchain_lookup_table_.count(unique_id) == 0) {
-      SwChainClearCache();
-      return;
-    }
-
-    auto seq = swchain_lookup_table_[unique_id];
-
-    if (swchain_cache_.count(seq) == 0) {
-      swchain_cache_[seq] = {};
-    }
-
-    swchain_cache_[seq].bi = layer_data_.bi;
-    swchain_cache_[seq].fb = layer_data_.fb;
-  }
-}
-
-void HwcLayer::SwChainClearCache() {
-  swchain_cache_.clear();
-  swchain_lookup_table_.clear();
-  swchain_reassembled_ = false;
+void HwcLayer::ClearSlots() {
+  slots_.clear();
+  active_slot_id_.reset();
 }
 
 }  // namespace android
