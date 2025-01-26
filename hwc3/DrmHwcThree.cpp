@@ -28,6 +28,16 @@
 
 namespace aidl::android::hardware::graphics::composer3::impl {
 
+auto DrmHwcThree::GetHwc3Display(::android::HwcDisplay& display)
+    -> std::shared_ptr<Hwc3Display> {
+  auto frontend_private_data = display.GetFrontendPrivateData();
+  if (!frontend_private_data) {
+    frontend_private_data = std::make_shared<Hwc3Display>();
+    display.SetFrontendPrivateData(frontend_private_data);
+  }
+  return std::static_pointer_cast<Hwc3Display>(frontend_private_data);
+}
+
 DrmHwcThree::~DrmHwcThree() {
   /* Display deinit routine is handled by resource manager */
   GetResMan().DeInit();
@@ -51,7 +61,16 @@ void DrmHwcThree::SendVsyncPeriodTimingChangedEventToClient(
 }
 
 void DrmHwcThree::SendRefreshEventToClient(uint64_t display_id) {
-  composer_resources_->SetDisplayMustValidateState(display_id, true);
+  {
+    const std::unique_lock lock(GetResMan().GetMainLock());
+    auto* idisplay = GetDisplay(display_id);
+    if (idisplay == nullptr) {
+      ALOGE("Failed to get display %" PRIu64, display_id);
+      return;
+    }
+    auto hwc3_display = GetHwc3Display(*idisplay);
+    hwc3_display->must_validate = true;
+  }
   composer_callback_->onRefresh(static_cast<int64_t>(display_id));
 }
 
@@ -69,11 +88,9 @@ void DrmHwcThree::SendHotplugEventToClient(
   switch (display_status) {
     case DrmHwc::kDisconnected:
       event = common::DisplayHotplugEvent::DISCONNECTED;
-      HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), false);
       break;
     case DrmHwc::kConnected:
       event = common::DisplayHotplugEvent::CONNECTED;
-      HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), true);
       break;
     case DrmHwc::kLinkTrainingFailed:
       event = common::DisplayHotplugEvent::ERROR_INCOMPATIBLE_CABLE;
@@ -87,28 +104,9 @@ void DrmHwcThree::SendHotplugEventToClient(
 void DrmHwcThree::SendHotplugEventToClient(
     hwc2_display_t display_id, DrmHwc::DisplayStatus display_status) {
   bool connected = display_status != DrmHwc::kDisconnected;
-  HandleDisplayHotplugEvent(static_cast<uint64_t>(display_id), connected);
   composer_callback_->onHotplug(static_cast<int64_t>(display_id), connected);
 }
 
 #endif
-
-void DrmHwcThree::HandleDisplayHotplugEvent(uint64_t display_id,
-                                            bool connected) {
-  DEBUG_FUNC();
-  if (!connected) {
-    composer_resources_->RemoveDisplay(display_id);
-    return;
-  }
-
-  /* The second or any subsequent hotplug event with connected status enabled is
-   * a special way to inform the client (SF) that the display has changed its
-   * dimensions. In this case, the client removes all layers and re-creates
-   * them. In this case, we keep the display resources.
-   */
-  if (!composer_resources_->HasDisplay(display_id)) {
-    composer_resources_->AddPhysicalDisplay(display_id);
-  }
-}
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl

@@ -38,6 +38,11 @@ namespace android {
 class Backend;
 class DrmHwc;
 
+class FrontendDisplayBase {
+ public:
+  virtual ~FrontendDisplayBase() = default;
+};
+
 inline constexpr uint32_t kPrimaryDisplay = 0;
 
 // NOLINTNEXTLINE
@@ -107,6 +112,14 @@ class HwcDisplay {
   auto PresentStagedComposition(SharedFd &out_present_fence,
                                 std::vector<ReleaseFence> &out_release_fences)
       -> bool;
+
+  auto GetFrontendPrivateData() -> std::shared_ptr<FrontendDisplayBase> {
+    return frontend_private_data_;
+  }
+
+  auto SetFrontendPrivateData(std::shared_ptr<FrontendDisplayBase> data) {
+    frontend_private_data_ = std::move(data);
+  }
 
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
   HWC2::Error AcceptDisplayChanges();
@@ -305,6 +318,8 @@ class HwcDisplay {
   auto GetEdid() -> EdidWrapperUnique & {
     return GetPipe().connector->Get()->GetParsedEdid();
   }
+
+  std::shared_ptr<FrontendDisplayBase> frontend_private_data_;
 };
 
 }  // namespace android

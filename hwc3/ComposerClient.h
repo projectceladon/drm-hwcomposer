@@ -22,7 +22,6 @@
 #include "aidl/android/hardware/graphics/composer3/LayerCommand.h"
 #include "hwc2_device/HwcLayer.h"
 #include "hwc3/CommandResultWriter.h"
-#include "hwc3/ComposerResources.h"
 #include "hwc3/Utils.h"
 #include "utils/Mutex.h"
 
@@ -42,7 +41,7 @@ class ComposerClient : public BnComposerClient {
   ComposerClient();
   ~ComposerClient() override;
 
-  bool Init();
+  void Init();
   std::string Dump();
 
   // composer3 interface
@@ -175,9 +174,6 @@ class ComposerClient : public BnComposerClient {
   ::android::HwcDisplay* GetDisplay(uint64_t display_id);
 
   std::unique_ptr<CommandResultWriter> cmd_result_writer_;
-
-  // Manages importing and caching gralloc buffers for displays and layers.
-  std::unique_ptr<ComposerResources> composer_resources_;
 
   std::unique_ptr<DrmHwcThree> hwc_;
 };

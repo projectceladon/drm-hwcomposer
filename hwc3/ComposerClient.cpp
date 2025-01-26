@@ -442,13 +442,9 @@ ComposerClient::ComposerClient() {
   DEBUG_FUNC();
 }
 
-bool ComposerClient::Init() {
+void ComposerClient::Init() {
   DEBUG_FUNC();
-  composer_resources_ = ComposerResources::Create();
-  if (composer_resources_) {
-    hwc_ = std::make_unique<DrmHwcThree>(composer_resources_.get());
-  }
-  return composer_resources_ != nullptr;
+  hwc_ = std::make_unique<DrmHwcThree>();
 }
 
 ComposerClient::~ComposerClient() {
@@ -462,7 +458,7 @@ ComposerClient::~ComposerClient() {
 }
 
 ndk::ScopedAStatus ComposerClient::createLayer(int64_t display_id,
-                                               int32_t buffer_slot_count,
+                                               int32_t /*buffer_slot_count*/,
                                                int64_t* layer_id) {
   DEBUG_FUNC();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
@@ -478,21 +474,13 @@ ndk::ScopedAStatus ComposerClient::createLayer(int64_t display_id,
     return ToBinderStatus(err);
   }
 
-  const int64_t created_layer_id = Hwc2LayerToHwc3(hwc2_layer_id);
-  err = composer_resources_->AddLayer(display_id, created_layer_id,
-                                      buffer_slot_count);
-  if (err != hwc3::Error::kNone) {
-    destroyLayer(display_id, created_layer_id);
-    return ToBinderStatus(err);
-  }
-
-  *layer_id = created_layer_id;
+  *layer_id = Hwc2LayerToHwc3(hwc2_layer_id);
   return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus ComposerClient::createVirtualDisplay(
     int32_t width, int32_t height, AidlPixelFormat format_hint,
-    int32_t output_buffer_slot_count, VirtualDisplay* out_display) {
+    int32_t /*output_buffer_slot_count*/, VirtualDisplay* out_display) {
   DEBUG_FUNC();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
 
@@ -506,15 +494,7 @@ ndk::ScopedAStatus ComposerClient::createVirtualDisplay(
     return ToBinderStatus(err);
   }
 
-  const int64_t created_display_id = Hwc2DisplayToHwc3(hwc2_display_id);
-  err = composer_resources_->AddVirtualDisplay(hwc2_display_id,
-                                               output_buffer_slot_count);
-  if (err != hwc3::Error::kNone) {
-    hwc_->DestroyVirtualDisplay(hwc2_display_id);
-    return ToBinderStatus(err);
-  }
-
-  out_display->display = created_display_id;
+  out_display->display = Hwc2DisplayToHwc3(hwc2_display_id);
   out_display->format = format_hint;
   return ndk::ScopedAStatus::ok();
 }
@@ -533,7 +513,6 @@ ndk::ScopedAStatus ComposerClient::destroyLayer(int64_t display_id,
     return ToBinderStatus(err);
   }
 
-  err = composer_resources_->RemoveLayer(display_id, layer_id);
   return ToBinderStatus(err);
 }
 
@@ -683,7 +662,8 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
                                             composition_type));
     }
     cmd_result_writer_->AddChanges(changes);
-    composer_resources_->SetDisplayMustValidateState(display_id, false);
+    auto hwc3_display = DrmHwcThree::GetHwc3Display(*display);
+    hwc3_display->must_validate = false;
 
     // TODO: DisplayRequests are not implemented.
 
@@ -701,7 +681,8 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
   }
 
   if (command.presentDisplay) {
-    if (composer_resources_->MustValidateDisplay(display_id)) {
+    auto hwc3_display = DrmHwcThree::GetHwc3Display(*display);
+    if (hwc3_display->must_validate) {
       cmd_result_writer_->AddError(hwc3::Error::kNotValidated);
       return;
     }
@@ -1263,11 +1244,10 @@ ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t display_id,
   return ToBinderStatus(error);
 }
 
-ndk::ScopedAStatus ComposerClient::setClientTargetSlotCount(int64_t display_id,
-                                                            int32_t count) {
+ndk::ScopedAStatus ComposerClient::setClientTargetSlotCount(
+    int64_t /*display_id*/, int32_t /*count*/) {
   DEBUG_FUNC();
-  return ToBinderStatus(
-      composer_resources_->SetDisplayClientTargetCacheSize(display_id, count));
+  return ToBinderStatus(hwc3::Error::kNone);
 }
 
 ndk::ScopedAStatus ComposerClient::setColorMode(int64_t display_id,

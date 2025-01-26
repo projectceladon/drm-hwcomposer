@@ -38,10 +38,12 @@ ndk::ScopedAStatus Composer::createClient(
   }
 
   auto client = ndk::SharedRefBase::make<ComposerClient>();
-  if (!client || !client->Init()) {
+  if (!client) {
     *out_client = nullptr;
     return ToBinderStatus(hwc3::Error::kNoResources);
   }
+
+  client->Init();
 
   *out_client = client;
   client_ = client;
