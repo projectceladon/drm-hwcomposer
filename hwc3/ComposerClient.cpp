@@ -425,6 +425,24 @@ class Hwc3Layer : public ::android::FrontendLayerBase {
     return lp;
   }
 
+  [[maybe_unused]]
+  auto HandleClearSlot(int32_t slot_id)
+      -> std::optional<HwcLayer::LayerProperties> {
+    if (slots_.count(slot_id) == 0) {
+      return std::nullopt;
+    }
+
+    slots_.erase(slot_id);
+
+    auto lp = HwcLayer::LayerProperties{};
+    lp.slot_buffer = {
+        .slot_id = slot_id,
+        .bi = std::nullopt,
+    };
+
+    return lp;
+  }
+
  private:
   std::map<int32_t /*slot*/, std::shared_ptr<Hwc3BufferHandle>> slots_;
 };
@@ -554,6 +572,22 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
     cmd_result_writer_->AddError(hwc3::Error::kBadParameter);
     return;
   }
+
+#if __ANDROID_API__ >= 34
+  /* https://source.android.com/docs/core/graphics/reduce-consumption */
+  if (command.bufferSlotsToClear) {
+    auto hwc3_layer = GetHwc3Layer(*layer);
+    for (const auto& slot : *command.bufferSlotsToClear) {
+      auto lp = hwc3_layer->HandleClearSlot(slot);
+      if (!lp) {
+        cmd_result_writer_->AddError(hwc3::Error::kBadLayer);
+        return;
+      }
+
+      layer->SetLayerProperties(lp.value());
+    }
+  }
+#endif
 
   HwcLayer::LayerProperties properties;
   if (command.buffer) {
