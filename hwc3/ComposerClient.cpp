@@ -443,6 +443,10 @@ class Hwc3Layer : public ::android::FrontendLayerBase {
     return lp;
   }
 
+  void ClearSlots() {
+    slots_.clear();
+  }
+
  private:
   std::map<int32_t /*slot*/, std::shared_ptr<Hwc3BufferHandle>> slots_;
 };
@@ -1216,6 +1220,17 @@ ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
                                  next_config != nullptr &&
                                  current_config->group_id ==
                                      next_config->group_id;
+
+  /* Client framebuffer management:
+   * https://source.android.com/docs/core/graphics/framebuffer-mgmt
+   */
+  if (!same_config_group && !future_config) {
+    auto& client_layer = display->GetClientLayer();
+    auto hwc3_layer = GetHwc3Layer(client_layer);
+    hwc3_layer->ClearSlots();
+    client_layer.ClearSlots();
+  }
+
   // If the contraints dictate that this is to be applied in the future, it
   // must be queued. If the new config is in the same config group as the
   // current one, then queue it to reduce jank.
