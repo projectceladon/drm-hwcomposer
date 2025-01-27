@@ -408,20 +408,26 @@ auto HwcDisplay::AcceptValidatedComposition() -> void {
 }
 
 auto HwcDisplay::PresentStagedComposition(
-    int32_t *out_present_fence, std::vector<ReleaseFence> *out_release_fences)
-    -> HWC2::Error {
-  auto error = PresentDisplay(out_present_fence);
-  if (error != HWC2::Error::None || *out_present_fence == -1) {
-    return error;
+    SharedFd &out_present_fence, std::vector<ReleaseFence> &out_release_fences)
+    -> bool {
+  int out_fd = -1;
+  auto error = PresentDisplay(&out_fd);
+  out_present_fence = MakeSharedFd(out_fd);
+  if (error != HWC2::Error::None) {
+    return false;
+  }
+
+  if (!out_present_fence) {
+    return true;
   }
 
   for (auto &l : layers_) {
-    if (!l.second.GetPriorBufferScanOutFlag() || !present_fence_) {
-      continue;
+    if (l.second.GetPriorBufferScanOutFlag()) {
+      out_release_fences.emplace_back(l.first, out_present_fence);
     }
-    out_release_fences->emplace_back(l.first, DupFd(present_fence_));
   }
-  return error;
+
+  return true;
 }
 
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {

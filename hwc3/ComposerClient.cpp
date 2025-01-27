@@ -593,14 +593,25 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
       cmd_result_writer_->AddError(hwc3::Error::kNotValidated);
       return;
     }
-    int32_t present_fence = -1;
+    ::android::SharedFd present_fence;
     std::vector<HwcDisplay::ReleaseFence> release_fences;
-    error = Hwc2toHwc3Error(
-        display->PresentStagedComposition(&present_fence, &release_fences));
-    if (error != hwc3::Error::kNone) {
-      cmd_result_writer_->AddError(error);
+    bool ret = display->PresentStagedComposition(present_fence, release_fences);
+
+    if (!ret) {
+      cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
       return;
     }
+
+    using ::android::base::unique_fd;
+    cmd_result_writer_->AddPresentFence(  //
+        display_id, unique_fd(::android::DupFd(present_fence)));
+
+    std::unordered_map<int64_t, unique_fd> hal_release_fences;
+    for (const auto& [layer_id, release_fence] : release_fences) {
+      hal_release_fences[Hwc2LayerToHwc3(layer_id)] =  //
+          unique_fd(::android::DupFd(release_fence));
+    }
+    cmd_result_writer_->AddReleaseFence(display_id, hal_release_fences);
   }
 }
 
