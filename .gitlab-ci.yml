@@ -56,3 +56,5 @@ checkstyle:
   artifacts:
     when: on_failure
     untracked: true
+  tags:
+    - placeholder-job
