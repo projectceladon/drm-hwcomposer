@@ -54,6 +54,10 @@ class DrmProperty {
     return id_ != 0 && (flags_ & DRM_MODE_PROP_RANGE) != 0;
   }
 
+  bool IsBitmask() const {
+    return id_ != 0 && (flags_ & DRM_MODE_PROP_BITMASK) != 0;
+  }
+
   auto RangeMin() const -> std::tuple<int, uint64_t>;
   auto RangeMax() const -> std::tuple<int, uint64_t>;
 

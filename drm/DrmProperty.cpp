@@ -150,10 +150,15 @@ auto DrmProperty::GetEnumMask(uint64_t &mask) -> bool {
     return false;
   }
 
+  if (!IsBitmask()) {
+    ALOGE("Property %s is not a bitmask property.", name_.c_str());
+    return false;
+  }
+
   mask = 0;
 
   for (const auto &it : enums_) {
-    mask |= it.value;
+    mask |= (1 << it.value);
   }
 
   return true;
