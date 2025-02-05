@@ -271,7 +271,7 @@ class DisplayConfiguration {
 #endif
 
 DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
-    const HwcDisplayConfigs& configs, const HwcDisplayConfig& config) {
+    int32_t width, int32_t height, const HwcDisplayConfig& config) {
   DisplayConfiguration aidl_configuration =
       {.configId = static_cast<int32_t>(config.id),
        .width = config.mode.GetRawMode().hdisplay,
@@ -279,15 +279,14 @@ DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
        .configGroup = static_cast<int32_t>(config.group_id),
        .vsyncPeriod = config.mode.GetVSyncPeriodNs()};
 
-  if (configs.mm_width != 0) {
-    // ideally this should be vdisplay/mm_heigth, however mm_height
-    // comes from edid parsing and is highly unreliable. Viewing the
-    // rarity of anisotropic displays, falling back to a single value
-    // for dpi yield more correct output.
+  if (width > 0) {
     static const float kMmPerInch = 25.4;
-    float dpi = float(config.mode.GetRawMode().hdisplay) * kMmPerInch /
-                float(configs.mm_width);
-    aidl_configuration.dpi = {.x = dpi, .y = dpi};
+    float dpi_x = float(config.mode.GetRawMode().hdisplay) * kMmPerInch /
+                float(width);
+    float dpi_y = height <= 0 ? dpi_x :
+                  float(config.mode.GetRawMode().vdisplay) * kMmPerInch /
+                    float(height);
+    aidl_configuration.dpi = {.x = dpi_x, .y = dpi_y};
   }
   // TODO: Populate vrrConfig.
   return aidl_configuration;
@@ -838,9 +837,11 @@ ndk::ScopedAStatus ComposerClient::getDisplayAttribute(
     return ToBinderStatus(hwc3::Error::kBadConfig);
   }
 
-  DisplayConfiguration
-      aidl_configuration = HwcDisplayConfigToAidlConfiguration(configs,
-                                                               config->second);
+  const auto bounds = display->GetDisplayBoundsMm();
+  DisplayConfiguration aidl_configuration =
+      HwcDisplayConfigToAidlConfiguration(/*width =*/ bounds.first,
+                                          /*height =*/bounds.second,
+                                          config->second);
   // Legacy API for querying DPI uses units of dots per 1000 inches.
   static const int kLegacyDpiUnit = 1000;
   switch (attribute) {
@@ -1419,9 +1420,12 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
   }
 
   const HwcDisplayConfigs& configs = display->GetDisplayConfigs();
+  const auto bounds = display->GetDisplayBoundsMm();
   for (const auto& [id, config] : configs.hwc_configs) {
     configurations->push_back(
-        HwcDisplayConfigToAidlConfiguration(configs, config));
+        HwcDisplayConfigToAidlConfiguration(/*width =*/ bounds.first, 
+                                            /*height =*/ bounds.second,
+                                            config));
   }
   return ndk::ScopedAStatus::ok();
 }

@@ -316,6 +316,19 @@ auto HwcDisplay::ValidateStagedComposition() -> std::vector<ChangedLayer> {
   return changed_layers;
 }
 
+auto HwcDisplay::GetDisplayBoundsMm() -> std::pair<int32_t, int32_t> {
+
+  const auto bounds = GetEdid()->GetBoundsMm();
+  if (bounds.first > 0 || bounds.second > 0) {
+    return bounds;
+  }
+
+  ALOGE("Failed to get display bounds for d=%d\n", int(handle_));
+  // mm_width and mm_height are unreliable. so only provide mm_width to avoid
+  // wrong dpi computations or other use of the values.
+  return {configs_.mm_width, -1};
+}
+
 auto HwcDisplay::AcceptValidatedComposition() -> void {
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
     l.second.AcceptTypeChange();
@@ -549,15 +562,25 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
       *value = hwc_config.mode.GetVSyncPeriodNs();
       break;
     case HWC2::Attribute::DpiY:
-      // ideally this should be vdisplay/mm_heigth, however mm_height
-      // comes from edid parsing and is highly unreliable. Viewing the
-      // rarity of anisotropic displays, falling back to a single value
-      // for dpi yield more correct output.
+      *value = GetEdid()->GetDpiY();
+      if (*value < 0) {
+        // default to raw mode DpiX for both x and y when no good value
+        // can be provided from edid.
+        *value = mm_width ? int(hwc_config.mode.GetRawMode().hdisplay *
+                                kUmPerInch / mm_width)
+                          : -1;
+      }
+      break;
     case HWC2::Attribute::DpiX:
       // Dots per 1000 inches
-      *value = mm_width ? int(hwc_config.mode.GetRawMode().hdisplay *
-                              kUmPerInch / mm_width)
-                        : -1;
+      *value = GetEdid()->GetDpiX();
+      if (*value < 0) {
+        // default to raw mode DpiX for both x and y when no good value
+        // can be provided from edid.
+        *value = mm_width ? int(hwc_config.mode.GetRawMode().hdisplay *
+                                kUmPerInch / mm_width)
+                          : -1;
+      }
       break;
 #if __ANDROID_API__ > 29
     case HWC2::Attribute::ConfigGroup:

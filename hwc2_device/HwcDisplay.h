@@ -96,6 +96,8 @@ class HwcDisplay {
   // Get the HwcDisplayConfig, or nullptor if none.
   auto GetConfig(hwc2_config_t config_id) const -> const HwcDisplayConfig *;
 
+  auto GetDisplayBoundsMm() -> std::pair<int32_t, int32_t>;
+  
   // To be called after SetDisplayProperties. Returns an empty vector if the
   // requested layers have been validated, otherwise the vector describes
   // the requested composition type changes.
