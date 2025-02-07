@@ -35,6 +35,8 @@ class DrmMode {
 
   bool operator==(const drmModeModeInfo &m) const;
 
+  bool SameSize(const DrmMode &mode) const;
+
   auto &GetRawMode() const {
     return mode_;
   }
