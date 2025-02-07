@@ -1220,11 +1220,14 @@ ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
                                  next_config != nullptr &&
                                  current_config->group_id ==
                                      next_config->group_id;
+  const bool same_resolution = current_config != nullptr &&
+                               next_config != nullptr &&
+                               current_config->mode.SameSize(next_config->mode);
 
   /* Client framebuffer management:
    * https://source.android.com/docs/core/graphics/framebuffer-mgmt
    */
-  if (!same_config_group && !future_config) {
+  if (!same_resolution && !future_config) {
     auto& client_layer = display->GetClientLayer();
     auto hwc3_layer = GetHwc3Layer(client_layer);
     hwc3_layer->ClearSlots();
