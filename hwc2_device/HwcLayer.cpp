@@ -301,7 +301,8 @@ void HwcLayer::ImportFb() {
     is_pixel_blend_mode_supported = false;
 
   int kms_fd = parent_->GetPipe().device->GetFd();
-  bool use_shadow_fds = !allow_p2p_ && (intel_dgpu_fd() >= 0) &&
+  bool use_shadow_fds = parent_->GetPipe().device->GetName() == "virtio_gpu" &&
+      !allow_p2p_ && (intel_dgpu_fd() >= 0) &&
       !virtio_gpu_allow_p2p(kms_fd) && InitializeBlitter(layer_data_.bi.value());
   layer_data_.bi->use_shadow_fds = use_shadow_fds;
 
