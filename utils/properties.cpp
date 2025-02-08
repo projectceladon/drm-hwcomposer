@@ -27,7 +27,7 @@ auto Properties::IsPresentFenceNotReliable() -> bool {
 }
 
 auto Properties::UseConfigGroups() -> bool {
-  return (property_get_bool("ro.vendor.hwc.drm.use_config_groups", 1) != 0);
+  return (property_get_bool("ro.vendor.hwc.drm.use_config_groups", 0) != 0);
 }
 
 auto Properties::UseOverlayPlanes() -> bool {
