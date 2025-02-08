@@ -49,6 +49,21 @@ static std::string GetFuncName(const char *pretty_function) {
   return str.substr(p1, p2 - p1);
 }
 
+class Hwc2DeviceDisplay : public FrontendDisplayBase {
+ public:
+  std::vector<HwcDisplay::ReleaseFence> release_fences;
+};
+
+static auto GetHwc2DeviceDisplay(HwcDisplay &display)
+    -> std::shared_ptr<Hwc2DeviceDisplay> {
+  auto frontend_private_data = display.GetFrontendPrivateData();
+  if (!frontend_private_data) {
+    frontend_private_data = std::make_shared<Hwc2DeviceDisplay>();
+    display.SetFrontendPrivateData(frontend_private_data);
+  }
+  return std::static_pointer_cast<Hwc2DeviceDisplay>(frontend_private_data);
+}
+
 class Hwc2DeviceLayer : public FrontendLayerBase {
  public:
   auto HandleNextBuffer(buffer_handle_t buffer_handle, int32_t fence_fd)
@@ -361,6 +376,57 @@ static int32_t AcceptDisplayChanges(hwc2_device_t *device,
   GET_DISPLAY(display);
 
   idisplay->AcceptValidatedComposition();
+
+  return 0;
+}
+
+static int32_t GetReleaseFences(hwc2_device_t *device, hwc2_display_t display,
+                                uint32_t *out_num_elements,
+                                hwc2_layer_t *out_layers, int32_t *out_fences) {
+  ALOGV("GetReleaseFences");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  auto hwc2display = GetHwc2DeviceDisplay(*idisplay);
+
+  if (*out_num_elements < hwc2display->release_fences.size()) {
+    ALOGW("Overflow num_elements %d/%zu", *out_num_elements,
+          hwc2display->release_fences.size());
+    return static_cast<int32_t>(HWC2::Error::NoResources);
+  }
+
+  for (size_t i = 0; i < hwc2display->release_fences.size(); ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic):
+    out_layers[i] = hwc2display->release_fences[i].first;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic):
+    out_fences[i] = DupFd(hwc2display->release_fences[i].second);
+  }
+
+  *out_num_elements = hwc2display->release_fences.size();
+  hwc2display->release_fences.clear();
+
+  return static_cast<int32_t>(HWC2::Error::None);
+}
+
+static int32_t PresentDisplay(hwc2_device_t *device, hwc2_display_t display,
+                              int32_t *out_release_fence) {
+  ALOGV("PresentDisplay");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  auto hwc2display = GetHwc2DeviceDisplay(*idisplay);
+
+  SharedFd out_fence;
+
+  hwc2display->release_fences.clear();
+
+  if (!idisplay->PresentStagedComposition(out_fence,
+                                          hwc2display->release_fences)) {
+    ALOGE("Failed to present display");
+    return static_cast<int32_t>(HWC2::Error::BadDisplay);
+  }
+
+  *out_release_fence = DupFd(out_fence);
 
   return 0;
 }
@@ -699,14 +765,9 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                       &HwcDisplay::GetHdrCapabilities, uint32_t *, int32_t *,
                       float *, float *, float *>);
     case HWC2::FunctionDescriptor::GetReleaseFences:
-      return ToHook<HWC2_PFN_GET_RELEASE_FENCES>(
-          DisplayHook<decltype(&HwcDisplay::GetReleaseFences),
-                      &HwcDisplay::GetReleaseFences, uint32_t *, hwc2_layer_t *,
-                      int32_t *>);
+      return (hwc2_function_pointer_t)GetReleaseFences;
     case HWC2::FunctionDescriptor::PresentDisplay:
-      return ToHook<HWC2_PFN_PRESENT_DISPLAY>(
-          DisplayHook<decltype(&HwcDisplay::PresentDisplay),
-                      &HwcDisplay::PresentDisplay, int32_t *>);
+      return (hwc2_function_pointer_t)PresentDisplay;
     case HWC2::FunctionDescriptor::SetActiveConfig:
       return ToHook<HWC2_PFN_SET_ACTIVE_CONFIG>(
           DisplayHook<decltype(&HwcDisplay::SetActiveConfig),

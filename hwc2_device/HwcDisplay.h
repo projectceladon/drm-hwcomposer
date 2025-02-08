@@ -162,9 +162,6 @@ class HwcDisplay {
                                  float *max_luminance,
                                  float *max_average_luminance,
                                  float *min_luminance);
-  HWC2::Error GetReleaseFences(uint32_t *num_elements, hwc2_layer_t *layers,
-                               int32_t *fences);
-  HWC2::Error PresentDisplay(int32_t *out_present_fence);
   HWC2::Error SetActiveConfig(hwc2_config_t config);
   HWC2::Error ChosePreferredConfig();
   HWC2::Error SetColorMode(int32_t mode);
@@ -258,8 +255,6 @@ class HwcDisplay {
   HwcDisplayConfigs configs_;
 
   DrmHwc *const hwc_;
-
-  SharedFd present_fence_;
 
   int64_t staged_mode_change_time_{};
   std::optional<uint32_t> staged_mode_config_id_{};

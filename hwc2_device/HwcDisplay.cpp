@@ -379,12 +379,32 @@ auto HwcDisplay::AcceptValidatedComposition() -> void {
 auto HwcDisplay::PresentStagedComposition(
     SharedFd &out_present_fence, std::vector<ReleaseFence> &out_release_fences)
     -> bool {
-  int out_fd = -1;
-  auto error = PresentDisplay(&out_fd);
-  out_present_fence = MakeSharedFd(out_fd);
-  if (error != HWC2::Error::None) {
-    return false;
+  if (IsInHeadlessMode()) {
+    return true;
   }
+  HWC2::Error ret{};
+
+  ++total_stats_.total_frames_;
+
+  AtomicCommitArgs a_args{};
+  ret = CreateComposition(a_args);
+
+  if (ret != HWC2::Error::None)
+    ++total_stats_.failed_kms_present_;
+
+  if (ret == HWC2::Error::BadLayer) {
+    // Can we really have no client or device layers?
+    return true;
+  }
+  if (ret != HWC2::Error::None)
+    return false;
+
+  out_present_fence = a_args.out_fence;
+
+  // Reset the color matrix so we don't apply it over and over again.
+  color_matrix_ = {};
+
+  ++frame_no_;
 
   if (!out_present_fence) {
     return true;
@@ -712,45 +732,6 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
   return HWC2::Error::None;
 }
 
-/* Find API details at:
- * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1767
- *
- * Called after PresentDisplay(), CLIENT is expecting release fence for the
- * prior buffer (not the one assigned to the layer at the moment).
- */
-HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
-                                         hwc2_layer_t *layers,
-                                         int32_t *fences) {
-  if (IsInHeadlessMode()) {
-    *num_elements = 0;
-    return HWC2::Error::None;
-  }
-
-  uint32_t num_layers = 0;
-
-  for (auto &l : layers_) {
-    if (!l.second.GetPriorBufferScanOutFlag() || !present_fence_) {
-      continue;
-    }
-
-    ++num_layers;
-
-    if (layers == nullptr || fences == nullptr)
-      continue;
-
-    if (num_layers > *num_elements) {
-      ALOGW("Overflow num_elements %d/%d", num_layers, *num_elements);
-      return HWC2::Error::None;
-    }
-
-    layers[num_layers - 1] = l.first;
-    fences[num_layers - 1] = DupFd(present_fence_);
-  }
-  *num_elements = num_layers;
-
-  return HWC2::Error::None;
-}
-
 AtomicCommitArgs HwcDisplay::CreateModesetCommit(
     const HwcDisplayConfig *config,
     const std::optional<LayerData> &modeset_layer) {
@@ -908,43 +889,6 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
                                                           prev_vperiod_ns);
     }
   }
-
-  return HWC2::Error::None;
-}
-
-/* Find API details at:
- * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
- */
-HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
-  if (IsInHeadlessMode()) {
-    *out_present_fence = -1;
-    return HWC2::Error::None;
-  }
-  HWC2::Error ret{};
-
-  ++total_stats_.total_frames_;
-
-  AtomicCommitArgs a_args{};
-  ret = CreateComposition(a_args);
-
-  if (ret != HWC2::Error::None)
-    ++total_stats_.failed_kms_present_;
-
-  if (ret == HWC2::Error::BadLayer) {
-    // Can we really have no client or device layers?
-    *out_present_fence = -1;
-    return HWC2::Error::None;
-  }
-  if (ret != HWC2::Error::None)
-    return ret;
-
-  this->present_fence_ = a_args.out_fence;
-  *out_present_fence = DupFd(a_args.out_fence);
-
-  // Reset the color matrix so we don't apply it over and over again.
-  color_matrix_ = {};
-
-  ++frame_no_;
 
   return HWC2::Error::None;
 }
