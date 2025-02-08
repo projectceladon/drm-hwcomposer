@@ -251,6 +251,37 @@ static BufferSampleRange Hwc2ToSampleRange(int32_t dataspace) {
 }
 
 /* Display functions */
+static int32_t GetDisplayRequests(hwc2_device_t * /*device*/,
+                                  hwc2_display_t /*display*/,
+                                  int32_t * /* out_display_requests */,
+                                  uint32_t *out_num_elements,
+                                  hwc2_layer_t * /*out_layers*/,
+                                  int32_t * /*out_layer_requests*/) {
+  ALOGV("GetDisplayRequests");
+
+  *out_num_elements = 0;
+  return 0;
+}
+
+static int32_t GetDozeSupport(hwc2_device_t * /*device*/,
+                              hwc2_display_t /*display*/,
+                              int32_t *out_support) {
+  ALOGV("GetDozeSupport");
+  *out_support = 0;  // Doze support is not available
+  return 0;
+}
+
+static int32_t GetClientTargetSupport(hwc2_device_t * /*device*/,
+                                      hwc2_display_t /*display*/,
+                                      uint32_t /*width*/, uint32_t /*height*/,
+                                      int32_t /*format*/, int32_t dataspace) {
+  ALOGV("GetClientTargetSupport");
+
+  if (dataspace != HAL_DATASPACE_UNKNOWN)
+    return static_cast<int32_t>(HWC2::Error::Unsupported);
+
+  return 0;
+}
 
 static int32_t SetClientTarget(hwc2_device_t *device, hwc2_display_t display,
                                buffer_handle_t target, int32_t acquire_fence,
@@ -322,6 +353,53 @@ static int32_t SetOutputBuffer(hwc2_device_t *device, hwc2_display_t display,
 
   return 0;
 }
+
+static int32_t AcceptDisplayChanges(hwc2_device_t *device,
+                                    hwc2_display_t display) {
+  ALOGV("AcceptDisplayChanges");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  idisplay->AcceptValidatedComposition();
+
+  return 0;
+}
+
+#if __ANDROID_API__ >= 28
+
+static int32_t GetDisplayBrightnessSupport(hwc2_device_t * /*device*/,
+                                           hwc2_display_t /*display*/,
+                                           bool *out_support) {
+  ALOGV("GetDisplayBrightnessSupport");
+  *out_support = false;  // Brightness support is not available
+  return static_cast<int32_t>(HWC2::Error::None);
+}
+
+static int32_t SetDisplayBrightness(hwc2_device_t * /*device*/,
+                                    hwc2_display_t /*display*/,
+                                    float /*brightness*/) {
+  ALOGV("SetDisplayBrightness");
+  return static_cast<int32_t>(HWC2::Error::Unsupported);
+}
+
+#endif
+
+#if __ANDROID_API__ >= 29
+static int32_t SetAutoLowLatencyMode(hwc2_device_t * /*device*/,
+                                     hwc2_display_t /*display*/, bool /*on*/) {
+  ALOGV("SetAutoLowLatencyMode");
+  return static_cast<int32_t>(HWC2::Error::Unsupported);
+}
+
+static int32_t GetSupportedContentTypes(
+    hwc2_device_t * /*device*/, hwc2_display_t /*display*/,
+    uint32_t *out_num_supported_content_types,
+    uint32_t * /*out_supported_content_types*/) {
+  ALOGV("GetSupportedContentTypes");
+  *out_num_supported_content_types = 0;
+  return static_cast<int32_t>(HWC2::Error::None);
+}
+#endif
 
 /* Layer functions */
 
@@ -569,9 +647,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
 
     // Display functions
     case HWC2::FunctionDescriptor::AcceptDisplayChanges:
-      return ToHook<HWC2_PFN_ACCEPT_DISPLAY_CHANGES>(
-          DisplayHook<decltype(&HwcDisplay::AcceptDisplayChanges),
-                      &HwcDisplay::AcceptDisplayChanges>);
+      return (hwc2_function_pointer_t)AcceptDisplayChanges;
     case HWC2::FunctionDescriptor::CreateLayer:
       return ToHook<HWC2_PFN_CREATE_LAYER>(
           DisplayHook<decltype(&HwcDisplay::CreateLayer),
@@ -590,10 +666,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                       &HwcDisplay::GetChangedCompositionTypes, uint32_t *,
                       hwc2_layer_t *, int32_t *>);
     case HWC2::FunctionDescriptor::GetClientTargetSupport:
-      return ToHook<HWC2_PFN_GET_CLIENT_TARGET_SUPPORT>(
-          DisplayHook<decltype(&HwcDisplay::GetClientTargetSupport),
-                      &HwcDisplay::GetClientTargetSupport, uint32_t, uint32_t,
-                      int32_t, int32_t>);
+      return (hwc2_function_pointer_t)GetClientTargetSupport;
     case HWC2::FunctionDescriptor::GetColorModes:
       return ToHook<HWC2_PFN_GET_COLOR_MODES>(
           DisplayHook<decltype(&HwcDisplay::GetColorModes),
@@ -613,18 +686,13 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
           DisplayHook<decltype(&HwcDisplay::GetDisplayName),
                       &HwcDisplay::GetDisplayName, uint32_t *, char *>);
     case HWC2::FunctionDescriptor::GetDisplayRequests:
-      return ToHook<HWC2_PFN_GET_DISPLAY_REQUESTS>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayRequests),
-                      &HwcDisplay::GetDisplayRequests, int32_t *, uint32_t *,
-                      hwc2_layer_t *, int32_t *>);
+      return (hwc2_function_pointer_t)GetDisplayRequests;
     case HWC2::FunctionDescriptor::GetDisplayType:
       return ToHook<HWC2_PFN_GET_DISPLAY_TYPE>(
           DisplayHook<decltype(&HwcDisplay::GetDisplayType),
                       &HwcDisplay::GetDisplayType, int32_t *>);
     case HWC2::FunctionDescriptor::GetDozeSupport:
-      return ToHook<HWC2_PFN_GET_DOZE_SUPPORT>(
-          DisplayHook<decltype(&HwcDisplay::GetDozeSupport),
-                      &HwcDisplay::GetDozeSupport, int32_t *>);
+      return (hwc2_function_pointer_t)GetDozeSupport;
     case HWC2::FunctionDescriptor::GetHdrCapabilities:
       return ToHook<HWC2_PFN_GET_HDR_CAPABILITIES>(
           DisplayHook<decltype(&HwcDisplay::GetHdrCapabilities),
@@ -690,13 +758,9 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                       &HwcDisplay::GetDisplayCapabilities, uint32_t *,
                       uint32_t *>);
     case HWC2::FunctionDescriptor::GetDisplayBrightnessSupport:
-      return ToHook<HWC2_PFN_GET_DISPLAY_BRIGHTNESS_SUPPORT>(
-          DisplayHook<decltype(&HwcDisplay::GetDisplayBrightnessSupport),
-                      &HwcDisplay::GetDisplayBrightnessSupport, bool *>);
+      return (hwc2_function_pointer_t)GetDisplayBrightnessSupport;
     case HWC2::FunctionDescriptor::SetDisplayBrightness:
-      return ToHook<HWC2_PFN_SET_DISPLAY_BRIGHTNESS>(
-          DisplayHook<decltype(&HwcDisplay::SetDisplayBrightness),
-                      &HwcDisplay::SetDisplayBrightness, float>);
+      return (hwc2_function_pointer_t)SetDisplayBrightness;
 #endif /* __ANDROID_API__ > 28 */
 #if __ANDROID_API__ > 29
     case HWC2::FunctionDescriptor::GetDisplayConnectionType:
@@ -715,14 +779,9 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
                       hwc2_config_t, hwc_vsync_period_change_constraints_t *,
                       hwc_vsync_period_change_timeline_t *>);
     case HWC2::FunctionDescriptor::SetAutoLowLatencyMode:
-      return ToHook<HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE>(
-          DisplayHook<decltype(&HwcDisplay::SetAutoLowLatencyMode),
-                      &HwcDisplay::SetAutoLowLatencyMode, bool>);
+      return (hwc2_function_pointer_t)SetAutoLowLatencyMode;
     case HWC2::FunctionDescriptor::GetSupportedContentTypes:
-      return ToHook<HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES>(
-          DisplayHook<decltype(&HwcDisplay::GetSupportedContentTypes),
-                      &HwcDisplay::GetSupportedContentTypes, uint32_t *,
-                      uint32_t *>);
+      return (hwc2_function_pointer_t)GetSupportedContentTypes;
     case HWC2::FunctionDescriptor::SetContentType:
       return ToHook<HWC2_PFN_SET_CONTENT_TYPE>(
           DisplayHook<decltype(&HwcDisplay::SetContentType),

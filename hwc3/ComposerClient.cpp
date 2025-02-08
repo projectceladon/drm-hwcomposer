@@ -715,7 +715,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
   }
 
   if (command.acceptDisplayChanges) {
-    display->AcceptDisplayChanges();
+    display->AcceptValidatedComposition();
   }
 
   if (command.presentDisplay) {
@@ -1283,17 +1283,10 @@ ndk::ScopedAStatus ComposerClient::getPreferredBootDisplayConfig(
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
-ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t display_id,
-                                                         bool on) {
+ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t /*display_id*/,
+                                                         bool /*on*/) {
   DEBUG_FUNC();
-  const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
-  HwcDisplay* display = GetDisplay(display_id);
-  if (display == nullptr) {
-    return ToBinderStatus(hwc3::Error::kBadDisplay);
-  }
-
-  auto error = Hwc2toHwc3Error(display->SetAutoLowLatencyMode(on));
-  return ToBinderStatus(error);
+  return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setClientTargetSlotCount(

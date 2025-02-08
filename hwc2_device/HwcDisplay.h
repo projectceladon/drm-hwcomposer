@@ -122,23 +122,17 @@ class HwcDisplay {
   }
 
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
-  HWC2::Error AcceptDisplayChanges();
   HWC2::Error CreateLayer(hwc2_layer_t *layer);
   HWC2::Error DestroyLayer(hwc2_layer_t layer);
   HWC2::Error GetActiveConfig(hwc2_config_t *config) const;
   HWC2::Error GetChangedCompositionTypes(uint32_t *num_elements,
                                          hwc2_layer_t *layers, int32_t *types);
-  HWC2::Error GetClientTargetSupport(uint32_t width, uint32_t height,
-                                     int32_t format, int32_t dataspace);
   HWC2::Error GetColorModes(uint32_t *num_modes, int32_t *modes);
   HWC2::Error GetDisplayAttribute(hwc2_config_t config, int32_t attribute,
                                   int32_t *value);
   HWC2::Error LegacyGetDisplayConfigs(uint32_t *num_configs,
                                       hwc2_config_t *configs);
   HWC2::Error GetDisplayName(uint32_t *size, char *name);
-  HWC2::Error GetDisplayRequests(int32_t *display_requests,
-                                 uint32_t *num_elements, hwc2_layer_t *layers,
-                                 int32_t *layer_requests);
   HWC2::Error GetDisplayType(int32_t *type);
 #if __ANDROID_API__ > 27
   HWC2::Error GetRenderIntents(int32_t mode, uint32_t *outNumIntents,
@@ -151,8 +145,6 @@ class HwcDisplay {
                                            uint8_t *outData);
   HWC2::Error GetDisplayCapabilities(uint32_t *outNumCapabilities,
                                      uint32_t *outCapabilities);
-  HWC2::Error GetDisplayBrightnessSupport(bool *supported);
-  HWC2::Error SetDisplayBrightness(float);
 #endif
 #if __ANDROID_API__ > 29
   HWC2::Error GetDisplayConnectionType(uint32_t *outType);
@@ -161,16 +153,11 @@ class HwcDisplay {
       hwc2_config_t config,
       hwc_vsync_period_change_constraints_t *vsyncPeriodChangeConstraints,
       hwc_vsync_period_change_timeline_t *outTimeline);
-  HWC2::Error SetAutoLowLatencyMode(bool on);
-  HWC2::Error GetSupportedContentTypes(
-      uint32_t *outNumSupportedContentTypes,
-      const uint32_t *outSupportedContentTypes);
 
   HWC2::Error SetContentType(int32_t contentType);
 #endif
   HWC2::Error GetDisplayVsyncPeriod(uint32_t *outVsyncPeriod);
 
-  HWC2::Error GetDozeSupport(int32_t *support);
   HWC2::Error GetHdrCapabilities(uint32_t *num_types, int32_t *types,
                                  float *max_luminance,
                                  float *max_average_luminance,

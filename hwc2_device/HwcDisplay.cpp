@@ -501,12 +501,6 @@ HWC2::Error HwcDisplay::ChosePreferredConfig() {
   return SetActiveConfig(configs_.preferred_config_id);
 }
 
-HWC2::Error HwcDisplay::AcceptDisplayChanges() {
-  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_)
-    l.second.AcceptTypeChange();
-  return HWC2::Error::None;
-}
-
 HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
   layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(this));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
@@ -553,29 +547,6 @@ HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
   }
   if (!layers && !types)
     *num_elements = num_changes;
-  return HWC2::Error::None;
-}
-
-HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
-                                               int32_t /*format*/,
-                                               int32_t dataspace) {
-  if (IsInHeadlessMode()) {
-    return HWC2::Error::None;
-  }
-
-  auto min = pipeline_->device->GetMinResolution();
-  auto max = pipeline_->device->GetMaxResolution();
-
-  if (width < min.first || height < min.second)
-    return HWC2::Error::Unsupported;
-
-  if (width > max.first || height > max.second)
-    return HWC2::Error::Unsupported;
-
-  if (dataspace != HAL_DATASPACE_UNKNOWN)
-    return HWC2::Error::Unsupported;
-
-  // TODO(nobody): Validate format can be handled by either GL or planes
   return HWC2::Error::None;
 }
 
@@ -699,23 +670,8 @@ HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetDisplayRequests(int32_t * /*display_requests*/,
-                                           uint32_t *num_elements,
-                                           hwc2_layer_t * /*layers*/,
-                                           int32_t * /*layer_requests*/) {
-  // TODO(nobody): I think virtual display should request
-  //      HWC2_DISPLAY_REQUEST_WRITE_CLIENT_TARGET_TO_OUTPUT here
-  *num_elements = 0;
-  return HWC2::Error::None;
-}
-
 HWC2::Error HwcDisplay::GetDisplayType(int32_t *type) {
   *type = static_cast<int32_t>(type_);
-  return HWC2::Error::None;
-}
-
-HWC2::Error HwcDisplay::GetDozeSupport(int32_t *support) {
-  *support = 0;
   return HWC2::Error::None;
 }
 
@@ -1333,19 +1289,6 @@ HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::SetAutoLowLatencyMode(bool /*on*/) {
-  return HWC2::Error::Unsupported;
-}
-
-HWC2::Error HwcDisplay::GetSupportedContentTypes(
-    uint32_t *outNumSupportedContentTypes,
-    const uint32_t *outSupportedContentTypes) {
-  if (outSupportedContentTypes == nullptr)
-    *outNumSupportedContentTypes = 0;
-
-  return HWC2::Error::None;
-}
-
 HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
   /* Maps exactly to the content_type DRM connector property:
    * https://elixir.bootlin.com/linux/v6.11/source/include/uapi/drm/drm_mode.h#L107
@@ -1412,15 +1355,6 @@ HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
   }
 
   return HWC2::Error::None;
-}
-
-HWC2::Error HwcDisplay::GetDisplayBrightnessSupport(bool *supported) {
-  *supported = false;
-  return HWC2::Error::None;
-}
-
-HWC2::Error HwcDisplay::SetDisplayBrightness(float /* brightness */) {
-  return HWC2::Error::Unsupported;
 }
 
 #endif /* __ANDROID_API__ > 28 */
