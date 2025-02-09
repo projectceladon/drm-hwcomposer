@@ -21,13 +21,7 @@
 
 #include <cinttypes>
 
-#include <xf86drmMode.h>
-
-#include <hardware/gralloc.h>
 #include <ui/ColorSpace.h>
-#include <ui/GraphicBufferAllocator.h>
-#include <ui/GraphicBufferMapper.h>
-#include <ui/PixelFormat.h>
 
 #include "backend/Backend.h"
 #include "backend/BackendManager.h"
@@ -93,49 +87,6 @@ auto ToColorTransform(const std::array<float, 16> &color_transform_matrix) {
     }
   }
   return color_matrix;
-}
-
-// Allocate a black buffer that can be used for an initial modeset when there.
-// is no appropriate client buffer available to be used.
-// Caller must free the returned buffer with GraphicBufferAllocator::free.
-auto GetModesetBuffer(uint32_t width, uint32_t height) -> buffer_handle_t {
-  constexpr PixelFormat format = PIXEL_FORMAT_RGBA_8888;
-  constexpr uint64_t usage = GRALLOC_USAGE_SW_READ_OFTEN |
-                             GRALLOC_USAGE_SW_WRITE_OFTEN |
-                             GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_FB;
-
-  constexpr uint32_t layer_count = 1;
-  const std::string name = "drm-hwcomposer";
-
-  buffer_handle_t handle = nullptr;
-  uint32_t stride = 0;
-  status_t status = GraphicBufferAllocator::get().allocate(width, height,
-                                                           format, layer_count,
-                                                           usage, &handle,
-                                                           &stride, name);
-  if (status != OK) {
-    ALOGE("Failed to allocate modeset buffer.");
-    return nullptr;
-  }
-
-  void *data = nullptr;
-  Rect bounds = {0, 0, static_cast<int32_t>(width),
-                 static_cast<int32_t>(height)};
-  status = GraphicBufferMapper::get().lock(handle, usage, bounds, &data);
-  if (status != OK) {
-    ALOGE("Failed to map modeset buffer.");
-    GraphicBufferAllocator::get().free(handle);
-    return nullptr;
-  }
-
-  // Cast one of the multiplicands to ensure that the multiplication happens
-  // in a wider type (size_t).
-  const size_t buffer_size = static_cast<size_t>(height) * stride *
-                             bytesPerPixel(format);
-  memset(data, 0, buffer_size);
-  status = GraphicBufferMapper::get().unlock(handle);
-  ALOGW_IF(status != OK, "Failed to unmap buffer.");
-  return handle;
 }
 
 }  // namespace
@@ -258,18 +209,14 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
     modeset_layer_data = client_layer_.GetLayerData();
   } else {
     ALOGV("Allocate modeset buffer.");
-    buffer_handle_t modeset_buffer = GetModesetBuffer(width, height);
-    if (modeset_buffer != nullptr) {
+    auto modeset_buffer =  //
+        GetPipe().device->CreateBufferForModeset(width, height);
+    if (modeset_buffer) {
       auto modeset_layer = std::make_unique<HwcLayer>(this);
       HwcLayer::LayerProperties properties;
-      auto bi = BufferInfoGetter::GetInstance()->GetBoInfo(modeset_buffer);
-      if (!bi) {
-        ALOGE("Failed to get buffer info for modeset buffer.");
-        return ConfigError::kBadConfig;
-      }
       properties.slot_buffer = {
           .slot_id = 0,
-          .bi = bi,
+          .bi = modeset_buffer,
       };
       properties.active_slot = {
           .slot_id = 0,
@@ -279,7 +226,6 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
       modeset_layer->SetLayerProperties(properties);
       modeset_layer->PopulateLayerData();
       modeset_layer_data = modeset_layer->GetLayerData();
-      GraphicBufferAllocator::get().free(modeset_buffer);
     }
   }
 

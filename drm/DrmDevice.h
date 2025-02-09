@@ -18,11 +18,13 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <tuple>
 
 #include "DrmConnector.h"
 #include "DrmCrtc.h"
 #include "DrmEncoder.h"
+#include "bufferinfo/BufferInfo.h"
 #include "utils/fd.h"
 
 namespace android {
@@ -69,6 +71,9 @@ class DrmDevice {
   auto HasAddFb2ModifiersSupport() const {
     return HasAddFb2ModifiersSupport_;
   }
+
+  auto CreateBufferForModeset(uint32_t width, uint32_t height)
+      -> std::optional<BufferInfo>;
 
   auto &GetDrmFbImporter() {
     return *drm_fb_importer_;
