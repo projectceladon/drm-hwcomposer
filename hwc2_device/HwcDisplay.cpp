@@ -547,29 +547,6 @@ HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
   return HWC2::Error::None;
 }
 
-HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
-                                                   hwc2_layer_t *layers,
-                                                   int32_t *types) {
-  if (IsInHeadlessMode()) {
-    *num_elements = 0;
-    return HWC2::Error::None;
-  }
-
-  uint32_t num_changes = 0;
-  for (auto &l : layers_) {
-    if (l.second.IsTypeChanged()) {
-      if (layers && num_changes < *num_elements)
-        layers[num_changes] = l.first;
-      if (types && num_changes < *num_elements)
-        types[num_changes] = static_cast<int32_t>(l.second.GetValidatedType());
-      ++num_changes;
-    }
-  }
-  if (!layers && !types)
-    *num_elements = num_changes;
-  return HWC2::Error::None;
-}
-
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
   if (IsInHeadlessMode()) {
     *num_modes = 1;
@@ -1079,25 +1056,6 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
   }
   vsync_worker_->SetTimestampCallback(std::move(callback));
   return HWC2::Error::None;
-}
-
-HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
-                                        uint32_t *num_requests) {
-  if (IsInHeadlessMode()) {
-    *num_types = *num_requests = 0;
-    return HWC2::Error::None;
-  }
-
-  /* In current drm_hwc design in case previous frame layer was not validated as
-   * a CLIENT, it is used by display controller (Front buffer). We have to store
-   * this state to provide the CLIENT with the release fences for such buffers.
-   */
-  for (auto &l : layers_) {
-    l.second.SetPriorBufferScanOutFlag(l.second.GetValidatedType() !=
-                                       HWC2::Composition::Client);
-  }
-
-  return backend_->ValidateDisplay(this, num_types, num_requests);
 }
 
 std::vector<HwcLayer *> HwcDisplay::GetOrderLayersByZPos() {

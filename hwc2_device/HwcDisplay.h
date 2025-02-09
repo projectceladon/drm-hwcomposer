@@ -125,8 +125,6 @@ class HwcDisplay {
   HWC2::Error CreateLayer(hwc2_layer_t *layer);
   HWC2::Error DestroyLayer(hwc2_layer_t layer);
   HWC2::Error GetActiveConfig(hwc2_config_t *config) const;
-  HWC2::Error GetChangedCompositionTypes(uint32_t *num_elements,
-                                         hwc2_layer_t *layers, int32_t *types);
   HWC2::Error GetColorModes(uint32_t *num_modes, int32_t *modes);
   HWC2::Error GetDisplayAttribute(hwc2_config_t config, int32_t attribute,
                                   int32_t *value);
@@ -168,7 +166,6 @@ class HwcDisplay {
   HWC2::Error SetColorTransform(const float *matrix, int32_t hint);
   HWC2::Error SetPowerMode(int32_t mode);
   HWC2::Error SetVsyncEnabled(int32_t enabled);
-  HWC2::Error ValidateDisplay(uint32_t *num_types, uint32_t *num_requests);
   HwcLayer *get_layer(hwc2_layer_t layer) {
     auto it = layers_.find(layer);
     if (it == layers_.end())

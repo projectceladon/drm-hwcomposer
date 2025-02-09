@@ -52,6 +52,7 @@ static std::string GetFuncName(const char *pretty_function) {
 class Hwc2DeviceDisplay : public FrontendDisplayBase {
  public:
   std::vector<HwcDisplay::ReleaseFence> release_fences;
+  std::vector<HwcDisplay::ChangedLayer> changed_layers;
 };
 
 static auto GetHwc2DeviceDisplay(HwcDisplay &display)
@@ -408,6 +409,53 @@ static int32_t GetReleaseFences(hwc2_device_t *device, hwc2_display_t display,
   return static_cast<int32_t>(HWC2::Error::None);
 }
 
+static int32_t ValidateDisplay(hwc2_device_t *device, hwc2_display_t display,
+                               uint32_t *out_num_types,
+                               uint32_t *out_num_requests) {
+  ALOGV("ValidateDisplay");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  auto hwc2display = GetHwc2DeviceDisplay(*idisplay);
+
+  hwc2display->changed_layers = idisplay->ValidateStagedComposition();
+
+  *out_num_types = hwc2display->changed_layers.size();
+  *out_num_requests = 0;
+
+  return 0;
+}
+
+static int32_t GetChangedCompositionTypes(hwc2_device_t *device,
+                                          hwc2_display_t display,
+                                          uint32_t *out_num_elements,
+                                          hwc2_layer_t *out_layers,
+                                          int32_t *out_types) {
+  ALOGV("GetChangedCompositionTypes");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  auto hwc2display = GetHwc2DeviceDisplay(*idisplay);
+
+  if (*out_num_elements < hwc2display->changed_layers.size()) {
+    ALOGW("Overflow num_elements %d/%zu", *out_num_elements,
+          hwc2display->changed_layers.size());
+    return static_cast<int32_t>(HWC2::Error::NoResources);
+  }
+
+  for (size_t i = 0; i < hwc2display->changed_layers.size(); ++i) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic):
+    out_layers[i] = hwc2display->changed_layers[i].first;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic):
+    out_types[i] = static_cast<int32_t>(hwc2display->changed_layers[i].second);
+  }
+
+  *out_num_elements = hwc2display->changed_layers.size();
+  hwc2display->changed_layers.clear();
+
+  return static_cast<int32_t>(HWC2::Error::None);
+}
+
 static int32_t PresentDisplay(hwc2_device_t *device, hwc2_display_t display,
                               int32_t *out_release_fence) {
   ALOGV("PresentDisplay");
@@ -727,10 +775,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
           DisplayHook<decltype(&HwcDisplay::GetActiveConfig),
                       &HwcDisplay::GetActiveConfig, hwc2_config_t *>);
     case HWC2::FunctionDescriptor::GetChangedCompositionTypes:
-      return ToHook<HWC2_PFN_GET_CHANGED_COMPOSITION_TYPES>(
-          DisplayHook<decltype(&HwcDisplay::GetChangedCompositionTypes),
-                      &HwcDisplay::GetChangedCompositionTypes, uint32_t *,
-                      hwc2_layer_t *, int32_t *>);
+      return (hwc2_function_pointer_t)GetChangedCompositionTypes;
     case HWC2::FunctionDescriptor::GetClientTargetSupport:
       return (hwc2_function_pointer_t)GetClientTargetSupport;
     case HWC2::FunctionDescriptor::GetColorModes:
@@ -793,9 +838,7 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
           DisplayHook<decltype(&HwcDisplay::SetVsyncEnabled),
                       &HwcDisplay::SetVsyncEnabled, int32_t>);
     case HWC2::FunctionDescriptor::ValidateDisplay:
-      return ToHook<HWC2_PFN_VALIDATE_DISPLAY>(
-          DisplayHook<decltype(&HwcDisplay::ValidateDisplay),
-                      &HwcDisplay::ValidateDisplay, uint32_t *, uint32_t *>);
+      return (hwc2_function_pointer_t)ValidateDisplay;
 #if __ANDROID_API__ > 27
     case HWC2::FunctionDescriptor::GetRenderIntents:
       return ToHook<HWC2_PFN_GET_RENDER_INTENTS>(
