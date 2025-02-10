@@ -23,6 +23,7 @@
 #include "DrmDisplayPipeline.h"
 #include "DrmFbImporter.h"
 #include "UEventListener.h"
+#include "hwc2_device/hwcservice.h"
 
 namespace android {
 class HwcDisplay;
@@ -64,6 +65,7 @@ class ResourceManager {
   void UpdateFrontendDisplays();
   void DetachAllFrontendDisplays();
   void ReloadNode();
+  void HwcServiceThread();
 
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
@@ -81,6 +83,8 @@ class ResourceManager {
   bool initialized_{};
   int card_num_ = 0;
   bool reloaded_{};
+  android::HwcService hwcService_;
+  std::thread pt_;
 };
 }  // namespace android
 

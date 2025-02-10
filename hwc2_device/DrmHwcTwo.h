@@ -73,6 +73,14 @@ class DrmHwcTwo : public PipelineToFrontendBindingInterface {
   void SendVsyncPeriodTimingChangedEventToClient(hwc2_display_t displayid,
                                                  int64_t timestamp) const;
 
+  void EnableHDCPSessionForDisplay(uint32_t connector,
+                                   EHwcsContentType content_type);
+
+  void EnableHDCPSessionForAllDisplays(EHwcsContentType content_type);
+
+  void DisableHDCPSessionForDisplay(uint32_t connector);
+
+  void DisableHDCPSessionForAllDisplays();
  private:
   void SendHotplugEventToClient(hwc2_display_t displayid, bool connected);
 

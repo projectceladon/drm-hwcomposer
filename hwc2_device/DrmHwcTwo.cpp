@@ -248,6 +248,53 @@ void DrmHwcTwo::SendHotplugEventToClient(hwc2_display_t displayid,
   }
 }
 
+void DrmHwcTwo::EnableHDCPSessionForDisplay(uint32_t connector,
+                                         EHwcsContentType content_type) {
+  HWCContentType type = kCONTENT_TYPE0;
+
+  if (content_type == HWCS_CP_CONTENT_TYPE1) {
+    type = kCONTENT_TYPE1;
+  }
+
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    if (displays_[i]-> GetPipe().connector->Get()->GetId()== connector) {
+      displays_[i]->GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kDesired, type);
+    }
+  }
+}
+
+void DrmHwcTwo::EnableHDCPSessionForAllDisplays(EHwcsContentType content_type) {
+  HWCContentType type = kCONTENT_TYPE0;
+
+  if (content_type == HWCS_CP_CONTENT_TYPE1) {
+    type = kCONTENT_TYPE1;
+  }
+
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    displays_[i]->GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kDesired, type);
+  }
+}
+
+void DrmHwcTwo::DisableHDCPSessionForDisplay(uint32_t connector) {
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    if (displays_[i]->GetPipe().connector->Get()->GetId() == connector) {
+      displays_[i]->GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kUnDesired,
+                                    HWCContentType::kInvalid);
+    }
+  }
+}
+
+void DrmHwcTwo::DisableHDCPSessionForAllDisplays() {
+  size_t size = displays_.size();
+  for (size_t i = 0; i < size; i++) {
+    displays_[i]->GetPipe().atomic_state_manager->SetHDCPState(HWCContentProtection::kUnDesired,
+                                  HWCContentType::kInvalid);
+  }
+}
+
 void DrmHwcTwo::SendVsyncEventToClient(
     hwc2_display_t displayid, int64_t timestamp,
     [[maybe_unused]] uint32_t vsync_period) const {
