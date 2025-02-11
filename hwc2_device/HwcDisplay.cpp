@@ -580,6 +580,13 @@ HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
 }
 
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
+  if (IsInHeadlessMode()) {
+    *num_modes = 1;
+    if (modes)
+      modes[0] = HAL_COLOR_MODE_NATIVE;
+    return HWC2::Error::None;
+  }
+
   if (!modes) {
     std::vector<Colormode> temp_modes;
     GetEdid()->GetColorModes(temp_modes);
@@ -716,6 +723,11 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
                                            float *max_luminance,
                                            float *max_average_luminance,
                                            float *min_luminance) {
+  if (IsInHeadlessMode()) {
+    *num_types = 0;
+    return HWC2::Error::None;
+  }
+
   if (!types) {
     std::vector<ui::Hdr> temp_types;
     float lums[3] = {0.F};
