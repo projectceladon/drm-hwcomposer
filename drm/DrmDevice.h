@@ -27,7 +27,7 @@
 #include "DrmFbImporter.h"
 #include "utils/UniqueFd.h"
 
-#define DRM_FORMAT_NV12_Y_TILED_INTEL fourcc_code('9', '9', '9', '6')
+#define DRM_FORMAT_NV12_INTEL fourcc_code('9', '9', '9', '6')
 namespace android {
 
 class DrmFbImporter;

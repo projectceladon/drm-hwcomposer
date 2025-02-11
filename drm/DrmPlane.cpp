@@ -195,7 +195,7 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
 
 bool DrmPlane::IsFormatSupported(uint32_t format) const {
   return std::find(std::begin(formats_), std::end(formats_), format) !=
-         std::end(formats_) || format == DRM_FORMAT_NV12_Y_TILED_INTEL;
+         std::end(formats_) || format == DRM_FORMAT_NV12_INTEL;
 }
 
 bool DrmPlane::IsResolutionSupported(hwc_rect_t display_frame) {
