@@ -189,7 +189,7 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
     return false;
   }
 
-  if (!alpha_property_ && layer->pi.alpha != UINT16_MAX) {
+  if (!alpha_property_ && layer->pi.alpha != kAlphaOpaque) {
     ALOGV("Alpha is not supported on plane %d", GetId());
     return false;
   }
