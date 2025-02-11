@@ -102,7 +102,7 @@ auto DrmFbIdHandle::CreateInstance(BufferInfo *bo, GemHandle first_gem_handle,
                         local->gem_handles_.data(), &bo->pitches[0],
                         &bo->offsets[0], &local->fb_id_, 0);
   } else {
-    if (bo->format == DRM_FORMAT_NV12_Y_TILED_INTEL)
+    if (bo->format == DRM_FORMAT_NV12_INTEL)
       bo->format = DRM_FORMAT_NV12;
     err = drmModeAddFB2WithModifiers(drm.GetFd(), bo->width, bo->height,
                                      bo->format, local->gem_handles_.data(),
