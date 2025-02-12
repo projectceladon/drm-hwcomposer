@@ -713,10 +713,12 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     display->SetColorTransformMatrix(ctm.value());
   }
 
+  bool shall_present_now = false;
+
+  DisplayChanges changes{};
   if (command.validateDisplay || command.presentOrValidateDisplay) {
     std::vector<HwcDisplay::ChangedLayer>
         changed_layers = display->ValidateStagedComposition();
-    DisplayChanges changes{};
     for (auto [layer_id, composition_type] : changed_layers) {
       changes.AddLayerCompositionChange(command.display, layer_id,
                                         static_cast<Composition>(
@@ -727,21 +729,23 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     hwc3_display->must_validate = false;
 
     // TODO: DisplayRequests are not implemented.
+  }
 
-    /* TODO: Add check if it's possible to skip display validation for
-     * presentOrValidateDisplay */
-    if (command.presentOrValidateDisplay) {
-      cmd_result_writer_
-          ->AddPresentOrValidateResult(display_id,
-                                       PresentOrValidate::Result::Validated);
+  if (command.presentOrValidateDisplay) {
+    auto result = PresentOrValidate::Result::Validated;
+    if (!display->NeedsClientLayerUpdate() && !changes.HasAnyChanges()) {
+      ALOGV("Skipping SF roundtrip for display %" PRId64, display_id);
+      result = PresentOrValidate::Result::Presented;
+      shall_present_now = true;
     }
+    cmd_result_writer_->AddPresentOrValidateResult(display_id, result);
   }
 
   if (command.acceptDisplayChanges) {
     display->AcceptValidatedComposition();
   }
 
-  if (command.presentDisplay) {
+  if (command.presentDisplay || shall_present_now) {
     auto hwc3_display = DrmHwcThree::GetHwc3Display(*display);
     if (hwc3_display->must_validate) {
       cmd_result_writer_->AddError(hwc3::Error::kNotValidated);

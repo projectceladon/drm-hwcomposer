@@ -1279,4 +1279,12 @@ void HwcDisplay::set_backend(std::unique_ptr<Backend> backend) {
   backend_ = std::move(backend);
 }
 
+bool HwcDisplay::NeedsClientLayerUpdate() const {
+  return std::any_of(layers_.begin(), layers_.end(), [](const auto &pair) {
+    const auto &layer = pair.second;
+    return layer.GetSfType() == HWC2::Composition::Client ||
+           layer.GetValidatedType() == HWC2::Composition::Client;
+  });
+}
+
 }  // namespace android

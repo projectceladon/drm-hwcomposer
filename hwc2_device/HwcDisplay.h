@@ -247,6 +247,8 @@ class HwcDisplay {
 
   auto getDisplayPhysicalOrientation() -> std::optional<PanelOrientation>;
 
+  bool NeedsClientLayerUpdate() const;
+
  private:
   AtomicCommitArgs CreateModesetCommit(
       const HwcDisplayConfig *config,
