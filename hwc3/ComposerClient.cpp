@@ -563,6 +563,24 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
     return;
   }
 
+#if __ANDROID_API__ >= 35
+  auto batch_command = command.layerLifecycleBatchCommandType;
+  if (batch_command == LayerLifecycleBatchCommandType::CREATE) {
+    if (!display->CreateLayer(command.layer)) {
+      cmd_result_writer_->AddError(hwc3::Error::kBadLayer);
+      return;
+    }
+  }
+
+  if (batch_command == LayerLifecycleBatchCommandType::DESTROY) {
+    if (!display->DestroyLayer(command.layer)) {
+      cmd_result_writer_->AddError(hwc3::Error::kBadLayer);
+    }
+
+    return;
+  }
+#endif
+
   auto* layer = display->get_layer(command.layer);
   if (layer == nullptr) {
     cmd_result_writer_->AddError(hwc3::Error::kBadLayer);

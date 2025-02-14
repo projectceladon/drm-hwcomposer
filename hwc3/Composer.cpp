@@ -79,6 +79,10 @@ ndk::ScopedAStatus Composer::getCapabilities(std::vector<Capability>* caps) {
     caps->emplace_back(Capability::PRESENT_FENCE_IS_NOT_RELIABLE);
   }
 
+#if __ANDROID_API__ >= 35
+  caps->emplace_back(Capability::LAYER_LIFECYCLE_BATCH_COMMAND);
+#endif
+
   return ndk::ScopedAStatus::ok();
 }
 
