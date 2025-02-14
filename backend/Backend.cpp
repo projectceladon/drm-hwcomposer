@@ -111,7 +111,6 @@ std::tuple<int, size_t> Backend::GetClientLayers(
         status = false;
     }
     if (!status) {
-      ALOGE("status is abnormal");
       return GetExtraClientRange(display, layers, client_start, client_size);
     }
     return GetExtraClientRange2(display, layers, client_start, client_size, device_start, device_size);
@@ -234,7 +233,6 @@ std::tuple<int, int> Backend::GetExtraClientRange2(
     return GetExtraClientRange(display, layers, client_start, client_size);
   } else if (avail_planes == device_size) {
     if (device_start != 0 && (device_start +  device_size) != layers.size()) {
-      ALOGE("status is abnormal");
       return GetExtraClientRange(display, layers, client_start, client_size);
     }
 
@@ -248,7 +246,6 @@ std::tuple<int, int> Backend::GetExtraClientRange2(
       int prepend = device_start;
       int append = layers.size() - (device_start + device_size);
       if (std::min(prepend, append) > extra_device) {
-        ALOGE("status is abnormal");
         return GetExtraClientRange(display, layers, client_start, client_size);
       }
 
@@ -266,7 +263,6 @@ std::tuple<int, int> Backend::GetExtraClientRange2(
         int midpend = client_start - (device_start + device_size);
         int append = layers.size() - (client_start + client_size);
         if (prepend > extra_device) {
-          ALOGE("status is abnormal");
           return GetExtraClientRange(display, layers, client_start, client_size);
         }
         int remain = extra_device - prepend;
@@ -287,7 +283,6 @@ std::tuple<int, int> Backend::GetExtraClientRange2(
         int midpend = device_start - (client_start + client_size);
         int append = layers.size() - (device_start + device_size);
         if (append > extra_device) {
-          ALOGE("status is abnormal");
           return GetExtraClientRange(display, layers, client_start, client_size);
         }
         int remain = extra_device - append;
