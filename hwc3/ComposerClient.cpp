@@ -1283,9 +1283,15 @@ ndk::ScopedAStatus ComposerClient::getPreferredBootDisplayConfig(
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
-ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t /*display_id*/,
+ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t display_id,
                                                          bool /*on*/) {
   DEBUG_FUNC();
+  const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
+  HwcDisplay* display = GetDisplay(display_id);
+  if (display == nullptr) {
+    return ToBinderStatus(hwc3::Error::kBadDisplay);
+  }
+
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
