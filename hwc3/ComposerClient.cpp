@@ -494,13 +494,16 @@ ndk::ScopedAStatus ComposerClient::createLayer(int64_t display_id,
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  hwc2_layer_t hwc2_layer_id = 0;
-  auto err = Hwc2toHwc3Error(display->CreateLayer(&hwc2_layer_id));
-  if (err != hwc3::Error::kNone) {
-    return ToBinderStatus(err);
+  auto hwc3display = DrmHwcThree::GetHwc3Display(*display);
+
+  if (!display->CreateLayer(hwc3display->next_layer_id)) {
+    return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  *layer_id = Hwc2LayerToHwc3(hwc2_layer_id);
+  *layer_id = hwc3display->next_layer_id;
+
+  hwc3display->next_layer_id++;
+
   return ndk::ScopedAStatus::ok();
 }
 
@@ -534,12 +537,11 @@ ndk::ScopedAStatus ComposerClient::destroyLayer(int64_t display_id,
     return ToBinderStatus(hwc3::Error::kBadDisplay);
   }
 
-  auto err = Hwc2toHwc3Error(display->DestroyLayer(Hwc3LayerToHwc2(layer_id)));
-  if (err != hwc3::Error::kNone) {
-    return ToBinderStatus(err);
+  if (!display->DestroyLayer(layer_id)) {
+    return ToBinderStatus(hwc3::Error::kBadLayer);
   }
 
-  return ToBinderStatus(err);
+  return ToBinderStatus(hwc3::Error::kNone);
 }
 
 ndk::ScopedAStatus ComposerClient::destroyVirtualDisplay(int64_t display_id) {
@@ -698,8 +700,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
         changed_layers = display->ValidateStagedComposition();
     DisplayChanges changes{};
     for (auto [layer_id, composition_type] : changed_layers) {
-      changes.AddLayerCompositionChange(command.display,
-                                        Hwc2LayerToHwc3(layer_id),
+      changes.AddLayerCompositionChange(command.display, layer_id,
                                         static_cast<Composition>(
                                             composition_type));
     }
@@ -743,8 +744,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
 
     std::unordered_map<int64_t, unique_fd> hal_release_fences;
     for (const auto& [layer_id, release_fence] : release_fences) {
-      hal_release_fences[Hwc2LayerToHwc3(layer_id)] =  //
-          unique_fd(::android::DupFd(release_fence));
+      hal_release_fences[layer_id] = unique_fd(::android::DupFd(release_fence));
     }
     cmd_result_writer_->AddReleaseFence(display_id, hal_release_fences);
   }

@@ -30,6 +30,8 @@ namespace android {
 
 class DrmFbIdHandle;
 
+using ILayerId = int64_t;
+
 /* Rotation is defined in the clockwise direction */
 /* The flip is done before rotation */
 struct LayerTransform {

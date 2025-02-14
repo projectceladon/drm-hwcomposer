@@ -26,6 +26,8 @@ namespace aidl::android::hardware::graphics::composer3::impl {
 class Hwc3Display : public ::android::FrontendDisplayBase {
  public:
   bool must_validate = false;
+
+  int64_t next_layer_id = 1;
 };
 
 class DrmHwcThree : public ::android::DrmHwc {

@@ -53,6 +53,8 @@ class Hwc2DeviceDisplay : public FrontendDisplayBase {
  public:
   std::vector<HwcDisplay::ReleaseFence> release_fences;
   std::vector<HwcDisplay::ChangedLayer> changed_layers;
+
+  int64_t next_layer_id = 1;
 };
 
 static auto GetHwc2DeviceDisplay(HwcDisplay &display)
@@ -267,6 +269,37 @@ static BufferSampleRange Hwc2ToSampleRange(int32_t dataspace) {
 }
 
 /* Display functions */
+static int32_t CreateLayer(hwc2_device_t *device, hwc2_display_t display,
+                           hwc2_layer_t *out_layer) {
+  ALOGV("CreateLayer");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  auto hwc2display = GetHwc2DeviceDisplay(*idisplay);
+
+  if (!idisplay->CreateLayer(hwc2display->next_layer_id)) {
+    return static_cast<int32_t>(HWC2::Error::BadDisplay);
+  }
+
+  *out_layer = (hwc2_layer_t)hwc2display->next_layer_id;
+  hwc2display->next_layer_id++;
+
+  return 0;
+}
+
+static int32_t DestroyLayer(hwc2_device_t *device, hwc2_display_t display,
+                            hwc2_layer_t layer) {
+  ALOGV("DestroyLayer");
+  LOCK_COMPOSER(device);
+  GET_DISPLAY(display);
+
+  if (!idisplay->DestroyLayer((ILayerId)layer)) {
+    return static_cast<int32_t>(HWC2::Error::BadLayer);
+  }
+
+  return 0;
+}
+
 static int32_t GetDisplayRequests(hwc2_device_t * /*device*/,
                                   hwc2_display_t /*display*/,
                                   int32_t * /* out_display_requests */,
@@ -763,13 +796,9 @@ static hwc2_function_pointer_t HookDevGetFunction(struct hwc2_device * /*dev*/,
     case HWC2::FunctionDescriptor::AcceptDisplayChanges:
       return (hwc2_function_pointer_t)AcceptDisplayChanges;
     case HWC2::FunctionDescriptor::CreateLayer:
-      return ToHook<HWC2_PFN_CREATE_LAYER>(
-          DisplayHook<decltype(&HwcDisplay::CreateLayer),
-                      &HwcDisplay::CreateLayer, hwc2_layer_t *>);
+      return (hwc2_function_pointer_t)CreateLayer;
     case HWC2::FunctionDescriptor::DestroyLayer:
-      return ToHook<HWC2_PFN_DESTROY_LAYER>(
-          DisplayHook<decltype(&HwcDisplay::DestroyLayer),
-                      &HwcDisplay::DestroyLayer, hwc2_layer_t>);
+      return (hwc2_function_pointer_t)DestroyLayer;
     case HWC2::FunctionDescriptor::GetActiveConfig:
       return ToHook<HWC2_PFN_GET_ACTIVE_CONFIG>(
           DisplayHook<decltype(&HwcDisplay::GetActiveConfig),

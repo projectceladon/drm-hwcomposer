@@ -101,7 +101,7 @@ class HwcDisplay {
   // To be called after SetDisplayProperties. Returns an empty vector if the
   // requested layers have been validated, otherwise the vector describes
   // the requested composition type changes.
-  using ChangedLayer = std::pair<hwc2_layer_t, HWC2::Composition>;
+  using ChangedLayer = std::pair<ILayerId, HWC2::Composition>;
   auto ValidateStagedComposition() -> std::vector<ChangedLayer>;
 
   // Mark previously validated properties as ready to present.
@@ -110,7 +110,7 @@ class HwcDisplay {
   // Present previously staged properties, and return fences to indicate when
   // the new content has been presented, and when the previous buffers have
   // been released.
-  using ReleaseFence = std::pair<hwc2_layer_t, SharedFd>;
+  using ReleaseFence = std::pair<ILayerId, SharedFd>;
   auto PresentStagedComposition(SharedFd &out_present_fence,
                                 std::vector<ReleaseFence> &out_release_fences)
       -> bool;
@@ -123,9 +123,10 @@ class HwcDisplay {
     frontend_private_data_ = std::move(data);
   }
 
+  auto CreateLayer(ILayerId new_layer_id) -> bool;
+  auto DestroyLayer(ILayerId layer_id) -> bool;
+
   // HWC2 Hooks - these should not be used outside of the hwc2 device.
-  HWC2::Error CreateLayer(hwc2_layer_t *layer);
-  HWC2::Error DestroyLayer(hwc2_layer_t layer);
   HWC2::Error GetActiveConfig(hwc2_config_t *config) const;
   HWC2::Error GetColorModes(uint32_t *num_modes, int32_t *modes);
   HWC2::Error GetDisplayAttribute(hwc2_config_t config, int32_t attribute,
@@ -168,7 +169,7 @@ class HwcDisplay {
   HWC2::Error SetColorTransform(const float *matrix, int32_t hint);
   HWC2::Error SetPowerMode(int32_t mode);
   HWC2::Error SetVsyncEnabled(int32_t enabled);
-  HwcLayer *get_layer(hwc2_layer_t layer) {
+  HwcLayer *get_layer(ILayerId layer) {
     auto it = layers_.find(layer);
     if (it == layers_.end())
       return nullptr;
@@ -201,7 +202,7 @@ class HwcDisplay {
     return hwc_;
   }
 
-  std::map<hwc2_layer_t, HwcLayer> &layers() {
+  auto layers() -> std::map<ILayerId, HwcLayer> & {
     return layers_;
   }
 
@@ -269,9 +270,7 @@ class HwcDisplay {
   const hwc2_display_t handle_;
   HWC2::DisplayType type_;
 
-  uint32_t layer_idx_{};
-
-  std::map<hwc2_layer_t, HwcLayer> layers_;
+  std::map<ILayerId, HwcLayer> layers_;
   HwcLayer client_layer_;
   std::unique_ptr<HwcLayer> writeback_layer_;
   uint16_t virtual_disp_width_{};

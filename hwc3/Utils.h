@@ -57,22 +57,12 @@ inline ndk::ScopedAStatus ToBinderStatus(HWC2::Error error) {
   return ToBinderStatus(Hwc2toHwc3Error(error));
 }
 
-// ID conversion. HWC2 uses typedef'd unsigned integer types while HWC3 uses
-// signed integer types. static_cast in between these.
-inline int64_t Hwc2LayerToHwc3(hwc2_layer_t layer) {
-  return static_cast<int64_t>(layer);
-}
-
 inline int64_t Hwc2DisplayToHwc3(hwc2_display_t display) {
   return static_cast<int64_t>(display);
 }
 
 inline int32_t Hwc2ConfigIdToHwc3(hwc2_config_t config_id) {
   return static_cast<int32_t>(config_id);
-}
-
-inline hwc2_layer_t Hwc3LayerToHwc2(int64_t layer) {
-  return static_cast<hwc2_layer_t>(layer);
 }
 
 inline hwc2_display_t Hwc3DisplayToHwc2(int64_t display) {

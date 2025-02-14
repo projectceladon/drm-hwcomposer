@@ -330,8 +330,8 @@ auto HwcDisplay::GetDisplayBoundsMm() -> std::pair<int32_t, int32_t> {
 }
 
 auto HwcDisplay::AcceptValidatedComposition() -> void {
-  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
-    l.second.AcceptTypeChange();
+  for (auto &[_, layer] : layers_) {
+    layer.AcceptTypeChange();
   }
 }
 
@@ -480,20 +480,18 @@ HWC2::Error HwcDisplay::ChosePreferredConfig() {
   return SetActiveConfig(configs_.preferred_config_id);
 }
 
-HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(this));
-  *layer = static_cast<hwc2_layer_t>(layer_idx_);
-  ++layer_idx_;
-  return HWC2::Error::None;
+auto HwcDisplay::CreateLayer(ILayerId new_layer_id) -> bool {
+  if (layers_.count(new_layer_id) > 0)
+    return false;
+
+  layers_.emplace(new_layer_id, HwcLayer(this));
+
+  return true;
 }
 
-HWC2::Error HwcDisplay::DestroyLayer(hwc2_layer_t layer) {
-  if (!get_layer(layer)) {
-    return HWC2::Error::BadLayer;
-  }
-
-  layers_.erase(layer);
-  return HWC2::Error::None;
+auto HwcDisplay::DestroyLayer(ILayerId layer_id) -> bool {
+  auto count = layers_.erase(layer_id);
+  return count != 0;
 }
 
 HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
@@ -742,15 +740,15 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
   std::map<uint32_t, HwcLayer *> z_map;
-  for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
-    switch (l.second.GetValidatedType()) {
+  for (auto &[_, layer] : layers_) {
+    switch (layer.GetValidatedType()) {
       case HWC2::Composition::Device:
-        z_map.emplace(l.second.GetZOrder(), &l.second);
+        z_map.emplace(layer.GetZOrder(), &layer);
         break;
       case HWC2::Composition::Client:
         // Place it at the z_order of the lowest client layer
         use_client_layer = true;
-        client_z_order = std::min(client_z_order, l.second.GetZOrder());
+        client_z_order = std::min(client_z_order, layer.GetZOrder());
         break;
       default:
         continue;
