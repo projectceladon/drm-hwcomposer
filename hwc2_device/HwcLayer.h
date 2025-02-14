@@ -21,7 +21,9 @@
 
 #include "bufferinfo/BufferInfoGetter.h"
 #include "compositor/LayerData.h"
-
+#include "va/varenderer.h"
+#include <cros_gralloc_helpers.h>
+#include <i915_private_android_types.h>
 namespace android {
 
 class HwcDisplay;
@@ -42,6 +44,12 @@ class HwcLayer {
   }
   void SetValidatedType(HWC2::Composition type) {
     validated_type_ = type;
+  }
+  void SetUseVPPCompose(bool use_vpp_compose) {
+    use_vpp_compose_ = use_vpp_compose;
+  }
+  bool GetUseVPPCompose() {
+    return use_vpp_compose_;
   }
   bool IsTypeChanged() const {
     return sf_type_ != validated_type_;
@@ -86,7 +94,7 @@ class HwcLayer {
                                      const int32_t *keys,
                                      const float *metadata);
 
- private:
+ protected:
   // sf_type_ stores the initial type given to us by surfaceflinger,
   // validated_type_ stores the type after running ValidateDisplay
   HWC2::Composition sf_type_ = HWC2::Composition::Invalid;
@@ -125,7 +133,7 @@ class HwcLayer {
     return !bi_get_failed_ && !fb_import_failed_ && buffer_handle_ != nullptr;
   }
 
- private:
+ protected:
   void ImportFb();
   bool bi_get_failed_{};
   bool fb_import_failed_{};
@@ -134,7 +142,7 @@ class HwcLayer {
  public:
   void SwChainClearCache();
 
- private:
+ protected:
   struct SwapChainElement {
     std::optional<BufferInfo> bi;
     std::shared_ptr<DrmFbIdHandle> fb;
@@ -153,8 +161,26 @@ class HwcLayer {
   // name to "p2p" via DMA_BUF_SET_NAME ioctl. The name acts as a hint in the
   // KMD for local memory sharing.
   bool allow_p2p_ = false;
+  bool use_vpp_compose_ = false;
 };
 
+class HwcVaLayer : public HwcLayer{
+public:
+  explicit HwcVaLayer(HwcDisplay *parent_display);
+
+  void addVaLayerMapData(int zorder, HwcLayer* layer){
+    va_z_map.emplace(std::make_pair(zorder, layer));
+  }
+  std::map<uint32_t, HwcLayer *, std::greater<int>>& getVaLayerMapData(){
+    return va_z_map;
+  }
+  void vaPopulateLayerData(bool test);
+private:
+  void vaImportFb();
+private:
+  std::map<uint32_t, HwcLayer *, std::greater<int>> va_z_map;
+  std::unique_ptr<VARenderer> media_renderer_ = nullptr;
+};
 }  // namespace android
 
 #endif

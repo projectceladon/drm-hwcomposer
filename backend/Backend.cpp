@@ -52,18 +52,6 @@ HWC2::Error Backend::ValidateDisplay(HwcDisplay *display, uint32_t *num_types,
     std::tie(client_start, client_size) = GetClientLayers(display, layers);
 
     MarkValidated(layers, client_start, client_size);
-
-    bool testing_needed = !(client_start == 0 && client_size == layers.size());
-
-    AtomicCommitArgs a_args = {.test_only = true};
-
-    if (testing_needed &&
-        display->CreateComposition(a_args) != HWC2::Error::None) {
-      ++display->total_stats().failed_kms_validate_;
-      client_start = 0;
-      client_size = layers.size();
-      MarkValidated(layers, 0, client_size);
-    }
   }
 
   *num_types = client_size;
@@ -80,43 +68,15 @@ std::tuple<int, size_t> Backend::GetClientLayers(
   int client_start = -1;
   size_t client_size = 0;
 
-  int device_start = -1;
-  size_t device_size = 0;
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
     if (IsClientLayer(display, layers[z_order])) {
       if (client_start < 0)
         client_start = (int)z_order;
       client_size = (z_order - client_start) + 1;
     }
-    if (IsVideoLayer(layers[z_order])) {
-      if (device_start < 0)
-        device_start = (int)z_order;
-      device_size = (z_order - device_start) + 1;
-    }
-  }
-  if (device_size == 0)
-    return GetExtraClientRange(display, layers, client_start, client_size);
-  else {
-    bool status = true;
-    MarkValidated(layers, client_start, client_size);
-    for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
-      if (z_order >= client_start &&
-          z_order <= (client_start + client_size - 1) &&
-          IsVideoLayer(layers[z_order]))
-        status = false;
-
-      if (z_order >= device_start &&
-          z_order <= (device_start + device_size - 1) &&
-          layers[z_order]->GetValidatedType() == HWC2::Composition::Client)
-        status = false;
-    }
-    if (!status) {
-      ALOGE("status is abnormal");
-      return GetExtraClientRange(display, layers, client_start, client_size);
-    }
-    return GetExtraClientRange2(display, layers, client_start, client_size, device_start, device_size);
   }
 
+  return std::make_tuple(client_start, client_size);
 }
 
 bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
@@ -155,10 +115,13 @@ uint32_t Backend::CalcPixOps(const std::vector<HwcLayer *> &layers,
 void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
                             size_t client_first_z, size_t client_size) {
   for (size_t z_order = 0; z_order < layers.size(); ++z_order) {
-    if (z_order >= client_first_z && z_order < client_first_z + client_size)
+    if (z_order >= client_first_z && z_order < client_first_z + client_size) {
       layers[z_order]->SetValidatedType(HWC2::Composition::Client);
-    else
+      layers[z_order]->SetUseVPPCompose(false);
+    } else {
       layers[z_order]->SetValidatedType(HWC2::Composition::Device);
+      layers[z_order]->SetUseVPPCompose(true);
+    }
   }
 }
 
