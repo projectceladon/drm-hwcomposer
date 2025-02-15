@@ -35,13 +35,13 @@
 namespace android {
 
 auto DrmDevice::CreateInstance(std::string const &path,
-                               ResourceManager *res_man)
+                               ResourceManager *res_man, uint32_t index)
     -> std::unique_ptr<DrmDevice> {
   if (!IsKMSDev(path.c_str())) {
     return {};
   }
 
-  auto device = std::unique_ptr<DrmDevice>(new DrmDevice(res_man));
+  auto device = std::unique_ptr<DrmDevice>(new DrmDevice(res_man, index));
 
   if (device->Init(path.c_str()) != 0) {
     return {};
@@ -50,7 +50,8 @@ auto DrmDevice::CreateInstance(std::string const &path,
   return device;
 }
 
-DrmDevice::DrmDevice(ResourceManager *res_man) : res_man_(res_man) {
+DrmDevice::DrmDevice(ResourceManager *res_man, uint32_t index)
+    : index_in_dev_array_(index), res_man_(res_man) {
   drm_fb_importer_ = std::make_unique<DrmFbImporter>(*this);
 }
 

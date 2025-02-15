@@ -37,11 +37,15 @@ class DrmDevice {
  public:
   ~DrmDevice() = default;
 
-  static auto CreateInstance(std::string const &path, ResourceManager *res_man)
-      -> std::unique_ptr<DrmDevice>;
+  static auto CreateInstance(std::string const &path, ResourceManager *res_man,
+                             uint32_t index) -> std::unique_ptr<DrmDevice>;
 
   auto &GetFd() const {
     return fd_;
+  }
+
+  auto GetIndexInDevArray() const {
+    return index_in_dev_array_;
   }
 
   auto &GetResMan() {
@@ -103,12 +107,13 @@ class DrmDevice {
                   DrmProperty *property) const;
 
  private:
-  explicit DrmDevice(ResourceManager *res_man);
+  explicit DrmDevice(ResourceManager *res_man, uint32_t index);
   auto Init(const char *path) -> int;
 
   static auto IsKMSDev(const char *path) -> bool;
 
   SharedFd fd_;
+  const uint32_t index_in_dev_array_;
 
   std::vector<std::unique_ptr<DrmConnector>> connectors_;
   std::vector<std::unique_ptr<DrmConnector>> writeback_connectors_;
