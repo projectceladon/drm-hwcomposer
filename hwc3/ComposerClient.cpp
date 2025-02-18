@@ -357,8 +357,13 @@ class Hwc3BufferHandle : public PrimeFdsSharedBase {
       -> std::shared_ptr<Hwc3BufferHandle> {
     auto hwc3 = std::shared_ptr<Hwc3BufferHandle>(new Hwc3BufferHandle());
 
-    ::android::GraphicBufferMapper::get()
+    auto result = ::android::GraphicBufferMapper::get()
         .importBufferNoValidate(handle, &hwc3->imported_handle_);
+
+    if (result != ::android::NO_ERROR) {
+      ALOGE("Failed to import buffer handle: %d", result);
+      return nullptr;
+    }
 
     return hwc3;
   }
