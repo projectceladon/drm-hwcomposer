@@ -55,7 +55,6 @@ void VSyncWorker::UpdateVSyncControl() {
   {
     const std::lock_guard<std::mutex> lock(mutex_);
     enabled_ = ShouldEnable();
-    last_timestamp_ = -1;
   }
 
   cv_.notify_all();
@@ -64,6 +63,7 @@ void VSyncWorker::UpdateVSyncControl() {
 void VSyncWorker::SetVsyncPeriodNs(uint32_t vsync_period_ns) {
   const std::lock_guard<std::mutex> lock(mutex_);
   vsync_period_ns_ = vsync_period_ns;
+  last_timestamp_ = std::nullopt;
 }
 
 void VSyncWorker::SetVsyncTimestampTracking(bool enabled) {
@@ -121,11 +121,11 @@ bool VSyncWorker::ShouldEnable() const {
  *  timestamp.
  */
 int64_t VSyncWorker::GetPhasedVSync(int64_t frame_ns, int64_t current) const {
-  if (last_timestamp_ < 0)
+  if (!last_timestamp_.has_value())
     return current + frame_ns;
 
-  return (frame_ns * ((current - last_timestamp_) / frame_ns + 1)) +
-         last_timestamp_;
+  return (frame_ns * ((current - *last_timestamp_) / frame_ns + 1)) +
+         *last_timestamp_;
 }
 
 static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;

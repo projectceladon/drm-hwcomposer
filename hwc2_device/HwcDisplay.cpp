@@ -822,7 +822,6 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
 
   if (new_vsync_period_ns) {
-    vsync_worker_->SetVsyncPeriodNs(new_vsync_period_ns.value());
     staged_mode_config_id_.reset();
 
     vsync_worker_->SetVsyncTimestampTracking(false);
@@ -832,6 +831,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
                                                       last_vsync_ts +
                                                           prev_vperiod_ns);
     }
+    vsync_worker_->SetVsyncPeriodNs(new_vsync_period_ns.value());
   }
 
   return HWC2::Error::None;

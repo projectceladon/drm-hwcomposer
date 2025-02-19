@@ -37,7 +37,8 @@ class VSyncWorker {
   auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)
       -> std::unique_ptr<VSyncWorker>;
 
-  // Set the expected vsync period.
+  // Set the expected vsync period. Resets internal timestamp tracking until the
+  // next vsync event is tracked.
   void SetVsyncPeriodNs(uint32_t vsync_period_ns);
 
   // Set or clear a callback to be fired on vsync.
@@ -68,7 +69,7 @@ class VSyncWorker {
 
   bool enabled_ GUARDED_BY(mutex_) = false;
   bool thread_exit_ GUARDED_BY(mutex_) = false;
-  int64_t last_timestamp_ GUARDED_BY(mutex_) = -1;
+  std::optional<int64_t> last_timestamp_ GUARDED_BY(mutex_);
 
   // Default to 60Hz refresh rate
   static constexpr uint32_t kDefaultVSPeriodNs = 16666666;
