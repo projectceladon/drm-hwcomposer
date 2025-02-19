@@ -71,9 +71,9 @@ void VSyncWorker::SetVsyncTimestampTracking(bool enabled) {
     const std::lock_guard<std::mutex> lock(mutex_);
     enable_vsync_timestamps_ = enabled;
     if (enabled) {
-      // Reset the last timestamp so the caller knows if a vsync timestamp is
-      // fresh or not.
-      last_vsync_timestamp_ = 0;
+      // Reset the freshness flag to ensure that only a fresh timestamp is
+      // returned from GetLastVsyncTimestamp.
+      last_timestamp_is_fresh_ = false;
     }
   }
   UpdateVSyncControl();
@@ -81,7 +81,7 @@ void VSyncWorker::SetVsyncTimestampTracking(bool enabled) {
 
 uint32_t VSyncWorker::GetLastVsyncTimestamp() {
   const std::lock_guard<std::mutex> lock(mutex_);
-  return last_vsync_timestamp_;
+  return last_timestamp_is_fresh_ ? last_timestamp_.value_or(0) : 0;
 }
 
 void VSyncWorker::SetTimestampCallback(
@@ -206,7 +206,7 @@ void VSyncWorker::ThreadFn() {
       if (!enabled_)
         continue;
       if (enable_vsync_timestamps_) {
-        last_vsync_timestamp_ = timestamp;
+        last_timestamp_is_fresh_ = true;
       }
       vsync_callback = callback_;
       vsync_period_ns = vsync_period_ns_;

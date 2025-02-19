@@ -75,7 +75,7 @@ class VSyncWorker {
   static constexpr uint32_t kDefaultVSPeriodNs = 16666666;
   uint32_t vsync_period_ns_ GUARDED_BY(mutex_) = kDefaultVSPeriodNs;
   bool enable_vsync_timestamps_ GUARDED_BY(mutex_) = false;
-  uint32_t last_vsync_timestamp_ GUARDED_BY(mutex_) = 0;
+  bool last_timestamp_is_fresh_ GUARDED_BY(mutex_) = false;
   std::optional<VsyncTimestampCallback> callback_ GUARDED_BY(mutex_);
 
   std::condition_variable cv_;
