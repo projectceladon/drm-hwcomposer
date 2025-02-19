@@ -408,16 +408,14 @@ class Hwc3Layer : public ::android::FrontendLayerBase {
 
     auto bi = ::android::BufferInfoGetter::GetInstance()->GetBoInfo(
         hwc3->GetHandle());
-    if (!bi) {
-      return std::nullopt;
+    if (bi) {
+      bi->fds_shared = hwc3;
+
+      lp.slot_buffer = {
+          .slot_id = slot_id,
+          .bi = bi,
+      };
     }
-
-    bi->fds_shared = hwc3;
-
-    lp.slot_buffer = {
-        .slot_id = slot_id,
-        .bi = bi,
-    };
 
     lp.active_slot = {
         .slot_id = slot_id,

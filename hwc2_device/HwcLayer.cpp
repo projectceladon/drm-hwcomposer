@@ -101,6 +101,10 @@ void HwcLayer::PopulateLayerData() {
     return;
   }
 
+  if (slots_.count(*active_slot_id_) == 0) {
+    return;
+  }
+
   layer_data_.bi = slots_[*active_slot_id_].bi;
   layer_data_.fb = slots_[*active_slot_id_].fb;
 
