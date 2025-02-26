@@ -65,6 +65,8 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
     return plane_->plane_id;
   }
 
+  bool HasCursorSizeConstraints() const;
+
  private:
   DrmPlane(DrmDevice &dev, DrmModePlaneUnique plane)
       : drm_(&dev), plane_(std::move(plane)){};
@@ -76,6 +78,7 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
   auto Init() -> int;
   auto GetPlaneProperty(const char *prop_name, DrmProperty &property,
                         Presence presence = Presence::kMandatory) -> bool;
+  bool IsBufferValidForCursorPlane(const BufferInfo &bi) const;
 
   uint32_t type_{};
 
