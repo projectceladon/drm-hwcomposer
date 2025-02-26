@@ -18,6 +18,7 @@
 
 #include <xf86drmMode.h>
 
+#include <cinttypes>
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -162,14 +163,14 @@ bool DrmProperty::GetBlobData(std::vector<T> &data_out) const {
 
   auto blob = MakeDrmModePropertyBlobUnique(*fd_, value.value());
   if (blob == nullptr) {
-    ALOGE("Failed to read blob with id=%d from property %s", value.value(),
-          name_.c_str());
+    ALOGE("Failed to read blob with id=%" PRIu64 " from property %s",
+          value.value(), name_.c_str());
     return false;
   }
 
   if (blob->length % sizeof(T) != 0) {
     ALOGE(
-        "Property %s blob size of %zu bytes is not divisible by type argument "
+        "Property %s blob size of %u bytes is not divisible by type argument "
         "size of %zu bytes",
         name_.c_str(), blob->length, sizeof(T));
     return false;
