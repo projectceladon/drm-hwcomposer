@@ -28,7 +28,7 @@ auto DrmKmsPlan::CreateDrmKmsPlan(DrmDisplayPipeline &pipe,
     -> std::unique_ptr<DrmKmsPlan> {
   auto plan = std::make_unique<DrmKmsPlan>();
 
-  auto avail_planes = pipe.GetUsablePlanes();
+  auto [avail_planes, cursor_plane] = pipe.GetUsablePlanes();
 
   int z_pos = 0;
   for (auto &dhl : composition) {

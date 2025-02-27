@@ -67,12 +67,15 @@ class BindingOwner {
   B *const bindable_;
 };
 
+using UsablePlanes = std::pair<
+    std::vector<std::shared_ptr<BindingOwner<DrmPlane>>>,
+    std::shared_ptr<BindingOwner<DrmPlane>>>;
+
 struct DrmDisplayPipeline {
   static auto CreatePipeline(DrmConnector &connector)
       -> std::unique_ptr<DrmDisplayPipeline>;
 
-  auto GetUsablePlanes()
-      -> std::vector<std::shared_ptr<BindingOwner<DrmPlane>>>;
+  auto GetUsablePlanes() -> UsablePlanes;
 
   ~DrmDisplayPipeline();
 

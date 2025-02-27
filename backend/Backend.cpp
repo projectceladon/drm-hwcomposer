@@ -130,7 +130,7 @@ void Backend::MarkValidated(std::vector<HwcLayer *> &layers,
 std::tuple<int, int> Backend::GetExtraClientRange(
     HwcDisplay *display, const std::vector<HwcLayer *> &layers,
     int client_start, size_t client_size) {
-  auto planes = display->GetPipe().GetUsablePlanes();
+  auto [planes, cursor_plane] = display->GetPipe().GetUsablePlanes();
   size_t avail_planes = planes.size();
 
   /*
