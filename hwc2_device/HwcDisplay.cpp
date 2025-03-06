@@ -623,15 +623,16 @@ HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
     struct timespec vsync {};
     clock_gettime(CLOCK_MONOTONIC, &vsync);
     int64_t timestamp = (int64_t)vsync.tv_sec * kOneSecondNs + (int64_t)vsync.tv_nsec;
-    int64_t half_period = (1E9 / staged_mode_->v_refresh()) / 2;
-    if ((expectedPresentTime_->timestampNanos - timestamp) > half_period) {
-      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - half_period) / (1000 * 1000);
+
+    int64_t period = (1E9 / staged_mode_->v_refresh());
+    if ((expectedPresentTime_->timestampNanos - timestamp) > period) {
+      ATRACE_NAME("Wait for expected present time");
+      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - period) / (1000 * 1000);
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
     }
     expectedPresentTime_ = std::nullopt;
-  } else {
-    std::this_thread::sleep_for(std::chrono::nanoseconds((int64_t)(1E9 / staged_mode_->v_refresh()) / 2));
-  }
+  } 
+
   if (IsInHeadlessMode()) {
     *out_present_fence = -1;
     return HWC2::Error::None;
@@ -957,12 +958,16 @@ HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
 }
 
 HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
-                                               uint32_t * /*outCapabilities*/) {
+                                               uint32_t * outCapabilities) {
   if (outNumCapabilities == nullptr) {
     return HWC2::Error::BadParameter;
   }
 
-  *outNumCapabilities = 0;
+  *outNumCapabilities = 1;
+
+  if (outCapabilities != nullptr) {
+    outCapabilities[0] = 8;
+  }
 
   return HWC2::Error::None;
 }
