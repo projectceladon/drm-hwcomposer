@@ -126,7 +126,6 @@ void ResourceManager::Init() {
 
     card_num_ = node_num;
 
-    // only have card0, is BM/GVT-d/Virtio
     if (node_num == 1) {
       std::ostringstream path;
       path << path_pattern << 0;
@@ -134,25 +133,8 @@ void ResourceManager::Init() {
       if (dev) {
         drms_.emplace_back(std::move(dev));
       }
-    }
-    // is SR-IOV or iGPU + dGPU
-    // if not find virtio_gpu, we choose igpu
-    if (node_num == 2) {
-      int card_id = FindVirtioGpuCard(this, path_pattern, 0, 1);
-      if (card_id < 0) {
-         card_id = 0;
-      }
-      std::ostringstream path;
-      path << path_pattern << card_id;
-      auto dev = DrmDevice::CreateInstance(path.str(), this);
-      if (dev) {
-        drms_.emplace_back(std::move(dev));
-      }
-    }
-    // is SRI-IOV + dGPU, use virtio-gpu for display
-    // if not find virtio_gpu, we choose igpu
-    if (node_num == 3) {
-      int card_id = FindVirtioGpuCard(this, path_pattern, 0, 2);
+    } else if (node_num <= 3) {
+      int card_id = FindVirtioGpuCard(this, path_pattern, 0, node_num - 1);
       if (card_id < 0) {
          card_id = 0;
       }
