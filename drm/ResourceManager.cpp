@@ -47,26 +47,55 @@ ResourceManager::~ResourceManager() {
   uevent_listener_.Exit();
 }
 
-static int FindVirtioGpuCard(ResourceManager *res_man, char* path_pattern,
-                             int start, int end) {
-  bool find = false;
-  int i = 0;
-  for (i = start; i <= end; i++) {
+static bool IsVirtioGpuOwnedByLic(int fd) {
+  drmDevicePtr drm_device = NULL;
+  bool result = false;
+
+  if(drmGetDevice(fd, &drm_device) < 0) {
+    ALOGE("Failed to get drm device info: %s\n", strerror(errno));
+    return false;
+  }
+
+  // virtio-GPU with subdevice id 0x201 should be owned by LIC, don't touch it.
+  if (drm_device->bustype == DRM_BUS_PCI &&
+      drm_device->deviceinfo.pci->vendor_id == 0x1af4 &&
+      drm_device->deviceinfo.pci->device_id == 0x1110 &&
+      drm_device->deviceinfo.pci->subvendor_id == 0x8086 &&
+      drm_device->deviceinfo.pci->subdevice_id == 0x201) {
+    result = true;
+  }
+  drmFreeDevice(&drm_device);
+  return result;
+}
+
+static int FindVirtioGpuCard(char* path_pattern, int start, int end) {
+  for (int i = start; i <= end; i++) {
     std::ostringstream path;
     path << path_pattern << i;
-    auto dev = DrmDevice::CreateInstance(path.str(), res_man);
-    if (dev != nullptr) {
-      if (dev->GetName() == "virtio_gpu") {
-        find = true;
-        break;
-      }
+    auto fd = UniqueFd(open(path.str().c_str(), O_RDWR | O_CLOEXEC));
+    if (!fd) {
+      continue;
     }
+
+    if (IsVirtioGpuOwnedByLic(fd.Get())) {
+      ALOGI("Skip drm device %s for LIC\n", path.str().c_str());
+      continue;
+    }
+
+    drmVersionPtr version = drmGetVersion(fd.Get());
+    if (version == NULL) {
+      ALOGE("Failed to get version for drm device %s\n", path.str().c_str());
+      continue;
+    }
+    if (strncmp(version->name, "virtio_gpu", version->name_len) == 0) {
+      drmFreeVersion(version);
+      return i;
+    }
+    drmFreeVersion(version);
   }
-  if (find) {
-    return i;
-  } else {
-    return -1;
-  }
+
+  ALOGD("No virtio-GPU device found\n");
+  return -1;
 }
 
 void ResourceManager::ReloadNode() {
@@ -84,6 +113,10 @@ void ResourceManager::ReloadNode() {
 
     auto dev = DrmDevice::CreateInstance(path.str(), this);
     if (dev && DrmDevice::IsIvshmDev(dev->GetFd())) {
+      if (IsVirtioGpuOwnedByLic(dev->GetFd())) {
+        ALOGD("Skip drm device owned by LIC: %s\n", path.str().c_str());
+        break;
+      }
       ALOGD("create ivshmem node card%d, the fd of dev is %x\n", idx, dev->GetFd());
       drms_.emplace_back(std::move(dev));
       reloaded_  = true;
@@ -134,7 +167,7 @@ void ResourceManager::Init() {
         drms_.emplace_back(std::move(dev));
       }
     } else if (node_num <= 3) {
-      int card_id = FindVirtioGpuCard(this, path_pattern, 0, node_num - 1);
+      int card_id = FindVirtioGpuCard(path_pattern, 0, node_num - 1);
       if (card_id < 0) {
          card_id = 0;
       }
