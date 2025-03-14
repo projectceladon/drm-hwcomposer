@@ -47,10 +47,11 @@ ResourceManager::~ResourceManager() {
   uevent_listener_.Exit();
 }
 
-static int find_virtio_gpu_card(ResourceManager *res_man, char* path_pattern, int start, int end) {
+static int FindVirtioGpuCard(ResourceManager *res_man, char* path_pattern,
+                             int start, int end) {
   bool find = false;
   int i = 0;
-  for(i = start; i <= end; i++) {
+  for (i = start; i <= end; i++) {
     std::ostringstream path;
     path << path_pattern << i;
     auto dev = DrmDevice::CreateInstance(path.str(), res_man);
@@ -137,7 +138,7 @@ void ResourceManager::Init() {
     // is SR-IOV or iGPU + dGPU
     // if not find virtio_gpu, we choose igpu
     if (node_num == 2) {
-      int card_id = find_virtio_gpu_card(this, path_pattern, 0, 1);
+      int card_id = FindVirtioGpuCard(this, path_pattern, 0, 1);
       if (card_id < 0) {
          card_id = 0;
       }
@@ -151,7 +152,7 @@ void ResourceManager::Init() {
     // is SRI-IOV + dGPU, use virtio-gpu for display
     // if not find virtio_gpu, we choose igpu
     if (node_num == 3) {
-      int card_id = find_virtio_gpu_card(this, path_pattern, 0, 2);
+      int card_id = FindVirtioGpuCard(this, path_pattern, 0, 2);
       if (card_id < 0) {
          card_id = 0;
       }
