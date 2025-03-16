@@ -20,7 +20,7 @@
 #include <binder/IInterface.h>
 #include <binder/Parcel.h>
 
-#define IA_HWC_SERVICE_NAME "hwc.info"
+#define HWC_SERVICE_NAME "hwc.info"
 
 namespace hwcomposer {
 

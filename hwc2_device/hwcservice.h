@@ -65,30 +65,6 @@ class HwcService : public BnService {
     Controls(DrmHwcTwo& hwc, HwcService& hwcService);
     virtual ~Controls();
 
-    status_t DisplaySetOverscan(uint32_t display, int32_t xoverscan,
-                                int32_t yoverscan);
-    status_t DisplayGetOverscan(uint32_t display, int32_t* xoverscan,
-                                int32_t* yoverscan);
-    status_t DisplaySetScaling(uint32_t display, EHwcsScalingMode eScalingMode);
-    status_t DisplayGetScaling(uint32_t display,
-                               EHwcsScalingMode* eScalingMode);
-    status_t DisplayEnableBlank(uint32_t display, bool blank);
-    status_t DisplayRestoreDefaultColorParam(uint32_t display,
-                                             EHwcsColorControl color);
-    status_t DisplayRestoreDefaultDeinterlaceParam(uint32_t display);
-    status_t DisplayGetColorParam(uint32_t display, EHwcsColorControl color,
-                                  float* value, float* startvalue,
-                                  float* endvalue);
-    status_t DisplaySetColorParam(uint32_t display, EHwcsColorControl color,
-                                  float value);
-    status_t DisplaySetDeinterlaceParam(uint32_t display,
-                                        EHwcsDeinterlaceControl mode);
-
-    std::vector<HwcsDisplayModeInfo> DisplayModeGetAvailableModes(
-        uint32_t display);
-    status_t DisplayModeGetMode(uint32_t display, HwcsDisplayModeInfo* pMode);
-    status_t DisplayModeSetMode(uint32_t display, const uint32_t config);
-
     status_t EnableHDCPSessionForDisplay(uint32_t connector,
                                          EHwcsContentType content_type);
 
@@ -98,37 +74,15 @@ class HwcService : public BnService {
 
     status_t DisableHDCPSessionForAllDisplays();
 
-#ifdef ENABLE_PANORAMA
-    status_t TriggerPanorama(uint32_t hotplug_simulation);
-    status_t ShutdownPanorama(uint32_t hotplug_simulation);
-#endif
-
     status_t SetHDCPSRMForAllDisplays(const int8_t* SRM, uint32_t SRMLength);
 
     status_t SetHDCPSRMForDisplay(uint32_t connector, const int8_t* SRM,
                                   uint32_t SRMLength);
-    uint32_t GetDisplayIDFromConnectorID(uint32_t connector_id);
-    bool EnableDRMCommit(bool enable, uint32_t display_id);
-    bool ResetDrmMaster(bool drop_master);
-    status_t VideoEnableEncryptedSession(uint32_t sessionID,
-                                         uint32_t instanceID);
-    status_t VideoDisableAllEncryptedSessions(uint32_t sessionID);
-    status_t VideoDisableAllEncryptedSessions();
-    bool VideoIsEncryptedSessionEnabled(uint32_t sessionID,
-                                        uint32_t instanceID);
-    bool needSetKeyFrameHint();
-    status_t VideoSetOptimizationMode(EHwcsOptimizationMode mode);
-    status_t MdsUpdateVideoState(int64_t videoSessionID, bool isPrepared);
-    status_t MdsUpdateVideoFPS(int64_t videoSessionID, int32_t fps);
-    status_t MdsUpdateInputState(bool state);
-    status_t WidiGetSingleDisplay(bool* pEnabled);
-    status_t WidiSetSingleDisplay(bool enable);
 
    private:
     DrmHwcTwo& mHwc;
     HwcService& mHwcService;
     bool mbHaveSessionsEnabled;
-    EHwcsOptimizationMode mCurrentOptimizationMode;
   };
 
   enum ENotification {

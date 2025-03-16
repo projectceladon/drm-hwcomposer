@@ -27,34 +27,6 @@ class IControls : public android::IInterface {
  public:
   DECLARE_META_INTERFACE(Controls);
 
-  virtual status_t DisplaySetOverscan(uint32_t display, int32_t xoverscan,
-                                      int32_t yoverscan) = 0;
-  virtual status_t DisplayGetOverscan(uint32_t display, int32_t *xoverscan,
-                                      int32_t *yoverscan) = 0;
-  virtual status_t DisplaySetScaling(uint32_t display,
-                                     EHwcsScalingMode eScalingMode) = 0;
-  virtual status_t DisplayGetScaling(uint32_t display,
-                                     EHwcsScalingMode *eScalingMode) = 0;
-  virtual status_t DisplayEnableBlank(uint32_t display, bool blank) = 0;
-  virtual status_t DisplayRestoreDefaultColorParam(uint32_t display,
-                                                   EHwcsColorControl color) = 0;
-  virtual status_t DisplayRestoreDefaultDeinterlaceParam(uint32_t display) = 0;
-  virtual status_t DisplayGetColorParam(uint32_t display,
-                                        EHwcsColorControl color, float *value,
-                                        float *startvalue, float *endvalue) = 0;
-  virtual status_t DisplaySetColorParam(uint32_t display,
-                                        EHwcsColorControl color,
-                                        float value) = 0;
-  virtual status_t DisplaySetDeinterlaceParam(uint32_t display,
-                                              EHwcsDeinterlaceControl mode) = 0;
-
-  virtual std::vector<HwcsDisplayModeInfo> DisplayModeGetAvailableModes(
-      uint32_t display) = 0;
-  virtual status_t DisplayModeGetMode(uint32_t display,
-                                      HwcsDisplayModeInfo *pMode) = 0;
-  virtual status_t DisplayModeSetMode(uint32_t display,
-                                      const uint32_t config) = 0;
-
   virtual status_t EnableHDCPSessionForDisplay(
       uint32_t connector, EHwcsContentType content_type) = 0;
 
@@ -65,39 +37,11 @@ class IControls : public android::IInterface {
 
   virtual status_t DisableHDCPSessionForAllDisplays() = 0;
 
-#ifdef ENABLE_PANORAMA
-  virtual status_t TriggerPanorama(uint32_t hotplug_simulation) = 0;
-
-  virtual status_t ShutdownPanorama(uint32_t hotplug_simulation) = 0;
-#endif
-
   virtual status_t SetHDCPSRMForAllDisplays(const int8_t *SRM,
                                             uint32_t SRMLength) = 0;
 
   virtual status_t SetHDCPSRMForDisplay(uint32_t connector, const int8_t *SRM,
                                         uint32_t SRMLength) = 0;
-
-  virtual uint32_t GetDisplayIDFromConnectorID(uint32_t connector_id) = 0;
-
-  virtual bool EnableDRMCommit(bool enable, uint32_t display_id) = 0;
-
-  virtual bool ResetDrmMaster(bool drop_master) = 0;
-
-  virtual status_t VideoEnableEncryptedSession(uint32_t sessionID,
-                                               uint32_t instanceID) = 0;
-  virtual status_t VideoDisableAllEncryptedSessions(uint32_t sessionID) = 0;
-  virtual status_t VideoDisableAllEncryptedSessions() = 0;
-  virtual bool VideoIsEncryptedSessionEnabled(uint32_t sessionID,
-                                              uint32_t instanceID) = 0;
-  virtual status_t VideoSetOptimizationMode(EHwcsOptimizationMode mode) = 0;
-
-  virtual status_t MdsUpdateVideoState(int64_t videoSessionID,
-                                       bool isPrepared) = 0;
-  virtual status_t MdsUpdateVideoFPS(int64_t videoSessionID, int32_t fps) = 0;
-  virtual status_t MdsUpdateInputState(bool state) = 0;
-
-  virtual status_t WidiGetSingleDisplay(bool *pEnabled) = 0;
-  virtual status_t WidiSetSingleDisplay(bool enable) = 0;
 };
 
 class BnControls : public android::BnInterface<IControls> {
