@@ -33,41 +33,6 @@
 namespace android {
 using namespace hwcomposer;
 
-static HWCColorControl HWCS2HWC(EHwcsColorControl color) {
-  switch (color) {
-    case HWCS_COLOR_BRIGHTNESS:
-      return HWCColorControl::kColorBrightness;
-    case HWCS_COLOR_CONTRAST:
-      return HWCColorControl::kColorContrast;
-    case HWCS_COLOR_SATURATION:
-      return HWCColorControl::kColorSaturation;
-    case HWCS_COLOR_SHARP:
-      return HWCColorControl::kColorSharpness;
-    case HWCS_COLOR_HUE:
-    default:
-      return HWCColorControl::kColorHue;
-  }
-  return HWCColorControl::kColorHue;
-}
-
-static HWCDeinterlaceControl HWCS2HWCDeinterlace(EHwcsDeinterlaceControl mode) {
-  switch (mode) {
-    case HWCS_DEINTERLACE_NONE:
-      return HWCDeinterlaceControl::kDeinterlaceNone;
-    case HWCS_DEINTERLACE_BOB:
-      return HWCDeinterlaceControl::kDeinterlaceBob;
-    case HWCS_DEINTERLACE_WEAVE:
-      return HWCDeinterlaceControl::kDeinterlaceWeave;
-    case HWCS_DEINTERLACE_MOTIONADAPTIVE:
-      return HWCDeinterlaceControl::kDeinterlaceMotionAdaptive;
-    case HWCS_DEINTERLACE_MOTIONCOMPENSATED:
-    default:
-      return HWCDeinterlaceControl::kDeinterlaceMotionCompensated;
-  }
-  return HWCDeinterlaceControl::kDeinterlaceNone;
-  ;
-}
-
 HwcService::HwcService() : mpHwc(NULL), initialized_(false) {
 }
 
@@ -80,13 +45,13 @@ bool HwcService::Start(DrmHwcTwo *hwc) {
 
   mpHwc = hwc;
   sp<IServiceManager> sm(defaultServiceManager());
-  if (sm->addService(String16(IA_HWC_SERVICE_NAME), this, false)) {
-    ALOGE("Failed to start %s service", IA_HWC_SERVICE_NAME);
+  if (sm->addService(String16(HWC_SERVICE_NAME), this, false)) {
+    ALOGE("Failed to start %s service", HWC_SERVICE_NAME);
     return false;
   }
 
   initialized_ = true;
-  ALOGD("success to start %s service", IA_HWC_SERVICE_NAME);
+  ALOGD("success to start %s service", HWC_SERVICE_NAME);
   return true;
 }
 
@@ -141,8 +106,7 @@ void HwcService::Diagnostic::DumpFrames(uint32_t, int32_t, bool) { /* nothing */
 HwcService::Controls::Controls(DrmHwcTwo &hwc, HwcService &hwcService)
     : mHwc(hwc),
       mHwcService(hwcService),
-      mbHaveSessionsEnabled(false),
-      mCurrentOptimizationMode(HWCS_OPTIMIZE_NORMAL) {
+      mbHaveSessionsEnabled(false) {
 }
 
 HwcService::Controls::~Controls() {
@@ -195,90 +159,6 @@ HwcService::Controls::~Controls() {
       HWCS_EXIT_OK_FMT(fmt, __VA_ARGS__); \
     HWCS_EXIT_ERROR(____code);            \
   } while (0)
-status_t HwcService::Controls::DisplaySetOverscan(uint32_t display,
-                                                  int32_t xoverscan,
-                                                  int32_t yoverscan) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayGetOverscan(uint32_t display,
-                                                  int32_t *xoverscan,
-                                                  int32_t *yoverscan) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplaySetScaling(
-    uint32_t display, EHwcsScalingMode eScalingMode) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayGetScaling(
-    uint32_t display, EHwcsScalingMode *peScalingMode) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayEnableBlank(uint32_t display,
-                                                  bool blank) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayRestoreDefaultColorParam(
-    uint32_t display, EHwcsColorControl color) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayRestoreDefaultDeinterlaceParam(
-    uint32_t display) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayGetColorParam(uint32_t display,
-                                                    EHwcsColorControl color,
-                                                    float *value,
-                                                    float *startvalue,
-                                                    float *endvalue) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplaySetColorParam(uint32_t display,
-                                                    EHwcsColorControl color,
-                                                    float value) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplaySetDeinterlaceParam(
-    uint32_t display, EHwcsDeinterlaceControl mode) {
-  // TO DO
-  return OK;
-}
-
-std::vector<HwcsDisplayModeInfo>
-HwcService::Controls::DisplayModeGetAvailableModes(uint32_t display) {
-  std::vector<HwcsDisplayModeInfo> modes;
-  // TO DO
-  return modes;
-}
-
-status_t HwcService::Controls::DisplayModeGetMode(uint32_t display,
-                                                  HwcsDisplayModeInfo *pMode) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::DisplayModeSetMode(uint32_t display,
-                                                  const uint32_t config) {
-  // TO DO
-  return OK;
-}
 
 status_t HwcService::Controls::EnableHDCPSessionForDisplay(
     uint32_t connector, EHwcsContentType content_type) {
@@ -316,94 +196,6 @@ status_t HwcService::Controls::SetHDCPSRMForDisplay(uint32_t connector,
   return OK;
 }
 
-uint32_t HwcService::Controls::GetDisplayIDFromConnectorID(
-    uint32_t connector_id) {
-  // TO DO
-  return 0;
-}
-
-bool HwcService::Controls::EnableDRMCommit(bool enable, uint32_t display_id) {
-  // TO DO
-  return true;
-}
-
-bool HwcService::Controls::ResetDrmMaster(bool drop_master) {
-  // TO DO
-  return true;
-}
-
-status_t HwcService::Controls::VideoEnableEncryptedSession(
-    uint32_t sessionID, uint32_t instanceID) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::VideoDisableAllEncryptedSessions(
-    uint32_t sessionID) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::VideoDisableAllEncryptedSessions() {
-  // TO DO
-  return OK;
-}
-
-#ifdef ENABLE_PANORAMA
-status_t HwcService::Controls::TriggerPanorama(uint32_t hotplug_simulation) {
-  mHwc.TriggerPanorama(hotplug_simulation);
-  return OK;
-}
-
-status_t HwcService::Controls::ShutdownPanorama(uint32_t hotplug_simulation) {
-  mHwc.ShutdownPanorama(hotplug_simulation);
-  return OK;
-}
-#endif
-
-bool HwcService::Controls::VideoIsEncryptedSessionEnabled(uint32_t sessionID,
-                                                          uint32_t instanceID) {
-  // TO DO
-  return OK;
-}
-
-bool HwcService::Controls::needSetKeyFrameHint() {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::VideoSetOptimizationMode(
-    EHwcsOptimizationMode mode) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::MdsUpdateVideoState(int64_t videoSessionID,
-                                                   bool isPrepared) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::MdsUpdateVideoFPS(int64_t videoSessionID,
-                                                 int32_t fps) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::MdsUpdateInputState(bool state) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::WidiGetSingleDisplay(bool *pEnabled) {
-  // TO DO
-  return OK;
-}
-
-status_t HwcService::Controls::WidiSetSingleDisplay(bool enable) {
-  // TO DO
-  return OK;
-}
 void HwcService::RegisterListener(ENotification notify,
                                   NotifyCallback *pCallback) {
   // TO DO
