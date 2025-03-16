@@ -111,7 +111,7 @@ class BpService : public BpInterface<IService> {
   }
 };
 
-IMPLEMENT_META_INTERFACE(Service, "ia.hwc.IService");
+IMPLEMENT_META_INTERFACE(Service, "hwc.IService");
 
 status_t BnService::onTransact(uint32_t code, const Parcel& data, Parcel* reply,
                                uint32_t flags) {
