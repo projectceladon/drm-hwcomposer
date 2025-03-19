@@ -45,7 +45,7 @@ ResourceManager::~ResourceManager() {
   uevent_listener_.Exit();
 }
 
-static bool IsVirtioGpuOwnedByLic(int fd) {
+static bool IsVirtioGpuForScreencast(int fd) {
   drmDevicePtr drm_device = NULL;
   bool result = false;
 
@@ -55,11 +55,15 @@ static bool IsVirtioGpuOwnedByLic(int fd) {
   }
 
   // virtio-GPU with subdevice id 0x201 should be owned by LIC, don't touch it.
+  // virtio-GPU with subdevice id 0x200 and 0x202 are used for Android screen case.
+  // Do not use them so far.
   if (drm_device->bustype == DRM_BUS_PCI &&
       drm_device->deviceinfo.pci->vendor_id == 0x1af4 &&
       drm_device->deviceinfo.pci->device_id == 0x1110 &&
       drm_device->deviceinfo.pci->subvendor_id == 0x8086 &&
-      drm_device->deviceinfo.pci->subdevice_id == 0x201) {
+      (drm_device->deviceinfo.pci->subdevice_id == 0x201 ||
+       drm_device->deviceinfo.pci->subdevice_id == 0x200 ||
+       drm_device->deviceinfo.pci->subdevice_id == 0x202)) {
     result = true;
   }
   drmFreeDevice(&drm_device);
@@ -75,8 +79,8 @@ static int FindVirtioGpuCard(char* path_pattern, int start, int end) {
       continue;
     }
 
-    if (IsVirtioGpuOwnedByLic(fd.Get())) {
-      ALOGI("Skip drm device %s for LIC\n", path.str().c_str());
+    if (IsVirtioGpuForScreencast(fd.Get())) {
+      ALOGI("Skip drm device %s for ivshm\n", path.str().c_str());
       continue;
     }
 
@@ -111,7 +115,7 @@ void ResourceManager::ReloadNode() {
 
     auto dev = DrmDevice::CreateInstance(path.str(), this);
     if (dev && DrmDevice::IsIvshmDev(dev->GetFd())) {
-      if (IsVirtioGpuOwnedByLic(dev->GetFd())) {
+      if (IsVirtioGpuForScreencast(dev->GetFd())) {
         ALOGD("Skip drm device owned by LIC: %s\n", path.str().c_str());
         break;
       }
@@ -221,8 +225,9 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
 #define DRM_MODE_LINK_STATUS_GOOD       0
 #define DRM_MODE_LINK_STATUS_BAD        1
 void ResourceManager::UpdateFrontendDisplays() {
-  if (!reloaded_)
-    ReloadNode();
+  // Do not reload the gpu node when have hotplug event.
+  // if (!reloaded_)
+  //  ReloadNode();
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
