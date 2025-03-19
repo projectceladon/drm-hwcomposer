@@ -205,8 +205,8 @@ auto ResourceManager::GetTimeMonotonicNs() -> int64_t {
 #define DRM_MODE_LINK_STATUS_GOOD       0
 #define DRM_MODE_LINK_STATUS_BAD        1
 void ResourceManager::UpdateFrontendDisplays() {
-  if (!reloaded_)
-    ReloadNode();
+//  if (!reloaded_)
+//    ReloadNode();
   auto ordered_connectors = GetOrderedConnectors();
 
   for (auto *conn : ordered_connectors) {
