@@ -103,7 +103,7 @@ inline int32_t Hwc3ColorModeToHwc2(ColorMode color_mode) {
 // https://cs.android.com/android/platform/superproject/main/+/main:hardware/libhardware/include_all/hardware/hwcomposer2.h;drc=1a0e4a1698c7b080d6763cef9e16592bce75967e;l=418
 inline DisplayCapability Hwc2DisplayCapabilityToHwc3(
     uint32_t display_capability) {
-  if (display_capability > HWC2_DISPLAY_CAPABILITY_AUTO_LOW_LATENCY_MODE) {
+  if (display_capability > 8) {
     return DisplayCapability::INVALID;
   }
   return static_cast<DisplayCapability>(display_capability);

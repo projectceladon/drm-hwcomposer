@@ -1223,13 +1223,16 @@ HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
     skip_ctm = true;
 
   if (!skip_ctm) {
-    *outNumCapabilities = 0;
+    *outNumCapabilities = 1;
+    if (outCapabilities)
+      outCapabilities[0] = 8;
     return HWC2::Error::None;
   }
 
-  *outNumCapabilities = 1;
+  *outNumCapabilities = 2;
   if (outCapabilities) {
     outCapabilities[0] = HWC2_DISPLAY_CAPABILITY_SKIP_CLIENT_COLOR_TRANSFORM;
+    outCapabilities[1] = 8;
   }
 
   return HWC2::Error::None;
