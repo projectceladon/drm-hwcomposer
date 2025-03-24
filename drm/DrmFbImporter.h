@@ -73,18 +73,14 @@ class DrmFbImporter {
   void CleanupEmptyCacheElements() {
     for (auto it = drm_fb_id_handle_cache_.begin();
          it != drm_fb_id_handle_cache_.end();) {
-      if (it->second.expired()) {
-        it = drm_fb_id_handle_cache_.erase(it);
-      } else {
-        ++it;
-      }
+      it = drm_fb_id_handle_cache_.erase(it);
     }
   }
 
   DrmDevice *const drm_;
   SharedFd drm_fd_;
 
-  std::map<GemHandle, std::weak_ptr<DrmFbIdHandle>> drm_fb_id_handle_cache_;
+  std::map<GemHandle, std::shared_ptr<DrmFbIdHandle>> drm_fb_id_handle_cache_;
 };
 
 }  // namespace android
