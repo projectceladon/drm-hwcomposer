@@ -37,7 +37,6 @@ cc_defaults {
 
     static_libs: [
         "libaidlcommonsupport",
-        "libdisplay_info",
     ],
 
     header_libs: [
@@ -50,7 +49,6 @@ cc_defaults {
     ],
 
     cppflags: [
-        "-DHAS_LIBDISPLAY_INFO",
         "-DHWC2_INCLUDE_STRINGIFICATION",
         "-DHWC2_USE_CPP11",
     ],
@@ -182,7 +180,6 @@ cc_binary {
     relative_install_path: "hw",
     vendor: true,
 
-    vintf_fragments: [":drm_hwcomposer_vintf_manifest"],
     init_rc: [":drm_hwcomposer_init_rc"],
 }
 
