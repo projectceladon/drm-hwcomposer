@@ -426,4 +426,78 @@ void HwcLayer::SwChainClearCache() {
   swchain_reassembled_ = false;
 }
 
+HwcVaLayer::HwcVaLayer(HwcDisplay *parent_display) : HwcLayer(parent_display, false){
+
+}
+
+void HwcVaLayer::vaImportFb() {
+  if (!media_renderer_) {
+    media_renderer_.reset(new VARenderer());
+    if (!media_renderer_->Init(parent_->GetPipe().device->GetFd())) {
+      ALOGE("Failed to initialize Media va Renderer \n");
+      media_renderer_.reset(nullptr);
+    } else {
+      ALOGD("Succeeded to initialize Media va Renderer");
+    }
+  }
+  media_renderer_->startRender(this, DRM_FORMAT_XBGR8888);
+  buffer_handle_ = media_renderer_->getPreBuffer();
+  acquire_fence_ = UniqueFd(media_renderer_->GetOutFence());
+  buffer_handle_updated_ = false;
+  layer_data_.fb = {};
+
+  auto unique_id = BufferInfoGetter::GetInstance()->GetUniqueId(buffer_handle_);
+  if (unique_id && SwChainGetBufferFromCache(*unique_id)) {
+    return;
+  }
+
+  layer_data_.bi = BufferInfoGetter::GetInstance()->GetBoInfo(buffer_handle_);
+  if (!layer_data_.bi) {
+    ALOGW("Unable to get buffer information (0x%p)", buffer_handle_);
+    bi_get_failed_ = true;
+    return;
+  }
+
+  /*
+    consider device is virtio-gpu
+    check if pixel blend mode is supported
+  */
+  bool is_pixel_blend_mode_supported = true;
+  auto planes = parent_->GetPipe().GetUsablePlanes();
+  if (planes.size() == 1 && !planes.begin()->get()->Get()->IsPixBlendModeSupported())
+    is_pixel_blend_mode_supported = false;
+
+  layer_data_
+      .fb = parent_->GetPipe().device->GetDrmFbImporter().GetOrCreateFbId(
+      &layer_data_.bi.value(), is_pixel_blend_mode_supported);
+
+  if (!layer_data_.fb) {
+    ALOGV("Unable to create framebuffer object for buffer 0x%p",
+          buffer_handle_);
+    fb_import_failed_ = true;
+    return;
+  }
+
+  if (unique_id) {
+    SwChainAddCurrentBuffer(*unique_id);
+  }
+}
+void HwcVaLayer::vaPopulateLayerData(bool test) {
+  vaImportFb();
+
+  if (blend_mode_ != BufferBlendMode::kUndefined) {
+    layer_data_.bi->blend_mode = blend_mode_;
+  }
+  if (color_space_ != BufferColorSpace::kUndefined) {
+    layer_data_.bi->color_space = color_space_;
+  }
+  if (sample_range_ != BufferSampleRange::kUndefined) {
+    layer_data_.bi->sample_range = sample_range_;
+  }
+
+  if (!test) {
+    layer_data_.acquire_fence = std::move(acquire_fence_);
+  }
+  va_z_map.clear();
+}
 }  // namespace android
