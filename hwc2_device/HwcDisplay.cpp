@@ -1245,7 +1245,7 @@ HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
 HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
-  if (mode != HAL_COLOR_MODE_NATIVE) {
+  if (mode != HAL_COLOR_MODE_NATIVE || nullptr == outNumIntents) {
     return HWC2::Error::BadParameter;
   }
 
