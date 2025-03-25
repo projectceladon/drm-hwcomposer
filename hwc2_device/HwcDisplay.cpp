@@ -193,8 +193,10 @@ HWC2::Error HwcDisplay::AcceptDisplayChanges() {
 }
 
 HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
+  bool allow_p2p = !IsInHeadlessMode() && GetPipe().crtc->Get()
+      && GetPipe().crtc->Get()->GetAllowP2P();
   layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_),
-                  HwcLayer(this, GetPipe().crtc->Get()->GetAllowP2P()));
+                  HwcLayer(this, allow_p2p));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
