@@ -61,9 +61,23 @@ auto DrmCrtc::CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
     return {};
   }
 
-  ret = GetCrtcProperty(dev, *c, "CTM", &c->ctm_property_);
-  if (ret != 0) {
-    ALOGV("Missing optional CTM property");
+  if (dev.GetColorAdjustmentEnabling()) {
+    ret = GetCrtcProperty(dev, *c, "CTM", &c->ctm_property_);
+    if (ret != 0) {
+      ALOGV("Missing optional CTM property");
+    }
+
+    ret = GetCrtcProperty(dev, *c, "GAMMA_LUT", &c->gamma_lut_property_);
+    if (ret != 0) {
+      ALOGE("Failed to get GAMMA_LUT property");
+      return {};
+    }
+
+    ret = GetCrtcProperty(dev, *c, "GAMMA_LUT_SIZE", &c->gamma_lut_size_property_);
+    if (ret != 0) {
+      ALOGE("Failed to get GAMMA_LUT_SIZE property");
+      return {};
+    }
   }
 
   return c;
