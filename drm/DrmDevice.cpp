@@ -122,6 +122,14 @@ auto DrmDevice::Init(const char *path) -> int {
   ALOGD("The property 'vendor.hwcomposer.planes.enabling' value is %d, %s",
     planes_enabling_, planes_enabling_ ? "support all planes":"only support primary plane");
 
+  constexpr char PLANES_MAX_NUM_STRING[] = "99";
+  planes_num_ = atoi(PLANES_MAX_NUM_STRING);
+  memset(property, 0, PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.planes.num", property, PLANES_MAX_NUM_STRING);
+  planes_num_ = atoi(property) <= 0 ? atoi(PLANES_MAX_NUM_STRING)
+                                    : atoi(property);
+  ALOGD("The property 'vendor.hwcomposer.planes.num' value is %s", property);
+
   min_resolution_ = std::pair<uint32_t, uint32_t>(res->min_width,
                                                   res->min_height);
   max_resolution_ = std::pair<uint32_t, uint32_t>(res->max_width,
