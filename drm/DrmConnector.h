@@ -183,5 +183,6 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   std::map<Colorspace, uint64_t> colorspace_enum_map_;
   std::map<uint64_t, PanelOrientation> panel_orientation_enum_map_;
+  uint32_t preferred_mode_id_{};
 };
 }  // namespace android

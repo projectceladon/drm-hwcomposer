@@ -61,8 +61,11 @@ class DrmMode {
   }
 
   auto CreateModeBlob(const DrmDevice &drm) -> DrmModeUserPropertyBlobUnique;
+  uint32_t id() const;
 
+  void SetId(uint32_t id);
  private:
   drmModeModeInfo mode_;
+  uint32_t id_ = 0;
 };
 }  // namespace android

@@ -68,6 +68,9 @@ class DrmDevice {
     return max_resolution_;
   }
 
+  uint32_t GetNextModeId();
+  void ResetModeId();
+
   std::string GetName() const;
 
   auto RegisterUserPropertyBlob(void *data, size_t length) const
@@ -119,7 +122,7 @@ class DrmDevice {
 
   SharedFd fd_;
   const uint32_t index_in_dev_array_;
-
+  uint32_t mode_id_ = 0;
   std::vector<std::unique_ptr<DrmConnector>> connectors_;
   std::vector<std::unique_ptr<DrmConnector>> writeback_connectors_;
   std::vector<std::unique_ptr<DrmEncoder>> encoders_;
@@ -135,6 +138,9 @@ class DrmDevice {
   std::unique_ptr<DrmFbImporter> drm_fb_importer_;
 
   ResourceManager *const res_man_;
+public:
+  bool preferred_mode_limit_;
+  bool planes_enabling_;
 };
 
 }  // namespace android

@@ -45,4 +45,12 @@ auto DrmMode::CreateModeBlob(const DrmDevice &drm)
                                       sizeof(struct drm_mode_modeinfo));
 }
 
+uint32_t DrmMode::id() const {
+  return id_;
+}
+
+void DrmMode::SetId(uint32_t id) {
+  id_ = id;
+}
+
 }  // namespace android

@@ -18,7 +18,7 @@
 #define LOG_TAG "drmhwc"
 
 #include "DrmConnector.h"
-
+#include <cutils/properties.h>
 #include <xf86drmMode.h>
 
 #include <array>
@@ -233,6 +233,7 @@ std::string DrmConnector::GetName() const {
 }
 
 int DrmConnector::UpdateModes() {
+  drm_->ResetModeId();
   auto conn = MakeDrmModeConnectorUnique(*drm_->GetFd(), GetId());
   if (!conn) {
     ALOGE("Failed to get connector %d", GetId());
@@ -240,19 +241,102 @@ int DrmConnector::UpdateModes() {
   }
   connector_ = std::move(conn);
 
-  modes_.clear();
+  int32_t connector_id;
+  int32_t mode_id;
+
+  char property[PROPERTY_VALUE_MAX];
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.connector.id", property, "-1");
+  connector_id = atoi(property);
+  ALOGD("The property 'vendor.hwcomposer.connector.id' value is %d", connector_id);
+
+  memset(property, 0 , PROPERTY_VALUE_MAX);
+  property_get("vendor.hwcomposer.mode.id", property, "-1");
+  mode_id = atoi(property);
+  ALOGD("The property 'vendor.hwcomposer.mode.id' value is %d", mode_id);
+
+  bool preferred_mode_found = false;
+  std::vector<DrmMode> new_modes;
+
+  if (mode_id <= 0 || mode_id > connector_->count_modes)
+    mode_id = -1;
+
+  bool have_preferred_mode = false;
   for (int i = 0; i < connector_->count_modes; ++i) {
+    if (connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
+      have_preferred_mode = true;
+      break;
+    }
+  }
+  for (int i = 0; i < connector_->count_modes; ++i) {
+    if (connector_->connector_id == connector_id) {
+      if (mode_id == -1) {
+        if (drm_->preferred_mode_limit_) {
+          if (have_preferred_mode) {
+            if (!(connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED)) {
+              drm_->GetNextModeId();
+              continue;
+            }
+          } else {
+            have_preferred_mode = true;
+        }
+        }
+      } else {
+        if (mode_id != (i + 1)) {
+          drm_->GetNextModeId();
+          continue;
+        }
+      }
+    } else {
+      if (connector_id != -1) {
+        if (drm_->preferred_mode_limit_) {
+          if (have_preferred_mode) {
+            if (!(connector_->modes[i].type & DRM_MODE_TYPE_PREFERRED)) {
+              drm_->GetNextModeId();
+              continue;
+            }
+          } else {
+            have_preferred_mode = true;
+          }
+        }
+      }
+    }
+
     bool exists = false;
     for (const DrmMode &mode : modes_) {
       if (mode == connector_->modes[i]) {
+        new_modes.push_back(mode);
         exists = true;
+        ALOGD("CONNECTOR:%d select one mode, id = %d, name = %s, refresh = %f",
+              GetId(), mode.id(), mode.GetName().c_str(), mode.GetVRefresh());
         break;
       }
     }
 
     if (!exists) {
-      modes_.emplace_back(&connector_->modes[i]);
+      DrmMode m(&connector_->modes[i]);
+       m.SetId(drm_->GetNextModeId());
+       new_modes.push_back(m);
+       ALOGD("CONNECTOR:%d select one mode, id = %d, name = %s, refresh = %f",
+             GetId(), m.id(), m.GetName().c_str(), m.GetVRefresh());
     }
+    if (!preferred_mode_found &&
+        (new_modes.back().GetRawMode().type & DRM_MODE_TYPE_PREFERRED)) {
+      preferred_mode_id_ = new_modes.back().id();
+      preferred_mode_found = true;
+      ALOGD("CONNECTOR:%d preferred mode found, set preferred mode id = %d, name "
+            "= %s, refresh = %f",
+          GetId(), preferred_mode_id_, new_modes.back().GetName().c_str(),
+          new_modes.back().GetVRefresh());
+    }
+  }
+  modes_.swap(new_modes);
+  if (!preferred_mode_found && !modes_.empty()) {
+    preferred_mode_id_ = modes_[0].id();
+    ALOGD("CONNECTOR:%d preferred mode not found, set preferred mode id = %d, "
+          "name = %s, refresh = %f",
+        GetId(), preferred_mode_id_, modes_[0].GetName().c_str(),
+        modes_[0].GetVRefresh());
   }
 
   return 0;
