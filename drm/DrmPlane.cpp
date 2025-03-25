@@ -226,7 +226,7 @@ bool DrmPlane::IsValidForLayer(LayerData *layer) {
 
 bool DrmPlane::IsFormatSupported(uint32_t format) const {
   return std::find(std::begin(formats_), std::end(formats_), format) !=
-         std::end(formats_);
+         std::end(formats_) || format == DRM_FORMAT_NV12_INTEL;
 }
 
 bool DrmPlane::HasNonRgbFormat() const {
