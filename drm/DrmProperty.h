@@ -30,7 +30,14 @@
 #include "utils/log.h"
 
 namespace android {
-
+enum DrmPropertyType {
+  DRM_PROPERTY_TYPE_INT,
+  DRM_PROPERTY_TYPE_ENUM,
+  DRM_PROPERTY_TYPE_OBJECT,
+  DRM_PROPERTY_TYPE_BLOB,
+  DRM_PROPERTY_TYPE_BITMASK,
+  DRM_PROPERTY_TYPE_INVALID,
+};
 class DrmProperty {
  public:
   DrmProperty() = default;
@@ -47,12 +54,16 @@ class DrmProperty {
     return id_;
   }
 
+  auto id() const {
+    return id_;
+  }
+
   auto GetName() const {
     return name_;
   }
 
   auto GetValue() const -> std::optional<uint64_t>;
-
+  std::tuple<int, uint64_t> value() const;
   bool IsImmutable() const {
     return id_ != 0 && (flags_ & DRM_MODE_PROP_IMMUTABLE) != 0;
   }
@@ -110,7 +121,7 @@ class DrmProperty {
   uint32_t flags_ = 0;
   std::string name_;
   uint64_t value_ = 0;
-
+  DrmPropertyType type_ = DRM_PROPERTY_TYPE_INVALID;
   std::vector<uint64_t> values_;
   std::vector<DrmPropertyEnum> enums_;
   std::vector<uint32_t> blob_ids_;

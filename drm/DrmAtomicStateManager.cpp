@@ -226,6 +226,11 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
   }
 
+  if (args.color_adjustment == true) {
+    SetColorSaturationHue();
+    SetColorBrightnessContrast();
+  }
+
   auto err = drmModeAtomicCommit(*drm->GetFd(), pset.get(), flags, drm);
 
   if (err != 0) {
@@ -341,6 +346,351 @@ auto DrmAtomicStateManager::ActivateDisplayUsingDPMS() -> int {
                                          ->GetDpmsProperty()
                                          .GetId(),
                                      DRM_MODE_DPMS_ON);
+}
+
+void DrmAtomicStateManager::MatrixMult3x3(const double matrix_1[3][3], const double matrix_2[3][3], double result[3][3])
+{
+  for (int y = 0; y < 3; y++) {
+    for (int x = 0; x < 3; x++) {
+      result[y][x] = matrix_1[y][0] * matrix_2[0][x] + matrix_1[y][1] * matrix_2[1][x] + matrix_1[y][2] * matrix_2[2][x];
+    }
+  }
+}
+
+void DrmAtomicStateManager::GenerateHueSaturationMatrix(double hue, double saturation, double coeff[3][3])
+{
+  const double pi                            = 3.1415926535897932;
+  double hue_shift                           = hue * pi / 180.0;
+  double c                                   = cos(hue_shift);
+  double s                                   = sin(hue_shift);
+  double hue_rotation_matrix[3][3]           = { { 1.0, 0.0, 0.0 }, { 0.0, c, -s }, { 0.0, s, c } };
+  double saturation_enhancement_matrix[3][3] = { { 1.0, 0.0, 0.0 }, { 0.0, saturation, 0.0 }, { 0.0, 0.0, saturation } };
+  double ycbcr2rgb709[3][3]                  = { { 1.0000, 0.0000, 1.5748 }, { 1.0000, -0.1873, -0.4681 }, { 1.0000, 1.8556, 0.0000 } };
+  double rgb2ycbcr709[3][3]                  = { { 0.2126, 0.7152, 0.0722 }, { -0.1146, -0.3854, 0.5000 }, { 0.5000, -0.4542, -0.0458 } };
+  double result_1[3][3];
+  double result_2[3][3];
+
+  // Use Bt.709 coefficients for RGB to YCbCr conversion
+  MatrixMult3x3(ycbcr2rgb709, saturation_enhancement_matrix, result_1);
+  MatrixMult3x3(result_1, hue_rotation_matrix, result_2);
+  MatrixMult3x3(result_2, rgb2ycbcr709, coeff);
+}
+
+auto DrmAtomicStateManager::SetColorTransformMatrix(
+  double *color_transform_matrix,
+  int32_t color_transform_hint) ->int {
+  FILE *file_saturation = NULL;
+  FILE *file_hue = NULL;
+  int read_bytes;
+  char buf[4096] = {};
+  double hue = 0.0;
+  double saturation = 100;
+  double coeff[3][3] = { { 1.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 1.0 } };
+
+  struct drm_color_ctm *ctm =
+    (struct drm_color_ctm *)malloc(sizeof(struct drm_color_ctm));
+  if (!ctm) {
+    ALOGE("Cannot allocate ctm memory");
+    return -ENOMEM;
+  }
+
+  file_saturation = fopen("/data/vendor/color/saturation", "r+");
+  if (file_saturation != NULL) {
+    read_bytes = fread(buf, 1, 8, file_saturation);
+    if (read_bytes <= 0) {
+      ALOGE("COLOR_ fread saturation error");
+      free(ctm);
+      fclose(file_saturation);
+      return -EINVAL;
+    }
+    saturation = atof(buf);
+    fclose(file_saturation);
+  }
+
+  file_hue = fopen("/data/vendor/color/hue", "r+");
+  if (file_hue != NULL) {
+    read_bytes = fread(buf, 1, 8, file_hue);
+    if (read_bytes <= 0) {
+      ALOGE("COLOR_ fread hue error");
+      free(ctm);
+      fclose(file_hue);
+      return -EINVAL;
+    }
+    hue = atof(buf);
+    fclose(file_hue);
+  }
+
+  if (hue < 0.0 || hue > 359.0) {
+    hue = 0.0;
+  }
+
+  saturation = saturation/100;
+  if (saturation < 0.75 || saturation > 1.25) {
+    saturation = 1.0;
+  }
+
+  ALOGD("COLOR_ hue=%f", hue);
+  ALOGD("COLOR_ saturation=%f", saturation);
+
+  GenerateHueSaturationMatrix(hue, saturation, coeff);
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      color_transform_matrix[i * 4 + j] = coeff[j][i];
+    }
+  }
+
+  switch (color_transform_hint) {
+    case HAL_COLOR_TRANSFORM_IDENTITY: {
+      memset(ctm->matrix, 0, sizeof(ctm->matrix));
+      for (int i = 0; i < 3; i++) {
+        ctm->matrix[i * 3 + i] = (1ll << 32);
+      }
+
+      ApplyPendingCTM(ctm);
+      break;
+    }
+    case HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX: {
+      for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+          if (color_transform_matrix[i * 4 + j] < 0) {
+            ctm->matrix[i * 3 + j] =
+                (int64_t) (-color_transform_matrix[i * 4 + j] *
+                ((int64_t) 1L << 32));
+            ctm->matrix[i * 3 + j] |= 1ULL << 63;
+          } else {
+            ctm->matrix[i * 3 + j] =
+              (int64_t) (color_transform_matrix[i * 4 + j] *
+              ((int64_t) 1L << 32));
+          }
+        }
+      }
+
+      ApplyPendingCTM(ctm);
+      break;
+    }
+  }
+  free(ctm);
+  return 0;
+}
+
+auto DrmAtomicStateManager::ApplyPendingCTM(
+  struct drm_color_ctm *ctm) -> int {
+  if (pipe_->crtc->Get()->GetCtmProperty().id() == 0) {
+    ALOGE("GetCtmProperty().id() == 0");
+    return -EINVAL;
+  }
+
+  uint32_t ctm_id = 0;
+  drmModeCreatePropertyBlob(*(pipe_->device->GetFd()), ctm, sizeof(drm_color_ctm), &ctm_id);
+  if (ctm_id == 0) {
+    ALOGE("COLOR_ ctm_id == 0");
+    return -EINVAL;
+  }
+
+  drmModeObjectSetProperty(*(pipe_->device->GetFd()), pipe_->crtc->Get()->GetId(), DRM_MODE_OBJECT_CRTC,
+                           pipe_->crtc->Get()->GetCtmProperty().id(), ctm_id);
+  drmModeDestroyPropertyBlob(*(pipe_->device->GetFd()), ctm_id);
+
+  return 0;
+}
+
+float DrmAtomicStateManager::TransformContrastBrightness(float value, float brightness,
+                                              float contrast) {
+  float result;
+  result = (value - 0.5) * contrast + 0.5 + brightness;
+
+  if (result < 0.0) {
+    result = 0.0;
+  }
+  if (result > 1.0) {
+    result = 1.0;
+  }
+  return result;
+}
+
+float DrmAtomicStateManager::TransformGamma(float value, float gamma) {
+  float result;
+
+  result = pow(value, gamma);
+  if (result < 0.0) {
+    result = 0.0;
+  }
+  if (result > 1.0) {
+    result = 1.0;
+  }
+
+  return result;
+}
+
+auto DrmAtomicStateManager::SetColorCorrection(struct gamma_colors gamma,
+                                    uint32_t contrast_c,
+                                    uint32_t brightness_c) ->int{
+  struct drm_color_lut *lut;
+  float brightness[3];
+  float contrast[3];
+  uint8_t temp[3];
+  uint64_t lut_size = 0;
+  int ret = 0;
+
+  std::tie(ret, lut_size) = pipe_->crtc->Get()->GetGammaLutSizeProperty().value();
+
+  ALOGD("COLOR_ contrast_c=0x%6x", contrast_c);
+  ALOGD("COLOR_ brightness_c=0x%6x", brightness_c);
+
+  /* reset lut when contrast and brightness are all 0 */
+  if (contrast_c == 0 && brightness_c == 0) {
+    lut = NULL;
+    ApplyPendingLUT(lut, lut_size);
+    free(lut);
+    return 0;
+  }
+
+  lut = (struct drm_color_lut *)malloc(sizeof(struct drm_color_lut) * lut_size);
+  if (!lut) {
+    ALOGE("Cannot allocate LUT memory");
+    return -ENOMEM;
+  }
+
+  /* Unpack brightness values for each channel */
+  temp[0] = (brightness_c >> 16) & 0xFF;
+  temp[1] = (brightness_c >> 8) & 0xFF;
+  temp[2] = (brightness_c) & 0xFF;
+
+  /* Map brightness from -128 - 127 range into -0.5 - 0.5 range */
+  brightness[0] = (float)(temp[0]) / 255 - 0.5;
+  brightness[1] = (float)(temp[1]) / 255 - 0.5;
+  brightness[2] = (float)(temp[2]) / 255 - 0.5;
+
+  /* Unpack contrast values for each channel */
+  temp[0] = (contrast_c >> 16) & 0xFF;
+  temp[1] = (contrast_c >> 8) & 0xFF;
+  temp[2] = (contrast_c) & 0xFF;
+
+  /* Map contrast from 0 - 255 range into 0.0 - 2.0 range */
+  contrast[0] = (float)(temp[0]) / 128;
+  contrast[1] = (float)(temp[1]) / 128;
+  contrast[2] = (float)(temp[2]) / 128;
+
+  for (uint64_t i = 0; i < lut_size; i++) {
+    /* Set lut[0] as 0 always as the darkest color should has brightness 0 */
+    if (i == 0) {
+      lut[i].red = 0;
+      lut[i].green = 0;
+      lut[i].blue = 0;
+      continue;
+    }
+
+    lut[i].red = 0xFFFF * TransformGamma(TransformContrastBrightness(
+                                         (float)(i) / lut_size,
+                                          brightness[0], contrast[0]),
+                                          gamma.red);
+    lut[i].green = 0xFFFF * TransformGamma(TransformContrastBrightness(
+                                            (float)(i) / lut_size,
+                                             brightness[1], contrast[1]),
+                                             gamma.green);
+    lut[i].blue = 0xFFFF * TransformGamma(TransformContrastBrightness(
+                                          (float)(i) / lut_size,
+                                           brightness[2], contrast[2]),
+                                           gamma.blue);
+  }
+
+  ApplyPendingLUT(lut, lut_size);
+  free(lut);
+  return 0;
+}
+
+auto DrmAtomicStateManager::ApplyPendingLUT(struct drm_color_lut *lut, uint64_t lut_size) -> int {
+  uint32_t lut_blob_id = 0;
+
+  if (pipe_->crtc->Get()->GetGammaLutProperty().id() == 0) {
+    ALOGE("GetGammaLutProperty().id() == 0");
+    return -EINVAL;
+  }
+
+  drmModeCreatePropertyBlob(
+    *(pipe_->device->GetFd()), lut, sizeof(struct drm_color_lut) * lut_size, &lut_blob_id);
+  if (lut_blob_id == 0) {
+    ALOGE("COLOR_ lut_blob_id == 0");
+    return -EINVAL;
+
+  }
+
+  drmModeObjectSetProperty(*(pipe_->device->GetFd()), pipe_->crtc->Get()->GetId(), DRM_MODE_OBJECT_CRTC,
+                           pipe_->crtc->Get()->GetGammaLutProperty().id(), lut_blob_id);
+  drmModeDestroyPropertyBlob(*(pipe_->device->GetFd()), lut_blob_id);
+  return 0;
+}
+
+auto DrmAtomicStateManager::SetColorSaturationHue(void) ->int{
+  double color_transform_matrix[16] = {1.0, 0.0, 0.0, 0.0,
+                                       0.0, 1.0, 0.0, 0.0,
+                                       0.0, 0.0, 1.0, 0.0,
+                                       0.0, 0.0, 0.0, 1.0};
+
+  int32_t color_transform_hint = HAL_COLOR_TRANSFORM_ARBITRARY_MATRIX;
+
+  SetColorTransformMatrix(color_transform_matrix,
+                          color_transform_hint);
+  return 0;
+}
+
+auto DrmAtomicStateManager::SetColorBrightnessContrast(void) ->int{
+  struct gamma_colors gamma;
+  int read_bytes;
+  FILE *file_brightness = NULL;
+  FILE *file_contrast   = NULL;
+  char buf[4096]        = {};
+  uint32_t contrast_c   = 0x808080;
+  uint32_t brightness_c = 0x808080;
+
+  file_brightness = fopen("/data/vendor/color/brightness", "r+");
+  if (file_brightness != NULL) {
+    read_bytes = fread(buf, 1, 8, file_brightness);
+    if (read_bytes <= 0) {
+      ALOGE("COLOR_ fread brightness error");
+      fclose(file_brightness);
+      return -EINVAL;
+    }
+    if (atoi(buf) < 0 || atoi(buf) > 255) {
+      brightness_c = 0x80;
+    } else {
+      brightness_c = atoi(buf) &0xFF;
+    }
+
+    brightness_c = ((brightness_c<< 16) |
+                    (brightness_c << 8) |
+                    (brightness_c));
+    fclose(file_brightness);
+  }
+
+  file_contrast = fopen("/data/vendor/color/contrast", "r+");
+  if (file_contrast != NULL) {
+    read_bytes = fread(buf, 1, 8, file_contrast);
+    if (read_bytes <= 0) {
+      ALOGE("COLOR_ fread contrast error");
+      fclose(file_contrast);
+      return -EINVAL;
+    }
+    if (atoi(buf) < 0 || atoi(buf) > 255) {
+      contrast_c = 0x80;
+    } else {
+      contrast_c = atoi(buf) & 0xFF;
+    }
+
+    contrast_c =  ((contrast_c<< 16) |
+                   (contrast_c << 8) |
+                   (contrast_c));
+    fclose(file_contrast);
+  }
+
+  gamma.red   = 1;
+  gamma.green = 1;
+  gamma.blue  = 1;
+
+  SetColorCorrection(gamma, contrast_c, brightness_c);
+
+  return 0;
 }
 
 }  // namespace android

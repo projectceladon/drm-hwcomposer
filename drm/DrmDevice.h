@@ -71,6 +71,9 @@ class DrmDevice {
   uint32_t GetNextModeId();
   void ResetModeId();
 
+  auto GetColorAdjustmentEnabling() const {
+    return color_adjustment_enabling_;
+  }
   std::string GetName() const;
 
   auto RegisterUserPropertyBlob(void *data, size_t length) const
@@ -142,6 +145,7 @@ public:
   bool preferred_mode_limit_;
   bool planes_enabling_;
   uint32_t planes_num_;
+  bool color_adjustment_enabling_;
 };
 
 }  // namespace android

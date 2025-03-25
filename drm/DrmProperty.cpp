@@ -40,6 +40,32 @@ DrmProperty::DrmProperty(const SharedFd &fd, uint32_t obj_id,
   Init(fd, obj_id, p, value);
 }
 
+std::tuple<int, uint64_t> DrmProperty::value() const {
+  if (type_ == DRM_PROPERTY_TYPE_BLOB)
+    return std::make_tuple(0, value_);
+
+  if (values_.empty())
+    return std::make_tuple(-ENOENT, 0);
+
+  switch (type_) {
+    case DRM_PROPERTY_TYPE_INT:
+      return std::make_tuple(0, value_);
+
+    case DRM_PROPERTY_TYPE_ENUM:
+      if (value_ >= enums_.size())
+        return std::make_tuple(-ENOENT, 0);
+
+      return std::make_tuple(0, enums_[value_].value);
+
+    case DRM_PROPERTY_TYPE_OBJECT:
+      return std::make_tuple(0, value_);
+
+    case DRM_PROPERTY_TYPE_BITMASK:
+    default:
+      return std::make_tuple(-EINVAL, 0);
+  }
+}
+
 void DrmProperty::Init(const SharedFd &fd, uint32_t obj_id,
                        drmModePropertyPtr p, uint64_t value) {
   fd_ = fd;
@@ -60,6 +86,16 @@ void DrmProperty::Init(const SharedFd &fd, uint32_t obj_id,
   for (int i = 0; i < p->count_blobs; ++i)
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic):
     blob_ids_.emplace_back(p->blob_ids[i]);
+  if (flags_ & DRM_MODE_PROP_RANGE)
+    type_ = DRM_PROPERTY_TYPE_INT;
+  else if (flags_ & DRM_MODE_PROP_ENUM)
+    type_ = DRM_PROPERTY_TYPE_ENUM;
+  else if (flags_ & DRM_MODE_PROP_OBJECT)
+    type_ = DRM_PROPERTY_TYPE_OBJECT;
+  else if (flags_ & DRM_MODE_PROP_BLOB)
+    type_ = DRM_PROPERTY_TYPE_BLOB;
+  else if (flags_ & DRM_MODE_PROP_BITMASK)
+    type_ = DRM_PROPERTY_TYPE_BITMASK;
 }
 
 std::optional<uint64_t> DrmProperty::GetValue() const {

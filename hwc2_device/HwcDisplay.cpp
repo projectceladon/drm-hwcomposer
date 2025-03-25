@@ -395,6 +395,7 @@ void HwcDisplay::Deinit() {
   if (pipeline_ != nullptr) {
     AtomicCommitArgs a_args{};
     a_args.composition = std::make_shared<DrmKmsPlan>();
+    a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
     GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
     a_args.composition = {};
     a_args.active = false;
@@ -735,7 +736,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
       new_vsync_period_ns = staged_config->mode.GetVSyncPeriodNs();
     }
   }
-
+  a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
   // order the layers by z-order
   bool use_client_layer = false;
   uint32_t client_z_order = UINT32_MAX;
@@ -970,6 +971,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
       break;
     case HWC2::PowerMode::On:
       a_args.active = true;
+      a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
