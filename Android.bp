@@ -176,7 +176,9 @@ cc_binary {
     ],
 
     srcs: ["bufferinfo/legacy/BufferInfoLibdrm.cpp"],
-
+    cppflags: [
+        "-DHEADLESS_RESOLUTION_2560_1600",
+    ],
     relative_install_path: "hw",
     vendor: true,
 
