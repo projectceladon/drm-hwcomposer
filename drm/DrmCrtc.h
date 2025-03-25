@@ -54,6 +54,14 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
     return mode_property_;
   }
 
+  auto CanBind(uint32_t connector_id) {
+    return connector_id_ == 0 || connector_id_ == connector_id;
+  }
+
+  void BindConnector(uint32_t connector_id) {
+    connector_id_ = connector_id;
+  }
+
   auto &GetOutFencePtrProperty() const {
     return out_fence_ptr_property_;
   }
@@ -75,5 +83,6 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmProperty active_property_;
   DrmProperty mode_property_;
   DrmProperty out_fence_ptr_property_;
+  uint32_t connector_id_ = 0;
 };
 }  // namespace android

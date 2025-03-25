@@ -78,7 +78,7 @@ struct DrmDisplayPipeline {
   auto GetUsablePlanes() -> UsablePlanes;
 
   ~DrmDisplayPipeline();
-
+  auto AtomicDisablePipeline() -> int;
   DrmDevice *device;
 
   std::shared_ptr<BindingOwner<DrmConnector>> connector;
