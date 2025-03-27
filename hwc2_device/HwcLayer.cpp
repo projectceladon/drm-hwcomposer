@@ -70,6 +70,11 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   }
 }
 
+bool HwcLayer::IsVideoLayer() {
+  return active_slot_id_.has_value() &&
+      slots_[*active_slot_id_].bi.usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;
+}
+
 void HwcLayer::ImportFb() {
   if (!IsLayerUsableAsDevice() || !buffer_updated_ ||
       !active_slot_id_.has_value()) {

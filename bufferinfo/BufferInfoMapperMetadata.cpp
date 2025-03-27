@@ -99,7 +99,7 @@ auto BufferInfoMapperMetadata::GetBoInfo(buffer_handle_t handle)
     ALOGE("Failed to get FourCC format err=%d", err);
     return {};
   }
-
+  mapper.getUsage(handle, &bi.usage);
   err = mapper.getPixelFormatModifier(handle, &bi.modifiers[0]);
   if (err != 0) {
     ALOGE("Failed to get DRM Modifier err=%d", err);
