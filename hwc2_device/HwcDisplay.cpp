@@ -32,7 +32,7 @@
 #include "drm/DrmHwc.h"
 #include "utils/log.h"
 #include "utils/properties.h"
-
+#include <utils/Trace.h>
 using ::android::DrmDisplayPipeline;
 using ColorGamut = ::android::ColorSpace;
 
@@ -329,6 +329,12 @@ auto HwcDisplay::GetDisplayBoundsMm() -> std::pair<int32_t, int32_t> {
   return {configs_.mm_width, -1};
 }
 
+auto HwcDisplay::setExpectedPresentTime(
+  const std::optional<ClockMonotonicTimestamp>& expectedPresentTime) -> void {
+  if (expectedPresentTime.has_value())
+    expectedPresentTime_ = expectedPresentTime;
+}
+
 auto HwcDisplay::AcceptValidatedComposition() -> void {
   for (auto &[_, layer] : layers_) {
     layer.AcceptTypeChange();
@@ -338,6 +344,20 @@ auto HwcDisplay::AcceptValidatedComposition() -> void {
 auto HwcDisplay::PresentStagedComposition(
     SharedFd &out_present_fence, std::vector<ReleaseFence> &out_release_fences)
     -> bool {
+  if (expectedPresentTime_.has_value() && expectedPresentTime_->timestampNanos > 0) {
+    static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
+    struct timespec vsync {};
+    clock_gettime(CLOCK_MONOTONIC, &vsync);
+    int64_t timestamp = (int64_t)vsync.tv_sec * kOneSecondNs + (int64_t)vsync.tv_nsec;
+    int64_t period = (1E9 / configs_.hwc_configs[*staged_mode_config_id_].mode.GetVRefresh());
+    if ((expectedPresentTime_->timestampNanos - timestamp) > period) {
+      ATRACE_NAME("Wait for expected present time");
+      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - period) / (1000 * 1000);
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+    }
+    expectedPresentTime_ = std::nullopt;
+  }
+
   if (IsInHeadlessMode()) {
     return true;
   }

@@ -10,6 +10,10 @@ cc_library_shared {
         ":drm_hwcomposer_platformmeson",
     ],
 
+    shared_libs: [
+        "android.hardware.graphics.composer3-V3-ndk",
+    ],
+
     local_include_dirs: [
         "test_include",
     ],

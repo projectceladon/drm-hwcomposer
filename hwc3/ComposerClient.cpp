@@ -725,7 +725,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     cmd_result_writer_->AddChanges(changes);
     auto hwc3_display = DrmHwcThree::GetHwc3Display(*display);
     hwc3_display->must_validate = false;
-
+    display->setExpectedPresentTime(command.expectedPresentTime);
     // TODO: DisplayRequests are not implemented.
   }
 
