@@ -23,7 +23,7 @@
 #include <sstream>
 
 #include <ui/GraphicTypes.h>
-
+#include <aidl/android/hardware/graphics/composer3/ClockMonotonicTimestamp.h>
 #include "HwcDisplayConfigs.h"
 #include "compositor/DisplayInfo.h"
 #include "compositor/FlatteningController.h"
@@ -32,7 +32,7 @@
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
 #include "hwc2_device/HwcLayer.h"
-
+using namespace aidl::android::hardware::graphics::composer3;
 namespace android {
 
 class Backend;
@@ -104,6 +104,9 @@ class HwcDisplay {
   using ChangedLayer = std::pair<ILayerId, HWC2::Composition>;
   auto ValidateStagedComposition() -> std::vector<ChangedLayer>;
 
+
+  auto setExpectedPresentTime(
+       const std::optional<ClockMonotonicTimestamp>& expectedPresentTime) -> void;
   // Mark previously validated properties as ready to present.
   auto AcceptValidatedComposition() -> void;
 
@@ -255,7 +258,7 @@ class HwcDisplay {
       const std::optional<LayerData> &modeset_layer);
 
   HwcDisplayConfigs configs_;
-
+  std::optional<ClockMonotonicTimestamp> expectedPresentTime_ = std::nullopt;
   DrmHwc *const hwc_;
 
   int64_t staged_mode_change_time_{};
