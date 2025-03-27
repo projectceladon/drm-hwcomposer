@@ -77,7 +77,7 @@ class ResourceManager {
   auto GetOrderedConnectors() -> std::vector<DrmConnector *>;
   void UpdateFrontendDisplays();
   void DetachAllFrontendDisplays();
-
+  void ReloadNode();
   std::vector<std::unique_ptr<DrmDevice>> drms_;
 
   // Android properties:
@@ -94,5 +94,7 @@ class ResourceManager {
   PipelineToFrontendBindingInterface *const frontend_interface_;
 
   bool initialized_{};
+  int card_num_ = 0;
+  bool reloaded_{};
 };
 }  // namespace android
