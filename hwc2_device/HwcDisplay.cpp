@@ -92,7 +92,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
     : hwc2_(hwc2),
       handle_(handle),
       type_(type),
-      client_layer_(this),
+      client_layer_(this, false),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
@@ -193,7 +193,10 @@ HWC2::Error HwcDisplay::AcceptDisplayChanges() {
 }
 
 HWC2::Error HwcDisplay::CreateLayer(hwc2_layer_t *layer) {
-  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_), HwcLayer(this));
+  bool allow_p2p = !IsInHeadlessMode() && GetPipe().crtc->Get()
+      && GetPipe().crtc->Get()->GetAllowP2P();
+  layers_.emplace(static_cast<hwc2_layer_t>(layer_idx_),
+                  HwcLayer(this, allow_p2p));
   *layer = static_cast<hwc2_layer_t>(layer_idx_);
   ++layer_idx_;
   return HWC2::Error::None;
@@ -242,6 +245,7 @@ HWC2::Error HwcDisplay::GetChangedCompositionTypes(uint32_t *num_elements,
 HWC2::Error HwcDisplay::GetClientTargetSupport(uint32_t width, uint32_t height,
                                                int32_t /*format*/,
                                                int32_t dataspace) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     return HWC2::Error::None;
   }
@@ -507,6 +511,7 @@ HWC2::Error HwcDisplay::GetReleaseFences(uint32_t *num_elements,
 }
 
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     ALOGE("%s: Display is in headless mode, should never reach here", __func__);
     return HWC2::Error::None;
@@ -618,19 +623,19 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
  * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:hardware/libhardware/include/hardware/hwcomposer2.h;l=1805
  */
 HWC2::Error HwcDisplay::PresentDisplay(int32_t *out_present_fence) {
+  ATRACE_CALL();
   if (expectedPresentTime_.has_value() && expectedPresentTime_->timestampNanos > 0) {
     static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
     struct timespec vsync {};
     clock_gettime(CLOCK_MONOTONIC, &vsync);
     int64_t timestamp = (int64_t)vsync.tv_sec * kOneSecondNs + (int64_t)vsync.tv_nsec;
-    int64_t half_period = (1E9 / staged_mode_->v_refresh()) / 2;
-    if ((expectedPresentTime_->timestampNanos - timestamp) > half_period) {
-      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - half_period) / (1000 * 1000);
+    int64_t period = (1E9 / staged_mode_->v_refresh());
+    if ((expectedPresentTime_->timestampNanos - timestamp) > period) {
+      ATRACE_NAME("Wait for expected present time");
+      int64_t sleep_ms = (expectedPresentTime_->timestampNanos - timestamp - period) / (1000 * 1000);
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
     }
     expectedPresentTime_ = std::nullopt;
-  } else {
-    std::this_thread::sleep_for(std::chrono::nanoseconds((int64_t)(1E9 / staged_mode_->v_refresh()) / 2));
   }
   if (IsInHeadlessMode()) {
     *out_present_fence = -1;
@@ -703,6 +708,7 @@ HWC2::Error HwcDisplay::SetClientTarget(buffer_handle_t target,
     return HWC2::Error::None;
   }
 
+  client_layer_.SetAllowP2P(GetPipe().crtc->Get()->GetAllowP2P());
   client_layer_.PopulateLayerData(/*test = */ true);
   if (!client_layer_.IsLayerUsableAsDevice()) {
     ALOGE("Client layer must be always usable by DRM/KMS");
@@ -752,6 +758,7 @@ HWC2::Error HwcDisplay::SetOutputBuffer(buffer_handle_t /*buffer*/,
 }
 
 HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
+  ATRACE_CALL();
   auto mode = static_cast<HWC2::PowerMode>(mode_in);
 
   AtomicCommitArgs a_args{};
@@ -797,6 +804,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
 }
 
 HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
+  ATRACE_CALL();
   vsync_event_en_ = HWC2_VSYNC_ENABLE == enabled;
   if (vsync_event_en_) {
     vsync_worker_.VSyncControl(true);
@@ -806,6 +814,7 @@ HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
 
 HWC3::Error HwcDisplay::setExpectedPresentTime(
     const std::optional<ClockMonotonicTimestamp>& expectedPresentTime) {
+  ATRACE_CALL();
   if (expectedPresentTime.has_value())
     expectedPresentTime_ = expectedPresentTime;
   return HWC3::Error::None;
@@ -813,6 +822,7 @@ HWC3::Error HwcDisplay::setExpectedPresentTime(
 
 HWC2::Error HwcDisplay::ValidateDisplay(uint32_t *num_types,
                                         uint32_t *num_requests) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     *num_types = *num_requests = 0;
     return HWC2::Error::None;

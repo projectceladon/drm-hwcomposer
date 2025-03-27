@@ -28,6 +28,7 @@
 #include <cinttypes>
 
 #include "utils/log.h"
+#include "utils/intel_blit.h"
 
 namespace android {
 

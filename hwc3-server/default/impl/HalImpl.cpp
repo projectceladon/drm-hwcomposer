@@ -733,6 +733,7 @@ int32_t HalImpl::flushDisplayBrightnessChange([[maybe_unused]] int64_t display) 
 int32_t HalImpl::presentDisplay(int64_t display, ndk::ScopedFileDescriptor& fence,
                        std::vector<int64_t>* outLayers,
                        std::vector<ndk::ScopedFileDescriptor>* outReleaseFences) {
+    ATRACE_CALL();
     if (!mDispatch.presentDisplay) {
         return HWC2_ERROR_UNSUPPORTED;
     }
