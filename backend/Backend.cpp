@@ -130,7 +130,8 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
   return !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() || display->CtmByGpu() ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc()->GetResMan().ForcedScalingWithGpu());
+          display->GetHwc()->GetResMan().ForcedScalingWithGpu()) ||
+         (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev());
 }
 
 bool Backend::IsVideoLayer(HwcLayer *layer) {

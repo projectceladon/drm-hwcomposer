@@ -116,7 +116,7 @@ class DrmDevice {
   const std::optional<std::pair<uint64_t, uint64_t>> &GetCapCursorSize() const {
     return cap_cursor_size_;
   }
-
+  auto IsIvshmDev() {return IsIvshmDev_;}
  private:
   explicit DrmDevice(ResourceManager *res_man, uint32_t index);
   auto Init(const char *path) -> int;
@@ -141,6 +141,7 @@ class DrmDevice {
   std::unique_ptr<DrmFbImporter> drm_fb_importer_;
 
   ResourceManager *const res_man_;
+  bool IsIvshmDev_ = false;
 public:
   bool preferred_mode_limit_ = false;
   bool planes_enabling_ = false;

@@ -191,6 +191,7 @@ auto DrmDevice::Init(const char *path) -> int {
       }
     }
   }
+  IsIvshmDev_ = IsIvshmDev(*GetFd());
   return 0;
 }
 
