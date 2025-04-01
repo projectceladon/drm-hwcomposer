@@ -81,10 +81,10 @@ class DrmHwc : public PipelineToFrontendBindingInterface {
   auto &Displays() {
     return displays_;
   }
-
+  std::map<hwc2_display_t, std::unique_ptr<HwcDisplay>> displays_;
  private:
   ResourceManager resource_manager_;
-  std::map<hwc2_display_t, std::unique_ptr<HwcDisplay>> displays_;
+
   std::map<std::shared_ptr<DrmDisplayPipeline>, hwc2_display_t>
       display_handles_;
 

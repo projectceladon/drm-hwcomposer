@@ -19,7 +19,7 @@
 #include <hardware/hwcomposer2.h>
 
 #include "drm/DrmHwc.h"
-
+#include "libhwcservice/hwcserviceapi.h"
 namespace android {
 
 class DrmHwcTwo : public DrmHwc {
@@ -38,7 +38,14 @@ class DrmHwcTwo : public DrmHwc {
   void SendRefreshEventToClient(uint64_t displayid) override;
   void SendHotplugEventToClient(hwc2_display_t displayid,
                                 DisplayStatus display_status) override;
+  void EnableHDCPSessionForDisplay(uint32_t connector,
+                                    EHwcsContentType content_type);
+ 
+  void EnableHDCPSessionForAllDisplays(EHwcsContentType content_type);
 
+  void DisableHDCPSessionForDisplay(uint32_t connector);
+
+  void DisableHDCPSessionForAllDisplays();
  private:
   std::pair<HWC2_PFN_HOTPLUG, hwc2_callback_data_t> hotplug_callback_{};
   std::pair<HWC2_PFN_VSYNC, hwc2_callback_data_t> vsync_callback_{};

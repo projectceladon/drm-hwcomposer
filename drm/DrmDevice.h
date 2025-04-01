@@ -26,7 +26,7 @@
 #include "DrmEncoder.h"
 #include "bufferinfo/BufferInfo.h"
 #include "utils/fd.h"
-
+#include "utils/hwcdefs.h"
 namespace android {
 
 #define DRM_FORMAT_NV12_INTEL fourcc_code('9', '9', '9', '6')

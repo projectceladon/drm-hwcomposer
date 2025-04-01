@@ -11,7 +11,9 @@ cc_library_shared {
     ],
 
     shared_libs: [
-        "android.hardware.graphics.composer3-V3-ndk",
+        "android.hardware.graphics.composer3-V4-ndk",
+        "libbinder_ndk",
+        "libhwcservice",
     ],
 
     local_include_dirs: [
