@@ -88,6 +88,8 @@ class DrmAtomicStateManager {
     cv_.notify_all();
   }
 
+  void SetHDCPState(HWCContentProtection state,
+                    HWCContentType content_type);
  private:
   DrmAtomicStateManager() = default;
   auto CommitFrame(AtomicCommitArgs &args) -> int;
@@ -138,6 +140,12 @@ class DrmAtomicStateManager {
   std::condition_variable cv_;
   std::mutex mutex_;
   bool exit_thread_{};
+
+  hwcomposer::HWCContentProtection current_protection_support_ =
+    hwcomposer::HWCContentProtection::kUnSupported;
+  hwcomposer::HWCContentProtection desired_protection_support_ =
+    hwcomposer::HWCContentProtection::kUnSupported;
+  hwcomposer::HWCContentType content_type_ = hwcomposer::kCONTENT_TYPE0;
 };
 
 }  // namespace android

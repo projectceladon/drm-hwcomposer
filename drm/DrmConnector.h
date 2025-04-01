@@ -28,7 +28,7 @@
 #include "DrmUnique.h"
 #include "compositor/DisplayInfo.h"
 #include "utils/EdidWrapper.h"
-
+#include "utils/hwcdefs.h"
 namespace android {
 
 class DrmDevice;
@@ -95,6 +95,14 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return dpms_property_;
   }
 
+  auto &GetHdcpProperty() const {
+    return hdcp_id_property_;
+  }
+
+  auto &GetHdcpTypeProperty() const {
+    return hdcp_type_property_;
+  }
+
   auto &GetCrtcIdProperty() const {
     return crtc_id_property_;
   }
@@ -144,7 +152,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   };
 
   auto GetPanelOrientation() -> std::optional<PanelOrientation>;
-
+  void SetHDCPState(hwcomposer::HWCContentProtection state,
+                     hwcomposer::HWCContentType content_type);
  private:
   DrmConnector(DrmModeConnectorUnique connector, DrmDevice *drm, uint32_t index)
       : connector_(std::move(connector)),
@@ -168,6 +177,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   std::vector<DrmMode> modes_;
 
+  DrmProperty hdcp_id_property_;
+  DrmProperty hdcp_type_property_;
   DrmProperty dpms_property_;
   DrmProperty crtc_id_property_;
   DrmProperty edid_property_;

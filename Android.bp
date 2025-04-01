@@ -118,6 +118,7 @@ filegroup {
     name: "drm_hwcomposer_service",
     srcs: [
         "hwc3/service.cpp",
+        "hwc2_device/hwcservice.cpp",
     ],
 }
 
@@ -154,6 +155,7 @@ cc_defaults {
         "libbinder_ndk",
         "liblog",
         "libutils",
+        "libhwcservice",
     ],
 
     cflags: [
@@ -165,6 +167,11 @@ cc_defaults {
     cppflags: [
         "-DHWC2_INCLUDE_STRINGIFICATION",
         "-DHWC2_USE_CPP11",
+        "-std=c++17",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-unused-function",
+        "-frtti",
     ],
 }
 

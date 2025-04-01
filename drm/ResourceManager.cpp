@@ -30,7 +30,8 @@
 #include "drm/DrmPlane.h"
 #include "utils/log.h"
 #include "utils/properties.h"
-
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
 namespace android {
 
 ResourceManager::ResourceManager(
@@ -182,8 +183,20 @@ void ResourceManager::Init() {
   });
 
   UpdateFrontendDisplays();
-
+  pt_ = std::thread(&ResourceManager::HwcServiceThread, this);
   initialized_ = true;
+}
+
+void ResourceManager::HwcServiceThread() {
+  this->hwcService_.Start((DrmHwcTwo*)frontend_interface_);
+  sp<ProcessState> proc(ProcessState::self());
+  if (!proc.get())
+  {
+    ALOGE("Error: Fail to new ProcessState.");
+    return;
+  }
+  proc->startThreadPool();
+  IPCThreadState::self()->joinThreadPool();
 }
 
 void ResourceManager::DeInit() {
