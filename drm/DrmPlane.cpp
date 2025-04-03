@@ -289,8 +289,8 @@ auto DrmPlane::AtomicSetState(drmModeAtomicReq &pset, LayerData &layer,
     }
   }
 
-  if (layer.acquire_fence &&
-      !in_fence_fd_property_.AtomicSet(pset, *layer.acquire_fence)) {
+  int fence = layer.bi->use_shadow_fds ? layer.blit_fence.Get() : (layer.acquire_fence ? *layer.acquire_fence : -1);
+  if (fence > 0 && !in_fence_fd_property_.AtomicSet(pset, fence)) {
     return -EINVAL;
   }
 
