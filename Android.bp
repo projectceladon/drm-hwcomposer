@@ -118,7 +118,6 @@ filegroup {
     name: "drm_hwcomposer_service",
     srcs: [
         "hwc3/service.cpp",
-        "hwc2_device/hwcservice.cpp",
     ],
 }
 
@@ -155,7 +154,6 @@ cc_defaults {
         "libbinder_ndk",
         "liblog",
         "libutils",
-        "libhwcservice",
     ],
 
     cflags: [
@@ -271,4 +269,30 @@ apex {
         "drm_hwcomposer_hwc3_apex_init_rc",
         "drm_hwcomposer_hwc3_apex_vintf",
     ],
+}
+
+cc_library_shared {
+    srcs: [
+        ":drm_hwcomposer_common",
+        "hwc2_device/hwcservice.cpp",
+        "hwc2_device/hwcservice_lib.cpp",
+    ],
+    name: "libhwcservicelib",
+    defaults: [
+        "hwcomposer.drm_defaults",
+    ],
+
+    shared_libs: [
+        "android.hardware.graphics.composer3-V4-ndk",
+        "libutils",
+        "libbinder",
+        "liblog",
+        "libhwcservice",
+    ],
+    vendor: true,
+    compile_multilib: "both",
+    export_include_dirs: ["."],
+    proprietary: true,
+    header_libs: ["libcutils_headers"],
+    relative_install_path: "hw",
 }

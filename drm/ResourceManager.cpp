@@ -19,6 +19,7 @@
 #include "ResourceManager.h"
 
 #include <sys/stat.h>
+#include <dlfcn.h>
 
 #include <ctime>
 #include <sstream>
@@ -28,10 +29,10 @@
 #include "drm/DrmDevice.h"
 #include "drm/DrmDisplayPipeline.h"
 #include "drm/DrmPlane.h"
+#include "hwc2_device/DrmHwcTwo.h"
 #include "utils/log.h"
 #include "utils/properties.h"
-#include <binder/IPCThreadState.h>
-#include <binder/ProcessState.h>
+#include "hwc2_device/hwcservice_lib.h"
 namespace android {
 
 ResourceManager::ResourceManager(
@@ -188,15 +189,18 @@ void ResourceManager::Init() {
 }
 
 void ResourceManager::HwcServiceThread() {
-  this->hwcService_.Start((DrmHwcTwo*)frontend_interface_);
-  sp<ProcessState> proc(ProcessState::self());
-  if (!proc.get())
-  {
-    ALOGE("Error: Fail to new ProcessState.");
+  typedef void (*StartHwcInfoService)(DrmHwcTwo*);
+  void *handle = dlopen("/vendor/lib64/hw/libhwcservicelib.so", RTLD_NOW);
+  if (!handle) {
+    ALOGE("dlopen /vendor/lib64/hw/libhwcservicelib.so fail");
     return;
   }
-  proc->startThreadPool();
-  IPCThreadState::self()->joinThreadPool();
+  StartHwcInfoService func = (StartHwcInfoService)dlsym(handle, "StartHwcInfoService");
+  if (!func) {
+    ALOGE("dlsym(StartHwcInfoService) fail ");
+    return;
+  }
+  func((DrmHwcTwo*)frontend_interface_);
 }
 
 void ResourceManager::DeInit() {

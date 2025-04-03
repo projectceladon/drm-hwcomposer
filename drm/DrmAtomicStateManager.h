@@ -27,7 +27,8 @@
 #include "drm/DrmPlane.h"
 #include "drm/ResourceManager.h"
 #include "drm/VSyncWorker.h"
-
+#include "utils/hwcdefs.h"
+using namespace hwcomposer;
 namespace android {
 
 struct AtomicCommitArgs {
