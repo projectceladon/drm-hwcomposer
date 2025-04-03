@@ -25,7 +25,8 @@
 #include "bufferinfo/BufferInfo.h"
 #include "drm/DrmFbImporter.h"
 #include "utils/fd.h"
-
+#include "utils/UniqueFd2.h"
+#include "log/log.h"
 namespace android {
 
 class DrmFbIdHandle;
@@ -96,6 +97,7 @@ struct LayerData {
   std::shared_ptr<DrmFbIdHandle> fb;
   PresentInfo pi;
   SharedFd acquire_fence;
+  UniqueFd2 blit_fence;
 };
 
 }  // namespace android

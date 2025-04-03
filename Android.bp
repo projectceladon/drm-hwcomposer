@@ -101,6 +101,7 @@ filegroup {
         "utils/LibdisplayEdidWrapper.cpp",
         "utils/fd.cpp",
         "utils/properties.cpp",
+        "utils/intel_blit.cpp",
     ],
 }
 

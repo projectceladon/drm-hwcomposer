@@ -15,14 +15,49 @@
  */
 
 #define LOG_TAG "drmhwc"
-
+#include <xf86drm.h>
 #include "HwcLayer.h"
 
 #include "HwcDisplay.h"
 #include "bufferinfo/BufferInfoGetter.h"
 #include "utils/log.h"
-
+#include "utils/intel_blit.h"
 namespace android {
+
+static bool InitializeBlitter(BufferInfo &bi) {
+  bi.blitter = std::make_shared<IntelBlitter>();
+  if (!bi.blitter->Initialized()) {
+    ALOGE("failed to initialize intel blitter\n");
+    return false;
+  }
+  uint32_t handle;
+  auto sucess = bi.blitter->CreateShadowBuffer(bi.width, bi.height, bi.format,
+                                              bi.modifiers[0], &handle);
+  if (!sucess) {
+    ALOGI("failed to create shadow buffer, modifier=0x%lx\n", (unsigned long) bi.modifiers[0]);
+    bi.blitter = nullptr;
+    return false;
+  }
+
+  bi.shadow_buffer_handles[0] = handle;
+  int dgpu_fd = bi.blitter->GetFd();
+  int ret = drmPrimeHandleToFD(dgpu_fd, handle, 0, &bi.shadow_fds[0]);
+  if (ret) {
+    ALOGE("failed to export shadow buffer\n");
+    drmCloseBufferHandle(dgpu_fd, handle);
+    bi.blitter = nullptr;
+    return false;
+  }
+  ret = drmPrimeFDToHandle(dgpu_fd, bi.prime_fds[0], &bi.prime_buffer_handles[0]);
+  if (ret) {
+    ALOGE("failed convert prime fd to handle\n");
+    close(bi.shadow_fds[0]);
+    drmCloseBufferHandle(dgpu_fd, handle);
+    bi.blitter = nullptr;
+    return false;
+  }
+  return true;
+}
 
 void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
   if (layer_properties.slot_buffer) {
@@ -94,6 +129,11 @@ void HwcLayer::ImportFb() {
   auto [planes, cursor_plane] = parent_->GetPipe().GetUsablePlanes();
   if (planes.size() == 1 && !planes.begin()->get()->Get()->IsPixBlendModeSupported())
     is_pixel_blend_mode_supported = false;
+
+  int kms_fd = *(parent_->GetPipe().device->GetFd());
+  bool use_shadow_fds = (intel_dgpu_fd() >= 0) &&
+      !virtio_gpu_allow_p2p(kms_fd) && InitializeBlitter(layer_data_.bi.value());
+  layer_data_.bi->use_shadow_fds = use_shadow_fds;
 
   auto& fb_importer = parent_->GetPipe().device->GetDrmFbImporter();
   auto fb = fb_importer.GetOrCreateFbId(&slots_[*active_slot_id_].bi, is_pixel_blend_mode_supported);
