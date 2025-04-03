@@ -18,13 +18,14 @@
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 #define LOG_TAG "drmhwc"
-
+#include <drm/drm_fourcc.h>
+#include <cmath>
 #include "DrmAtomicStateManager.h"
 
 #include <drm/drm_mode.h>
 #include <sync/sync.h>
 #include <utils/Trace.h>
-
+#include "utils/intel_blit.h"
 #include <cassert>
 
 #include "drm/DrmCrtc.h"
@@ -178,6 +179,20 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     for (auto &joining : args.composition->plan) {
       DrmPlane *plane = joining.plane->Get();
       LayerData &layer = joining.layer;
+
+      if (!args.test_only && layer.bi->use_shadow_fds) {
+        int out_handle;
+        // TODO: handle multi-plane buffer
+        bool success = layer.bi->blitter->Blit(layer.bi->shadow_buffer_handles[0],
+                        layer.bi->prime_buffer_handles[0],
+                        layer.bi->pitches[0], 4,
+                        layer.bi->width, layer.bi->height,
+                        (layer.acquire_fence ? *layer.acquire_fence : -1), &out_handle);
+        if (!success) {
+          ALOGE("failed to blit scan-out buffer\n");
+        }
+        layer.blit_fence = android::UniqueFd2(out_handle);
+      }
 
       new_frame_state.used_framebuffers.emplace_back(layer.fb);
       new_frame_state.used_planes.emplace_back(joining.plane);
