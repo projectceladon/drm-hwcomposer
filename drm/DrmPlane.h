@@ -24,7 +24,7 @@
 #include "DrmCrtc.h"
 #include "DrmProperty.h"
 #include "compositor/LayerData.h"
-
+#include <hardware/hwcomposer2.h>
 namespace android {
 
 class DrmDevice;
@@ -53,7 +53,7 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
 
   bool IsFormatSupported(uint32_t format) const;
   bool HasNonRgbFormat() const;
-
+  bool IsResolutionSupported(hwc_rect_t display_frame);
   auto AtomicSetState(drmModeAtomicReq &pset, LayerData &layer, uint32_t zpos,
                       uint32_t crtc_id, DstRectInfo &whole_display_rect) -> int;
   auto AtomicDisablePlane(drmModeAtomicReq &pset) -> int;
