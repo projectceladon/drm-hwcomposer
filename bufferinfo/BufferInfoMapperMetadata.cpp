@@ -26,7 +26,7 @@
 #include <xf86drmMode.h>
 
 #include <cinttypes>
-
+#include "utils/intel_blit.h"
 #include "utils/log.h"
 
 namespace android {

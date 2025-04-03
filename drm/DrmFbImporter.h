@@ -57,6 +57,10 @@ class DrmFbIdHandle {
 
   uint32_t fb_id_{};
   std::array<GemHandle, kBufferMaxPlanes> gem_handles_{};
+  std::array<GemHandle, kBufferMaxPlanes> shadow_handles_{};
+  std::array<int, kBufferMaxPlanes> shadow_fds_{};
+  bool use_shadow_buffers_;
+  int intel_fd_;
 };
 
 class DrmFbImporter {

@@ -139,7 +139,7 @@ class HwcLayer {
 
   void ImportFb();
   bool fb_import_failed_{};
-
+  UniqueFd2 dgpu_fd_;
  public:
   void PopulateLayerData();
   void ClearSlots();
