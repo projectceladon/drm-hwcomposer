@@ -34,5 +34,7 @@ cc_library_shared {
      compile_multilib: "both",
      export_include_dirs: ["."],
      proprietary: true,
+     vendor: true,
+     relative_install_path: "hw",
      header_libs: ["libcutils_headers"],
  }

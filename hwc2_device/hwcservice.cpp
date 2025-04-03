@@ -42,7 +42,6 @@ HwcService::~HwcService() {
 bool HwcService::Start(DrmHwcTwo *hwc) {
   if (initialized_)
     return true;
-
   mpHwc = hwc;
   sp<IServiceManager> sm(defaultServiceManager());
   if (sm->addService(String16(HWC_SERVICE_NAME), this, false)) {

@@ -24,7 +24,6 @@
 #include "DrmFbImporter.h"
 #include "DrmProperty.h"
 #include "UEventListener.h"
-#include "hwc2_device/hwcservice.h"
 #include <thread>
 namespace android {
 
@@ -98,7 +97,6 @@ class ResourceManager {
   bool initialized_{};
   int card_num_ = 0;
   bool reloaded_{};
-  android::HwcService hwcService_;
   std::thread pt_;
 };
 }  // namespace android
