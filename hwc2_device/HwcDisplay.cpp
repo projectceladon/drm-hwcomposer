@@ -130,9 +130,9 @@ std::string HwcDisplay::Dump() {
 
 HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                        DrmHwc *hwc)
-    : hwc_(hwc), handle_(handle), type_(type), client_layer_(this) {
+    : hwc_(hwc), handle_(handle), type_(type), client_layer_(this, false) {
   if (type_ == HWC2::DisplayType::Virtual) {
-    writeback_layer_ = std::make_unique<HwcLayer>(this);
+    writeback_layer_ = std::make_unique<HwcLayer>(this, false);
   }
 }
 
@@ -218,7 +218,7 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
     auto modeset_buffer =  //
         GetPipe().device->CreateBufferForModeset(width, height);
     if (modeset_buffer) {
-      auto modeset_layer = std::make_unique<HwcLayer>(this);
+      auto modeset_layer = std::make_unique<HwcLayer>(this, false);
       HwcLayer::LayerProperties properties;
       properties.slot_buffer = {
           .slot_id = 0,
@@ -517,8 +517,9 @@ auto HwcDisplay::CreateLayer(ILayerId new_layer_id) -> bool {
   ATRACE_CALL();
   if (layers_.count(new_layer_id) > 0)
     return false;
-
-  layers_.emplace(new_layer_id, HwcLayer(this));
+  bool allow_p2p = !IsInHeadlessMode() && GetPipe().crtc->Get()
+       && GetPipe().crtc->Get()->GetAllowP2P();
+  layers_.emplace(new_layer_id, HwcLayer(this, allow_p2p));
 
   return true;
 }
@@ -800,7 +801,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   }
   if (use_client_layer) {
     z_map.emplace(client_z_order, &client_layer_);
-
+    client_layer_.SetAllowP2P(GetPipe().crtc->Get()->GetAllowP2P());
     client_layer_.PopulateLayerData();
     if (!client_layer_.IsLayerUsableAsDevice()) {
       ALOGE_IF(!a_args.test_only,
