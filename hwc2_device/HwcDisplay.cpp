@@ -138,6 +138,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
 
 void HwcDisplay::SetColorTransformMatrix(
     const std::array<float, 16> &color_transform_matrix) {
+  ATRACE_CALL();
   auto almost_equal = [](auto a, auto b) {
     const float epsilon = 0.001F;
     return std::abs(a - b) < epsilon;
@@ -155,6 +156,7 @@ void HwcDisplay::SetColorTransformMatrix(
 }
 
 void HwcDisplay::SetColorMatrixToIdentity() {
+  ATRACE_CALL();
   color_matrix_ = std::make_shared<drm_color_ctm>();
   for (int i = 0; i < kCtmCols; i++) {
     for (int j = 0; j < kCtmRows; j++) {
@@ -172,6 +174,7 @@ HwcDisplay::~HwcDisplay() {
 
 auto HwcDisplay::GetConfig(hwc2_config_t config_id) const
     -> const HwcDisplayConfig * {
+  ATRACE_CALL();
   auto config_iter = configs_.hwc_configs.find(config_id);
   if (config_iter == configs_.hwc_configs.end()) {
     return nullptr;
@@ -180,14 +183,17 @@ auto HwcDisplay::GetConfig(hwc2_config_t config_id) const
 }
 
 auto HwcDisplay::GetCurrentConfig() const -> const HwcDisplayConfig * {
+  ATRACE_CALL();
   return GetConfig(configs_.active_config_id);
 }
 
 auto HwcDisplay::GetLastRequestedConfig() const -> const HwcDisplayConfig * {
+  ATRACE_CALL();
   return GetConfig(staged_mode_config_id_.value_or(configs_.active_config_id));
 }
 
 HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
+  ATRACE_CALL();
   const HwcDisplayConfig *new_config = GetConfig(config);
   if (new_config == nullptr) {
     ALOGE("Could not find active mode for %u", config);
@@ -253,6 +259,7 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
 auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
                              bool seamless, QueuedConfigTiming *out_timing)
     -> ConfigError {
+  ATRACE_CALL();
   if (configs_.hwc_configs.count(config) == 0) {
     ALOGE("Could not find active mode for %u", config);
     return ConfigError::kBadConfig;
@@ -284,6 +291,7 @@ auto HwcDisplay::QueueConfig(hwc2_config_t config, int64_t desired_time,
 }
 
 auto HwcDisplay::ValidateStagedComposition() -> std::vector<ChangedLayer> {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     return {};
   }
@@ -317,7 +325,7 @@ auto HwcDisplay::ValidateStagedComposition() -> std::vector<ChangedLayer> {
 }
 
 auto HwcDisplay::GetDisplayBoundsMm() -> std::pair<int32_t, int32_t> {
-
+  ATRACE_CALL();
   const auto bounds = GetEdid()->GetBoundsMm();
   if (bounds.first > 0 || bounds.second > 0) {
     return bounds;
@@ -331,6 +339,7 @@ auto HwcDisplay::GetDisplayBoundsMm() -> std::pair<int32_t, int32_t> {
 
 auto HwcDisplay::setExpectedPresentTime(
   const std::optional<ClockMonotonicTimestamp>& expectedPresentTime) -> void {
+  ATRACE_CALL();
   if (expectedPresentTime.has_value())
     expectedPresentTime_ = expectedPresentTime;
 }
@@ -344,6 +353,7 @@ auto HwcDisplay::AcceptValidatedComposition() -> void {
 auto HwcDisplay::PresentStagedComposition(
     SharedFd &out_present_fence, std::vector<ReleaseFence> &out_release_fences)
     -> bool {
+  ATRACE_CALL();
   if (expectedPresentTime_.has_value() && expectedPresentTime_->timestampNanos > 0) {
     static const int64_t kOneSecondNs = 1LL * 1000 * 1000 * 1000;
     struct timespec vsync {};
@@ -469,6 +479,7 @@ HWC2::Error HwcDisplay::Init() {
 }
 
 std::optional<PanelOrientation> HwcDisplay::getDisplayPhysicalOrientation() {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     // The pipeline can be nullptr in headless mode, so return the default
     // "normal" mode.
@@ -486,6 +497,7 @@ std::optional<PanelOrientation> HwcDisplay::getDisplayPhysicalOrientation() {
 }
 
 HWC2::Error HwcDisplay::ChosePreferredConfig() {
+  ATRACE_CALL();
   HWC2::Error err{};
   if (type_ == HWC2::DisplayType::Virtual) {
     configs_.GenFakeMode(virtual_disp_width_, virtual_disp_height_);
@@ -502,6 +514,7 @@ HWC2::Error HwcDisplay::ChosePreferredConfig() {
 }
 
 auto HwcDisplay::CreateLayer(ILayerId new_layer_id) -> bool {
+  ATRACE_CALL();
   if (layers_.count(new_layer_id) > 0)
     return false;
 
@@ -511,11 +524,13 @@ auto HwcDisplay::CreateLayer(ILayerId new_layer_id) -> bool {
 }
 
 auto HwcDisplay::DestroyLayer(ILayerId layer_id) -> bool {
+  ATRACE_CALL();
   auto count = layers_.erase(layer_id);
   return count != 0;
 }
 
 HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
+  ATRACE_CALL();
   // If a config has been queued, it is considered the "active" config.
   const HwcDisplayConfig *hwc_config = GetLastRequestedConfig();
   if (hwc_config == nullptr)
@@ -526,6 +541,7 @@ HWC2::Error HwcDisplay::GetActiveConfig(hwc2_config_t *config) const {
 }
 
 HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     *num_modes = 1;
     if (modes)
@@ -557,6 +573,7 @@ HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
 HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
                                             int32_t attribute_in,
                                             int32_t *value) {
+  ATRACE_CALL();
   int conf = static_cast<int>(config);
 
   if (configs_.hwc_configs.count(conf) == 0) {
@@ -617,6 +634,7 @@ HWC2::Error HwcDisplay::GetDisplayAttribute(hwc2_config_t config,
 
 HWC2::Error HwcDisplay::LegacyGetDisplayConfigs(uint32_t *num_configs,
                                                 hwc2_config_t *configs) {
+  ATRACE_CALL();
   uint32_t idx = 0;
   for (auto &hwc_config : configs_.hwc_configs) {
     if (hwc_config.second.disabled) {
@@ -637,6 +655,7 @@ HWC2::Error HwcDisplay::LegacyGetDisplayConfigs(uint32_t *num_configs,
 }
 
 HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
+  ATRACE_CALL();
   std::ostringstream stream;
   if (IsInHeadlessMode()) {
     stream << "null-display";
@@ -656,6 +675,7 @@ HWC2::Error HwcDisplay::GetDisplayName(uint32_t *size, char *name) {
 }
 
 HWC2::Error HwcDisplay::GetDisplayType(int32_t *type) {
+  ATRACE_CALL();
   *type = static_cast<int32_t>(type_);
   return HWC2::Error::None;
 }
@@ -664,6 +684,7 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
                                            float *max_luminance,
                                            float *max_average_luminance,
                                            float *min_luminance) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     *num_types = 0;
     return HWC2::Error::None;
@@ -700,6 +721,7 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
 AtomicCommitArgs HwcDisplay::CreateModesetCommit(
     const HwcDisplayConfig *config,
     const std::optional<LayerData> &modeset_layer) {
+  ATRACE_CALL();
   AtomicCommitArgs args{};
 
   args.color_matrix = color_matrix_;
@@ -728,6 +750,7 @@ AtomicCommitArgs HwcDisplay::CreateModesetCommit(
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     ALOGE("%s: Display is in headless mode, should never reach here", __func__);
     return HWC2::Error::None;
@@ -860,6 +883,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
 HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
                                                 int64_t change_time) {
+  ATRACE_CALL();
   if (configs_.hwc_configs.count(config) == 0) {
     ALOGE("Could not find active mode for %u", config);
     return HWC2::Error::BadConfig;
@@ -872,10 +896,12 @@ HWC2::Error HwcDisplay::SetActiveConfigInternal(uint32_t config,
 }
 
 HWC2::Error HwcDisplay::SetActiveConfig(hwc2_config_t config) {
+  ATRACE_CALL();
   return SetActiveConfigInternal(config, ResourceManager::GetTimeMonotonicNs());
 }
 
 HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
+  ATRACE_CALL();
   /* Maps to the Colorspace DRM connector property:
    * https://elixir.bootlin.com/linux/v6.11/source/include/drm/drm_connector.h#L538
    */
@@ -929,6 +955,7 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
 }
 
 HWC2::Error HwcDisplay::SetColorTransform(const float *matrix, int32_t hint) {
+  ATRACE_CALL();
   if (hint < HAL_COLOR_TRANSFORM_IDENTITY ||
       hint > HAL_COLOR_TRANSFORM_CORRECT_TRITANOPIA)
     return HWC2::Error::BadParameter;
@@ -981,6 +1008,7 @@ bool HwcDisplay::CtmByGpu() {
 }
 
 HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
+  ATRACE_CALL();
   auto mode = static_cast<HWC2::PowerMode>(mode_in);
 
   AtomicCommitArgs a_args{};
@@ -1026,6 +1054,7 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
 }
 
 HWC2::Error HwcDisplay::SetVsyncEnabled(int32_t enabled) {
+  ATRACE_CALL();
   if (type_ == HWC2::DisplayType::Virtual) {
     return HWC2::Error::None;
   }
@@ -1065,6 +1094,7 @@ std::vector<HwcLayer *> HwcDisplay::GetOrderLayersByZPos() {
 
 HWC2::Error HwcDisplay::GetDisplayVsyncPeriod(
     uint32_t *outVsyncPeriod /* ns */) {
+  ATRACE_CALL();
   return GetDisplayAttribute(configs_.active_config_id,
                              HWC2_ATTRIBUTE_VSYNC_PERIOD,
                              (int32_t *)(outVsyncPeriod));
@@ -1127,6 +1157,7 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
 
 #if __ANDROID_API__ > 29
 HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
     return HWC2::Error::None;
@@ -1148,6 +1179,7 @@ HWC2::Error HwcDisplay::SetActiveConfigWithConstraints(
     hwc2_config_t config,
     hwc_vsync_period_change_constraints_t *vsyncPeriodChangeConstraints,
     hwc_vsync_period_change_timeline_t *outTimeline) {
+  ATRACE_CALL();
   if (type_ == HWC2::DisplayType::Virtual) {
     return HWC2::Error::None;
   }
@@ -1197,6 +1229,7 @@ HWC2::Error HwcDisplay::SetContentType(int32_t contentType) {
 HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
                                                      uint32_t *outDataSize,
                                                      uint8_t *outData) {
+  ATRACE_CALL();
   if (IsInHeadlessMode()) {
     return HWC2::Error::Unsupported;
   }
@@ -1229,6 +1262,7 @@ HWC2::Error HwcDisplay::GetDisplayIdentificationData(uint8_t *outPort,
 
 HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
                                                uint32_t *outCapabilities) {
+  ATRACE_CALL();
   if (outNumCapabilities == nullptr) {
     return HWC2::Error::BadParameter;
   }
@@ -1267,6 +1301,7 @@ HWC2::Error HwcDisplay::GetDisplayCapabilities(uint32_t *outNumCapabilities,
 HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
+  ATRACE_CALL();
   if (mode != HAL_COLOR_MODE_NATIVE || nullptr == outNumIntents) {
     return HWC2::Error::BadParameter;
   }
@@ -1281,6 +1316,7 @@ HWC2::Error HwcDisplay::GetRenderIntents(
 }
 
 HWC2::Error HwcDisplay::SetColorModeWithIntent(int32_t mode, int32_t intent) {
+  ATRACE_CALL();
   if (intent < HAL_RENDER_INTENT_COLORIMETRIC ||
       intent > HAL_RENDER_INTENT_TONE_MAP_ENHANCE)
     return HWC2::Error::BadParameter;
