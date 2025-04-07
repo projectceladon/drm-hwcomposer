@@ -24,7 +24,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
+#include <utils/Trace.h>
 #include <aidl/android/hardware/graphics/common/Transform.h>
 #include <aidl/android/hardware/graphics/composer3/ClientTarget.h>
 #include <aidl/android/hardware/graphics/composer3/Composition.h>
@@ -485,6 +485,7 @@ ndk::ScopedAStatus ComposerClient::createLayer(int64_t display_id,
                                                int32_t /*buffer_slot_count*/,
                                                int64_t* layer_id) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
 
   HwcDisplay* display = GetDisplay(display_id);
@@ -509,6 +510,7 @@ ndk::ScopedAStatus ComposerClient::createVirtualDisplay(
     int32_t width, int32_t height, AidlPixelFormat format_hint,
     int32_t /*output_buffer_slot_count*/, VirtualDisplay* out_display) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
 
   hwc2_display_t hwc2_display_id = 0;
@@ -529,6 +531,7 @@ ndk::ScopedAStatus ComposerClient::createVirtualDisplay(
 ndk::ScopedAStatus ComposerClient::destroyLayer(int64_t display_id,
                                                 int64_t layer_id) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -544,6 +547,7 @@ ndk::ScopedAStatus ComposerClient::destroyLayer(int64_t display_id,
 
 ndk::ScopedAStatus ComposerClient::destroyVirtualDisplay(int64_t display_id) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   auto err = Hwc2toHwc3Error(hwc_->DestroyVirtualDisplay(display_id));
   return ToBinderStatus(err);
@@ -555,6 +559,7 @@ ndk::ScopedAStatus ComposerClient::destroyVirtualDisplay(int64_t display_id) {
 
 void ComposerClient::DispatchLayerCommand(int64_t display_id,
                                           const LayerCommand& command) {
+  ATRACE_CALL();
   auto* display = GetDisplay(display_id);
   if (display == nullptr) {
     cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
@@ -668,6 +673,7 @@ void ComposerClient::DispatchLayerCommand(int64_t display_id,
 }
 
 void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
+  ATRACE_CALL();
   const int64_t display_id = command.display;
   HwcDisplay* display = hwc_->GetDisplay(display_id);
   if (display == nullptr) {
@@ -775,6 +781,7 @@ ndk::ScopedAStatus ComposerClient::executeCommands(
     std::vector<CommandResultPayload>* results) {
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   DEBUG_FUNC();
+  ATRACE_CALL();
   cmd_result_writer_ = std::make_unique<CommandResultWriter>(results);
   for (const auto& cmd : commands) {
     ExecuteDisplayCommand(cmd);
@@ -788,6 +795,7 @@ ndk::ScopedAStatus ComposerClient::executeCommands(
 ndk::ScopedAStatus ComposerClient::getActiveConfig(int64_t display_id,
                                                    int32_t* config_id) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -806,6 +814,7 @@ ndk::ScopedAStatus ComposerClient::getActiveConfig(int64_t display_id,
 ndk::ScopedAStatus ComposerClient::getColorModes(
     int64_t display_id, std::vector<ColorMode>* color_modes) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -835,6 +844,7 @@ ndk::ScopedAStatus ComposerClient::getColorModes(
 ndk::ScopedAStatus ComposerClient::getDataspaceSaturationMatrix(
     common::Dataspace dataspace, std::vector<float>* matrix) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   if (dataspace != common::Dataspace::SRGB_LINEAR) {
     return ToBinderStatus(hwc3::Error::kBadParameter);
   }
@@ -850,6 +860,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayAttribute(
     int64_t display_id, int32_t config_id, DisplayAttribute attribute,
     int32_t* value) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -903,6 +914,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayAttribute(
 ndk::ScopedAStatus ComposerClient::getDisplayCapabilities(
     int64_t display_id, std::vector<DisplayCapability>* caps) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -933,6 +945,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayCapabilities(
 ndk::ScopedAStatus ComposerClient::getDisplayConfigs(
     int64_t display_id, std::vector<int32_t>* out_configs) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -949,6 +962,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigs(
 ndk::ScopedAStatus ComposerClient::getDisplayConnectionType(
     int64_t display_id, DisplayConnectionType* type) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -969,6 +983,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayConnectionType(
 ndk::ScopedAStatus ComposerClient::getDisplayIdentificationData(
     int64_t display_id, DisplayIdentification* id) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -998,6 +1013,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayIdentificationData(
 ndk::ScopedAStatus ComposerClient::getDisplayName(int64_t display_id,
                                                   std::string* name) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1018,6 +1034,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayName(int64_t display_id,
 ndk::ScopedAStatus ComposerClient::getDisplayVsyncPeriod(
     int64_t display_id, int32_t* vsync_period) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1040,19 +1057,21 @@ ndk::ScopedAStatus ComposerClient::getDisplayedContentSample(
     int64_t /*display_id*/, int64_t /*max_frames*/, int64_t /*timestamp*/,
     DisplayContentSample* /*samples*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::getDisplayedContentSamplingAttributes(
     int64_t /*display_id*/, DisplayContentSamplingAttributes* /*attrs*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::getDisplayPhysicalOrientation(
     int64_t display_id, common::Transform* orientation) {
   DEBUG_FUNC();
-
+  ATRACE_CALL();
   if (orientation == nullptr) {
     ALOGE("Invalid 'orientation' pointer.");
     return ToBinderStatus(hwc3::Error::kBadParameter);
@@ -1092,6 +1111,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayPhysicalOrientation(
 ndk::ScopedAStatus ComposerClient::getHdrCapabilities(int64_t display_id,
                                                       HdrCapabilities* caps) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1125,6 +1145,7 @@ ndk::ScopedAStatus ComposerClient::getHdrCapabilities(int64_t display_id,
 
 ndk::ScopedAStatus ComposerClient::getMaxVirtualDisplayCount(int32_t* count) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   *count = static_cast<int32_t>(hwc_->GetMaxVirtualDisplayCount());
   return ndk::ScopedAStatus::ok();
@@ -1133,6 +1154,7 @@ ndk::ScopedAStatus ComposerClient::getMaxVirtualDisplayCount(int32_t* count) {
 ndk::ScopedAStatus ComposerClient::getPerFrameMetadataKeys(
     int64_t /*display_id*/, std::vector<PerFrameMetadataKey>* /*keys*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
@@ -1145,12 +1167,14 @@ ndk::ScopedAStatus ComposerClient::getReadbackBufferAttributes(
 ndk::ScopedAStatus ComposerClient::getReadbackBufferFence(
     int64_t /*display_id*/, ndk::ScopedFileDescriptor* /*acquireFence*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::getRenderIntents(
     int64_t display_id, ColorMode mode, std::vector<RenderIntent>* intents) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1183,6 +1207,7 @@ ndk::ScopedAStatus ComposerClient::getRenderIntents(
 ndk::ScopedAStatus ComposerClient::getSupportedContentTypes(
     int64_t display_id, std::vector<ContentType>* types) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1198,12 +1223,14 @@ ndk::ScopedAStatus ComposerClient::getDisplayDecorationSupport(
     int64_t /*display_id*/,
     std::optional<common::DisplayDecorationSupport>* /*support_struct*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::registerCallback(
     const std::shared_ptr<IComposerCallback>& callback) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   // This function is specified to be called exactly once.
   hwc_->Init(callback);
@@ -1213,7 +1240,7 @@ ndk::ScopedAStatus ComposerClient::registerCallback(
 ndk::ScopedAStatus ComposerClient::setActiveConfig(int64_t display_id,
                                                    int32_t config) {
   DEBUG_FUNC();
-
+  ATRACE_CALL();
   VsyncPeriodChangeTimeline timeline;
   VsyncPeriodChangeConstraints constraints = {
       .desiredTimeNanos = ::android::ResourceManager::GetTimeMonotonicNs(),
@@ -1228,6 +1255,7 @@ ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
     const VsyncPeriodChangeConstraints& constraints,
     VsyncPeriodChangeTimeline* timeline) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1294,24 +1322,28 @@ ndk::ScopedAStatus ComposerClient::setActiveConfigWithConstraints(
 ndk::ScopedAStatus ComposerClient::setBootDisplayConfig(int64_t /*display_id*/,
                                                         int32_t /*config*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::clearBootDisplayConfig(
     int64_t /*display_id*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::getPreferredBootDisplayConfig(
     int64_t /*display_id*/, int32_t* /*config*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t display_id,
                                                          bool /*on*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1324,6 +1356,7 @@ ndk::ScopedAStatus ComposerClient::setAutoLowLatencyMode(int64_t display_id,
 ndk::ScopedAStatus ComposerClient::setClientTargetSlotCount(
     int64_t /*display_id*/, int32_t /*count*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kNone);
 }
 
@@ -1331,6 +1364,7 @@ ndk::ScopedAStatus ComposerClient::setColorMode(int64_t display_id,
                                                 ColorMode mode,
                                                 RenderIntent intent) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1345,6 +1379,7 @@ ndk::ScopedAStatus ComposerClient::setColorMode(int64_t display_id,
 ndk::ScopedAStatus ComposerClient::setContentType(int64_t display_id,
                                                   ContentType type) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1361,12 +1396,14 @@ ndk::ScopedAStatus ComposerClient::setDisplayedContentSamplingEnabled(
     int64_t /*display_id*/, bool /*enable*/,
     FormatColorComponent /*componentMask*/, int64_t /*maxFrames*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setPowerMode(int64_t display_id,
                                                 PowerMode mode) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1385,12 +1422,14 @@ ndk::ScopedAStatus ComposerClient::setReadbackBuffer(
     int64_t /*display_id*/, const AidlNativeHandle& /*aidlBuffer*/,
     const ndk::ScopedFileDescriptor& /*releaseFence*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setVsyncEnabled(int64_t display_id,
                                                    bool enabled) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1404,6 +1443,7 @@ ndk::ScopedAStatus ComposerClient::setVsyncEnabled(int64_t display_id,
 ndk::ScopedAStatus ComposerClient::setIdleTimerEnabled(int64_t /*display_id*/,
                                                        int32_t /*timeout*/) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
@@ -1411,22 +1451,26 @@ ndk::ScopedAStatus ComposerClient::setIdleTimerEnabled(int64_t /*display_id*/,
 
 ndk::ScopedAStatus ComposerClient::getOverlaySupport(
     OverlayProperties* /*out_overlay_properties*/) {
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::getHdrConversionCapabilities(
     std::vector<common::HdrConversionCapability>* /*out_capabilities*/) {
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setHdrConversionStrategy(
     const common::HdrConversionStrategy& /*conversion_strategy*/,
     common::Hdr* /*out_hdr*/) {
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
 ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(
     int64_t /*display*/, bool /*enabled*/) {
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
@@ -1438,6 +1482,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
     int64_t display_id, int32_t /*max_frame_interval_ns*/,
     std::vector<DisplayConfiguration>* configurations) {
   DEBUG_FUNC();
+  ATRACE_CALL();
   const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
   HwcDisplay* display = GetDisplay(display_id);
   if (display == nullptr) {
@@ -1459,6 +1504,7 @@ ndk::ScopedAStatus ComposerClient::notifyExpectedPresent(
     int64_t /*display*/,
     const ClockMonotonicTimestamp& /*expected_present_time*/,
     int32_t /*frame_interval_ns*/) {
+  ATRACE_CALL();
   return ToBinderStatus(hwc3::Error::kUnsupported);
 }
 
@@ -1520,6 +1566,7 @@ void ComposerClient::ExecuteSetDisplayClientTarget(
 
 void ComposerClient::ExecuteSetDisplayOutputBuffer(uint64_t display_id,
                                                    const Buffer& buffer) {
+  ATRACE_CALL();
   auto* display = GetDisplay(display_id);
   if (display == nullptr) {
     cmd_result_writer_->AddError(hwc3::Error::kBadDisplay);
