@@ -16,6 +16,7 @@
 
 #define LOG_TAG "drmhwc"
 #include <xf86drm.h>
+#include <linux/dma-buf.h>
 #include "HwcLayer.h"
 
 #include "HwcDisplay.h"
@@ -131,9 +132,24 @@ void HwcLayer::ImportFb() {
     is_pixel_blend_mode_supported = false;
 
   int kms_fd = *(parent_->GetPipe().device->GetFd());
-  bool use_shadow_fds = (intel_dgpu_fd() >= 0) &&
+  bool use_shadow_fds = !allow_p2p_ && (intel_dgpu_fd() >= 0) &&
       !virtio_gpu_allow_p2p(kms_fd) && InitializeBlitter(layer_data_.bi.value());
   layer_data_.bi->use_shadow_fds = use_shadow_fds;
+
+  if (allow_p2p_) {
+    for (int fd: layer_data_.bi->prime_fds) {
+      if (fd <= 0) {
+        break;
+      }
+      // Setting DMA BUF name notifying the KMD that we'd like sharing local
+      // memory buffers.
+      char dmabuf_name[] = "p2p";
+      int ret = drmIoctl(fd, DMA_BUF_SET_NAME, dmabuf_name);
+      if (ret != 0) {
+        ALOGE("failed to set dmabuf name\n");
+      }
+    }
+  }
 
   auto& fb_importer = parent_->GetPipe().device->GetDrmFbImporter();
   auto fb = fb_importer.GetOrCreateFbId(&slots_[*active_slot_id_].bi, is_pixel_blend_mode_supported);

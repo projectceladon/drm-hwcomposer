@@ -24,7 +24,7 @@
 #include "DrmMode.h"
 #include "DrmProperty.h"
 #include "DrmUnique.h"
-
+#include <xf86drm.h>
 namespace android {
 
 class DrmDevice;
@@ -77,6 +77,9 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
     return gamma_lut_size_property_;
   }
 
+  bool GetAllowP2P() const {
+    return allow_p2p_;
+  }
  private:
   DrmCrtc(DrmModeCrtcUnique crtc, uint32_t index)
       : crtc_(std::move(crtc)), index_in_res_array_(index){};
@@ -92,5 +95,6 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmProperty mode_property_;
   DrmProperty out_fence_ptr_property_;
   uint32_t connector_id_ = 0;
+  bool allow_p2p_ = false;
 };
 }  // namespace android

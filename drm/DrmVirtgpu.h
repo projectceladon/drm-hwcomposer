@@ -39,7 +39,7 @@ extern "C" {
  */
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
-
+#define VIRTGPU_PARAM_ALLOW_P2P 12 /* Whether the device/crtc supports P2P */
 #define VIRTGPU_PARAM_RESOURCE_BLOB_BIT (1ull << VIRTGPU_PARAM_RESOURCE_BLOB)
 #define VIRTGPU_PARAM_QUERY_DEV_BIT (1ull << VIRTGPU_PARAM_QUERY_DEV)
 

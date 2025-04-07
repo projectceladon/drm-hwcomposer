@@ -59,7 +59,8 @@ class HwcLayer {
     std::optional<uint32_t> z_order;
   };
 
-  explicit HwcLayer(HwcDisplay *parent_display) : parent_(parent_display){};
+  explicit HwcLayer(HwcDisplay *parent_display, bool allow_p2p)
+     : parent_(parent_display), allow_p2p_(allow_p2p) {}
 
   HWC2::Composition GetSfType() const {
     return sf_type_;
@@ -83,6 +84,10 @@ class HwcLayer {
 
   void SetPriorBufferScanOutFlag(bool state) {
     prior_buffer_scanout_flag_ = state;
+  }
+
+  void SetAllowP2P(bool allow_p2p) {
+    allow_p2p_ = allow_p2p;
   }
 
   uint32_t GetZOrder() const {
@@ -140,6 +145,12 @@ class HwcLayer {
   void ImportFb();
   bool fb_import_failed_{};
   UniqueFd2 dgpu_fd_;
+  // Set when the layer is allowed to be shared as local memory objects without
+  // migraing to system memory, primarily used in the case that the layer is
+  // to be displayed on dGPU. If this flag is enabled, we will set the DMA BUF
+  // name to "p2p" via DMA_BUF_SET_NAME ioctl. The name acts as a hint in the
+  // KMD for local memory sharing.
+  bool allow_p2p_ = false;
  public:
   void PopulateLayerData();
   void ClearSlots();
