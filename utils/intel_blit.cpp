@@ -612,7 +612,6 @@ int intel_blit_init(struct intel_info *info) {
   static int addr_offset = 0;
   int ret;
 
-  memset(info, 0, sizeof(*info));
   ret = batch_init(info);
   if (ret < 0) {
     return ret;
