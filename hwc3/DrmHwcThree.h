@@ -25,7 +25,6 @@ namespace aidl::android::hardware::graphics::composer3::impl {
 
 class Hwc3Display : public ::android::FrontendDisplayBase {
  public:
-  bool must_validate = false;
 
   int64_t next_layer_id = 1;
 };
@@ -49,7 +48,13 @@ class DrmHwcThree : public ::android::DrmHwc {
   static auto GetHwc3Display(::android::HwcDisplay& display)
       -> std::shared_ptr<Hwc3Display>;
 
+  auto GetMustValidateDisplay(uint64_t display_id) -> bool;
+  void ClearMustValidateDisplay(uint64_t display_id);
+
  private:
   std::shared_ptr<IComposerCallback> composer_callback_;
+
+  std::mutex must_validate_lock_;
+  std::set<uint64_t> must_validate_ GUARDED_BY(must_validate_lock_);
 };
 }  // namespace aidl::android::hardware::graphics::composer3::impl

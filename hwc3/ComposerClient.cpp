@@ -730,7 +730,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
     }
     cmd_result_writer_->AddChanges(changes);
     auto hwc3_display = DrmHwcThree::GetHwc3Display(*display);
-    hwc3_display->must_validate = false;
+    hwc_->ClearMustValidateDisplay(display_id);
     display->setExpectedPresentTime(command.expectedPresentTime);
     // TODO: DisplayRequests are not implemented.
   }
@@ -751,7 +751,7 @@ void ComposerClient::ExecuteDisplayCommand(const DisplayCommand& command) {
 
   if (command.presentDisplay || shall_present_now) {
     auto hwc3_display = DrmHwcThree::GetHwc3Display(*display);
-    if (hwc3_display->must_validate) {
+    if (hwc_->GetMustValidateDisplay(display_id)) {
       cmd_result_writer_->AddError(hwc3::Error::kNotValidated);
       return;
     }
@@ -1505,7 +1505,7 @@ ndk::ScopedAStatus ComposerClient::getDisplayConfigurations(
   const auto bounds = display->GetDisplayBoundsMm();
   for (const auto& [id, config] : configs.hwc_configs) {
     configurations->push_back(
-        HwcDisplayConfigToAidlConfiguration(/*width =*/ bounds.first, 
+        HwcDisplayConfigToAidlConfiguration(/*width =*/ bounds.first,
                                             /*height =*/ bounds.second,
                                             config));
   }

@@ -62,14 +62,8 @@ void DrmHwcThree::SendVsyncPeriodTimingChangedEventToClient(
 
 void DrmHwcThree::SendRefreshEventToClient(uint64_t display_id) {
   {
-    const std::unique_lock lock(GetResMan().GetMainLock());
-    auto* idisplay = GetDisplay(display_id);
-    if (idisplay == nullptr) {
-      ALOGE("Failed to get display %" PRIu64, display_id);
-      return;
-    }
-    auto hwc3_display = GetHwc3Display(*idisplay);
-    hwc3_display->must_validate = true;
+    const std::scoped_lock lock(must_validate_lock_);
+    must_validate_.insert(display_id);
   }
   composer_callback_->onRefresh(static_cast<int64_t>(display_id));
 }
@@ -96,6 +90,9 @@ void DrmHwcThree::SendHotplugEventToClient(
       event = common::DisplayHotplugEvent::ERROR_INCOMPATIBLE_CABLE;
       break;
   }
+  if (event == common::DisplayHotplugEvent::DISCONNECTED) {
+    ClearMustValidateDisplay(display_id);
+  }
   composer_callback_->onHotplugEvent(static_cast<int64_t>(display_id), event);
 }
 
@@ -104,9 +101,22 @@ void DrmHwcThree::SendHotplugEventToClient(
 void DrmHwcThree::SendHotplugEventToClient(
     hwc2_display_t display_id, DrmHwc::DisplayStatus display_status) {
   bool connected = display_status != DrmHwc::kDisconnected;
+  if (!connected) {
+    ClearMustValidateDisplay(display_id);
+  }
   composer_callback_->onHotplug(static_cast<int64_t>(display_id), connected);
 }
 
 #endif
+
+auto DrmHwcThree::GetMustValidateDisplay(uint64_t display_id) -> bool {
+  std::scoped_lock lock(must_validate_lock_);
+  return must_validate_.find(display_id) != must_validate_.end();
+}
+
+void DrmHwcThree::ClearMustValidateDisplay(uint64_t display_id) {
+  std::scoped_lock lock(must_validate_lock_);
+  must_validate_.erase(display_id);
+}
 
 }  // namespace aidl::android::hardware::graphics::composer3::impl
