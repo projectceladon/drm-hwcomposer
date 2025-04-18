@@ -35,7 +35,7 @@ struct intel_info {
     uint32_t blitter_src;
     uint32_t blitter_dst;
   } mocs;
-  int addr_offset;
+  uint64_t addr_offset;
   uint32_t context_id;
 };
 
@@ -55,6 +55,8 @@ class IntelBlitter {
   IntelBlitter() {
     intel_blit_init(&info);
   }
+  IntelBlitter(const IntelBlitter &) = delete;
+  IntelBlitter &operator=(const IntelBlitter &) = delete;
   ~IntelBlitter() {
     intel_blit_destroy(&info);
   }
