@@ -694,4 +694,73 @@ auto DrmAtomicStateManager::SetColorBrightnessContrast(void) ->int{
 
   return 0;
 }
+
+void DrmAtomicStateManager::SetHDCPState(HWCContentProtection state,
+                              HWCContentType content_type) {
+  uint64_t value = 3;
+  uint64_t type = 3;
+  int ret =0;
+
+  auto *connector = pipe_->connector->Get();
+
+  if (!connector->IsConnected())
+    return;
+
+  desired_protection_support_ = state;
+
+  if (desired_protection_support_ == current_protection_support_)
+    return;
+
+  if (pipe_->connector->Get()->GetHdcpTypeProperty().id() <= 0) {
+    ALOGE("Cannot set HDCP state as Type property is not supported \n");
+    return;
+  }
+
+  std::tie(ret, type) = pipe_->connector->Get()->GetHdcpTypeProperty().value();
+
+  if ((content_type < 2) && (content_type_ != content_type)) {
+    content_type_ = content_type;
+
+    drmModeConnectorSetProperty(pipe_->device->GetFd(),
+		  pipe_->connector->Get()->GetId(),
+		  pipe_->connector->Get()->GetHdcpTypeProperty().id(),
+		  content_type);
+
+  }
+
+  if (pipe_->connector->Get()->GetHdcpProperty().id() <= 0) {
+    ALOGE("Cannot set HDCP state as Connector property is not supported \n");
+    return;
+  }
+
+  std::tie(ret, value) = pipe_->connector->Get()->GetHdcpProperty().value();
+
+  if (value < 3) {
+    switch (value) {
+      case 0:
+        current_protection_support_ = hwcomposer::HWCContentProtection::kUnDesired;
+        break;
+      case 1:
+        current_protection_support_ = hwcomposer::HWCContentProtection::kDesired;
+        break;
+      default:
+        ALOGE("%s GetHDCPConnectorProperty default", __FUNCTION__);
+        break;
+    }
+  }
+
+  if (desired_protection_support_ == HWCContentProtection::kUnSupported) {
+    desired_protection_support_ = current_protection_support_;
+  }
+
+  current_protection_support_ = desired_protection_support_;
+  if (current_protection_support_ == kDesired) {
+    value = 1;
+  }
+
+  drmModeConnectorSetProperty(pipe_->device->GetFd(),
+		  pipe_->connector->Get()->GetId(),
+		  pipe_->connector->Get()->GetHdcpProperty().id(),
+		  value);
+}
 }  // namespace android

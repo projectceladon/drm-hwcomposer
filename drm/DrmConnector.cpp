@@ -73,6 +73,14 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
   auto c = std::unique_ptr<DrmConnector>(
       new DrmConnector(std::move(conn), &dev, index));
 
+  if (!GetConnectorProperty(dev, *c, "Content Protection", &c->hdcp_id_property_)) {
+    ALOGE("%s GetHDCPConnectorProperty check failed!", __FUNCTION__);
+  }
+
+  if (!GetConnectorProperty(dev, *c, "HDCP Content Type", &c->hdcp_type_property_)) {
+    ALOGE("%s GetHDCPTypeProperty check failed!", __FUNCTION__);
+  }
+
   if (!GetConnectorProperty(dev, *c, "DPMS", &c->dpms_property_) ||
       !GetConnectorProperty(dev, *c, "CRTC_ID", &c->crtc_id_property_) ||
       (dev.IsHdrSupportedDevice() && !GetConnectorProperty(dev, *c, "HDR_OUTPUT_METADATA", &c->hdr_op_metadata_prop_))) {

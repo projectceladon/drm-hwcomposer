@@ -57,6 +57,8 @@ cc_defaults {
         "libsync",
         "libui",
         "libutils",
+        "libbinder",
+        "libhwcservice",
     ],
 
     include_dirs: [
@@ -78,6 +80,10 @@ cc_defaults {
         "-DHWC2_USE_CPP11",
         "-std=c++17",
         "-DUSE_IMAPPER4_METADATA_API",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-unused-function",
+        "-frtti",
     ],
 
     product_variables: {
@@ -121,6 +127,7 @@ filegroup {
         "hwc2_device/HwcDisplayConfigs.cpp",
         "hwc2_device/HwcLayer.cpp",
         "hwc2_device/hwc2_device.cpp",
+        "hwc2_device/hwcservice.cpp",
     ],
 }
 
