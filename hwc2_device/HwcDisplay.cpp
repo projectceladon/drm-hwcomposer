@@ -93,6 +93,7 @@ HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
       handle_(handle),
       type_(type),
       client_layer_(this, false),
+      va_compose_layer_(this),
       color_transform_hint_(HAL_COLOR_TRANSFORM_IDENTITY) {
   // clang-format off
   color_transform_matrix_ = {1.0, 0.0, 0.0, 0.0,
@@ -528,7 +529,17 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
                      .top = 0,
                      .right = static_cast<int>(staged_mode_->h_display()),
                      .bottom = static_cast<int>(staged_mode_->v_display())});
-
+    va_compose_layer_.SetLayerDisplayFrame(
+        (hwc_rect_t){.left = 0,
+                     .top = 0,
+                     .right = static_cast<int>(staged_mode_->h_display()),
+                     .bottom = static_cast<int>(staged_mode_->v_display())});
+    va_compose_layer_.SetLayerSourceCrop(
+        (hwc_frect_t){.left = 0,
+                     .top = 0,
+                     .right = static_cast<float>(staged_mode_->h_display()),
+                     .bottom = static_cast<float>(staged_mode_->v_display())});
+    va_compose_layer_.SetLayerBlendMode(HWC2_BLEND_MODE_PREMULTIPLIED);
     configs_.active_config_id = staged_mode_config_id_;
 
     a_args.display_mode = *staged_mode_;
@@ -541,12 +552,19 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
   // order the layers by z-order
   bool use_client_layer = false;
+  bool use_vpp_compose  = false;
   uint32_t client_z_order = UINT32_MAX;
   std::map<uint32_t, HwcLayer *> z_map;
+  std::map<uint32_t, HwcLayer *> vpp_z_map;
   for (std::pair<const hwc2_layer_t, HwcLayer> &l : layers_) {
     switch (l.second.GetValidatedType()) {
       case HWC2::Composition::Device:
-        z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
+        if (l.second.GetUseVPPCompose()) {
+          use_vpp_compose = true;
+          vpp_z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
+        } else {
+          z_map.emplace(std::make_pair(l.second.GetZOrder(), &l.second));
+        }
         break;
       case HWC2::Composition::Client:
         // Place it at the z_order of the lowest client layer
@@ -557,13 +575,25 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
         continue;
     }
   }
-  if (use_client_layer)
-    z_map.emplace(std::make_pair(client_z_order, &client_layer_));
-
-  if (z_map.empty())
+  if (use_client_layer) {
+    if (use_vpp_compose) {
+      vpp_z_map.emplace(std::make_pair(client_z_order, &client_layer_));
+    } else {
+      z_map.emplace(std::make_pair(client_z_order, &client_layer_));
+    }
+  }
+  if (z_map.empty() && vpp_z_map.empty())
     return HWC2::Error::BadLayer;
 
   std::vector<LayerData> composition_layers;
+  for (std::pair<const uint32_t, HwcLayer *> &l : vpp_z_map) {
+    va_compose_layer_.addVaLayerMapData(l.first, l.second);
+  }
+
+  if (vpp_z_map.size() > 0) {
+    va_compose_layer_.vaPopulateLayerData(a_args.test_only);
+    composition_layers.emplace_back(va_compose_layer_.GetLayerData().Clone());
+  }
 
   /* Import & populate */
   for (std::pair<const uint32_t, HwcLayer *> &l : z_map) {
