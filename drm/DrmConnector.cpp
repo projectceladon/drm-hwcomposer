@@ -179,6 +179,14 @@ int DrmConnector::UpdateEdidProperty() {
   return GetOptionalConnectorProperty("EDID", &edid_property_) ? 0 : -EINVAL;
 }
 
+bool DrmConnector::CheckBigjoinerMode(const DrmMode &mode) {
+  bool demo_system = property_get_bool("ro.boot.demo", false);
+  if (demo_system && mode.GetRawMode().hdisplay > 5120) {
+    return true;
+  }
+  return false;
+}
+
 auto DrmConnector::GetEdidBlob() -> DrmModePropertyBlobUnique {
   auto ret = UpdateEdidProperty();
   if (ret != 0) {
