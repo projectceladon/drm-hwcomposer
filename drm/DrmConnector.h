@@ -53,6 +53,14 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
     return *drm_;
   }
 
+  auto &GetActiveMode() const {
+    return active_mode_;
+  }
+
+  void SetActiveMode(const DrmMode &mode) {
+    active_mode_ = mode;
+  }
+
   auto GetId() const {
     return connector_->connector_id;
   }
@@ -85,6 +93,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   int UpdateModes();
   void UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes);
+  static bool CheckBigjoinerMode(const DrmMode &mode);
   bool IsLinkStatusGood();
 
   auto &GetModes() const {
@@ -162,6 +171,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
 
   DrmModeConnectorUnique connector_;
   DrmDevice *const drm_;
+  DrmMode active_mode_;
 
   auto Init() -> bool;
   auto GetConnectorProperty(const char *prop_name, DrmProperty *property,
