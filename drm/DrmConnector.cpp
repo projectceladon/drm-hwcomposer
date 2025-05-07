@@ -362,17 +362,20 @@ int DrmConnector::UpdateModes() {
 
 void DrmConnector::UpdateMultiRefreshRateModes(std::vector<DrmMode> &new_modes) {
   if (new_modes.size() == 1 && connector_->count_modes > 0) {
-      DrmMode mode = new_modes[0];
-      drm_->ResetModeId();
-      new_modes.clear();
-      for(int i = 0; i < connector_->count_modes; ++i) {
-          drmModeModeInfo info = connector_->modes[i];
-          if (info.hdisplay == mode.GetRawMode().hdisplay && info.vdisplay == mode.GetRawMode().vdisplay) {
-            DrmMode mode(&info);
-            mode.SetId(drm_->GetNextModeId());
-            new_modes.push_back(mode);
-          }
-      }
+    bool demo_system = property_get_bool("ro.boot.demo", false);
+    DrmMode mode = new_modes[0];
+    drm_->ResetModeId();
+    new_modes.clear();
+    for(int i = 0; i < connector_->count_modes; ++i) {
+        drmModeModeInfo info = connector_->modes[i];
+        if (info.hdisplay == mode.GetRawMode().hdisplay && info.vdisplay == mode.GetRawMode().vdisplay) {
+          DrmMode mode(&info);
+          if (demo_system && mode.GetRawMode().vrefresh < 58.8f)
+            continue;
+          mode.SetId(drm_->GetNextModeId());
+          new_modes.push_back(mode);
+        }
+    }
   }
 }
 
