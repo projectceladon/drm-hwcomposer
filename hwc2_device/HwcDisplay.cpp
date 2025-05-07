@@ -776,6 +776,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
 
     configs_.active_config_id = staged_mode_config_id_.value();
     a_args.display_mode = staged_config->mode;
+    GetPipe().connector->Get()->SetActiveMode(staged_config->mode);
     if (!a_args.test_only) {
       new_vsync_period_ns = staged_config->mode.GetVSyncPeriodNs();
     }

@@ -103,6 +103,9 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
   }
 
   bool nonblock = !args.blocking;
+  if (DrmConnector::CheckBigjoinerMode(connector->GetActiveMode())) {
+    nonblock = false;
+  }
 
   if (args.active) {
     nonblock = false;
