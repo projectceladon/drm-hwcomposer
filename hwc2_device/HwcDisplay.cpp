@@ -1164,15 +1164,17 @@ HWC2::Error HwcDisplay::GetDisplayConnectionType(uint32_t *outType) {
     *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
     return HWC2::Error::None;
   }
-  /* Primary display should be always internal,
-   * otherwise SF will be unhappy and will crash
+  /*
+   * To fix issue:
+   * The secondary screen resolution we observed doesn’t match that
+   * we got in displayinfo when connected 2 or more displays with
+   * dGPU PT only mode
+   *
+   * Because SurfaceFlinger will set density with constant value(213) if CONNECTOR is External.
+   * So need marking External Connector as Internal Connector.
+   * In another word, all connectors are Internal.
    */
-  if (GetPipe().connector->Get()->IsInternal() || handle_ == kPrimaryDisplay)
-    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
-  else if (GetPipe().connector->Get()->IsExternal())
-    *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::External);
-  else
-    return HWC2::Error::BadConfig;
+  *outType = static_cast<uint32_t>(HWC2::DisplayConnectionType::Internal);
 
   return HWC2::Error::None;
 }
