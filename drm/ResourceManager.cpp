@@ -232,6 +232,7 @@ void ResourceManager::DeInit() {
   DetachAllFrontendDisplays();
   drms_.clear();
 
+  pt_.detach();
   initialized_ = false;
 }
 
