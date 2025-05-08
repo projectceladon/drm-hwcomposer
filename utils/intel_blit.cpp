@@ -666,7 +666,6 @@ int intel_create_buffer(struct intel_info *info, uint32_t width, uint32_t height
     break;
   }
   switch (tiling) {
-  default:
   case I915_TILING_NONE:
     /*
      * The Intel GPU doesn't need any alignment in linear mode,
