@@ -1418,6 +1418,18 @@ ndk::ScopedAStatus ComposerClient::setPowerMode(int64_t display_id,
   return ToBinderStatus(Hwc2toHwc3Error(error));
 }
 
+ndk::ScopedAStatus ComposerClient::startHdcpNegotiation(int64_t display, const AidlHdcpLevels& levels) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::getMaxLayerPictureProfiles(int64_t display, int32_t* maxProfiles) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
+ndk::ScopedAStatus ComposerClient::getLuts(int64_t, const std::vector<Buffer>&, std::vector<Luts>* out_luts) {
+  return ToBinderStatus(hwc3::Error::kUnsupported);
+}
+
 ndk::ScopedAStatus ComposerClient::setReadbackBuffer(
     int64_t /*display_id*/, const AidlNativeHandle& /*aidlBuffer*/,
     const ndk::ScopedFileDescriptor& /*releaseFence*/) {
