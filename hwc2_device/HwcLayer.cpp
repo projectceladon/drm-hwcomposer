@@ -134,11 +134,11 @@ void HwcLayer::ImportFb() {
   int kms_fd = *(parent_->GetPipe().device->GetFd());
   bool use_shadow_fds = parent_->GetPipe().device->GetName() == "virtio_gpu" &&
       !allow_p2p_ && (intel_dgpu_fd() >= 0) &&
-      !virtio_gpu_allow_p2p(kms_fd) && InitializeBlitter(layer_data_.bi.value());
-  layer_data_.bi->use_shadow_fds = use_shadow_fds;
+      !virtio_gpu_allow_p2p(kms_fd) && InitializeBlitter(slots_[*active_slot_id_].bi);
+      slots_[*active_slot_id_].bi.use_shadow_fds = use_shadow_fds;
 
   if (allow_p2p_) {
-    for (int fd: layer_data_.bi->prime_fds) {
+    for (int fd: slots_[*active_slot_id_].bi.prime_fds) {
       if (fd <= 0) {
         break;
       }
