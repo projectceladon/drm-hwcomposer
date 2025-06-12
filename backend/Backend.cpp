@@ -123,7 +123,14 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
+         display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
+         // Optimize performance in multi-plane mode when use dGPU rendering
+         // and iGPU display: use client composition to avoid blitting multiple
+         // layers to shadow buffers.
+         (intel_dgpu_fd() >= 0 &&
+           !display->GetPipe().crtc->Get()->GetAllowP2P() &&
+           display->GetPipe().GetUsablePlanes().size() > 1 &&
+           !IsVideoLayer(layer)) ||
          (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev());
 }
 
