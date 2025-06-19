@@ -30,6 +30,7 @@ class Backend {
       HwcDisplay *display, std::vector<HwcLayer *> &layers);
   virtual bool IsClientLayer(HwcDisplay *display, HwcLayer *layer);
   virtual bool IsVideoLayer(HwcLayer *layer);
+  virtual bool IsDownScaling(HwcLayer *layer);
  protected:
   static bool HardwareSupportsLayerType(HWC2::Composition comp_type);
   static uint32_t CalcPixOps(const std::vector<HwcLayer *> &layers,

@@ -124,6 +124,7 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
           display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
+          (!IsVideoLayer(layer) && IsDownScaling(layer)) ||
          (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev());
 }
 
@@ -132,6 +133,14 @@ bool Backend::IsVideoLayer(HwcLayer *layer) {
   if (layer->GetBufferHandle())
     bi = BufferInfoGetter::GetInstance()->GetBoInfo(layer->GetBufferHandle());
   return bi && bi->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;
+}
+
+bool Backend::IsDownScaling(HwcLayer *layer) {
+  int src_w = layer->GetLayerData().pi.source_crop.right - layer->GetLayerData().pi.source_crop.left;
+  int src_h = layer->GetLayerData().pi.source_crop.bottom - layer->GetLayerData().pi.source_crop.top;
+  int dst_w = layer->GetLayerData().pi.display_frame.right - layer->GetLayerData().pi.display_frame.left;
+  int dst_h = layer->GetLayerData().pi.display_frame.bottom - layer->GetLayerData().pi.display_frame.top;
+  return src_w > dst_w || src_h > dst_h;
 }
 
 bool Backend::HardwareSupportsLayerType(HWC2::Composition comp_type) {
