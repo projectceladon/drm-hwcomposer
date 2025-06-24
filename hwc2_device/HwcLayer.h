@@ -67,6 +67,9 @@ class HwcLayer {
     return layer_data_;
   }
 
+  bool GetAllowP2P() const {
+    return allow_p2p_;
+  }
   // Layer hooks
   HWC2::Error SetCursorPosition(int32_t /*x*/, int32_t /*y*/);
   HWC2::Error SetLayerBlendMode(int32_t mode);

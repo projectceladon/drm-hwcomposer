@@ -123,8 +123,9 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          !layer->IsLayerUsableAsDevice() ||
          display->color_transform_hint() != HAL_COLOR_TRANSFORM_IDENTITY ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
-          display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
-          (!IsVideoLayer(layer) && IsDownScaling(layer)) ||
+           display->GetHwc2()->GetResMan().ForcedScalingWithGpu()) ||
+         (!IsVideoLayer(layer) && IsDownScaling(layer)) ||
+         (has_local_memory_flag(layer->GetLayerData().bi->usage) && !layer->GetAllowP2P()) ||
          (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev());
 }
 
