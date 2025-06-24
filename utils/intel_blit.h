@@ -22,6 +22,9 @@
 
 #include "UniqueFd.h"
 
+/* Buffer is allocated on dGPU local memory if this flag is set */
+#define GRALLOC_USAGE_PRIVATE_2   (1ull << 30)
+
 #define I915_TILING_4 9
 
 struct intel_info {
@@ -49,6 +52,9 @@ int intel_create_buffer(struct intel_info *info,
                         uint64_t modifier, uint32_t *out_handle);
 int intel_dgpu_fd();
 bool virtio_gpu_allow_p2p(int virtgpu_fd);
+inline bool has_local_memory_flag(uint64_t usage) {
+  return (usage & GRALLOC_USAGE_PRIVATE_2) != 0;
+}
 
 class IntelBlitter {
  public:
