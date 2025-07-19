@@ -485,14 +485,14 @@ bool DrmConnector::GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
     ALOGE("outNumTypes couldn't be NULL!");
     return false;
   }
-
+#if 0
   if (NULL == outTypes) {
     ALOGE("outTypes couldn't be NULL!");
     //TODO: clarify SF's logic here
     //kindly skip this check now and return nothing if it's NULL
     return false;
   }
-
+#endif
   if (NULL == outMaxLuminance) {
     ALOGE("outMaxLuminance couldn't be NULL!");
     return false;
@@ -537,7 +537,7 @@ bool DrmConnector::GetHdrCapabilities(uint32_t *outNumTypes, int32_t *outTypes,
     *outMinLuminance = float(outminluminance);
 
     int ret = GetConnectorProperty(*drm_, *this, "HDR_OUTPUT_METADATA", &hdr_op_metadata_prop_);
-    if (ret) {
+    if (!ret) {
       ALOGE("%s Could not get HDR_OUTPUT_METADATA property\n", __FUNCTION__);
     }
     return true;
