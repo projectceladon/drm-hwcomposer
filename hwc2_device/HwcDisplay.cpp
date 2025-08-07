@@ -996,7 +996,7 @@ HWC2::Error HwcDisplay::GetRenderIntents(
     int32_t mode, uint32_t *outNumIntents,
     int32_t * /*android_render_intent_v1_1_t*/ outIntents) {
 
-  if (NULL == outNumIntents || mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_P3) {
+  if (NULL == outNumIntents || mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_BT2100_HLG) {
     return HWC2::Error::BadParameter;
   }
 
