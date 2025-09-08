@@ -140,6 +140,19 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
                                     float *outMaxLuminance,
                                     float *outMaxAverageLuminance,
                                     float *outMinLuminance);
+  bool GetHdrCapabilitiesFromDisplayID20(
+    uint32_t *outNumTypes, int32_t *outTypes,
+    float *outMaxLuminance,
+    float *outMaxAverageLuminance,
+    float *outMinLuminance
+  );
+  void ParseHDRStaticMetadataForDisplayID20(
+    uint8_t *b, size_t size
+  );
+  void ParseColorPrimariesForDisplayID20(
+    uint8_t *b, struct cta_display_color_primaries *p
+  );
+
   bool GetRenderIntents( uint32_t *outNumIntents, int32_t *outIntents);
 
   void PrepareHdrMetadata(hdr_md *layer_hdr_metadata,
@@ -181,6 +194,8 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   struct cta_edid_hdr_metadata_static *display_hdrMd_ = nullptr;
 
   hdr_md hdr_metadata_;
+
+  bool isDisplayID20HDR_ = false;
 };
 }  // namespace android
 
