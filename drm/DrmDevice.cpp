@@ -285,7 +285,7 @@ bool DrmDevice::IsHdrSupportedDevice() {
     } else {
       std::string name(ver->name);
       ALOGD("drm device name is : %s\n", name.c_str());
-      if (name == "i915") {
+      if (name == "i915" || name == "xe") {
         is_hdr_supported_ = true;
       } else {
         is_hdr_supported_ = false;
