@@ -1024,7 +1024,8 @@ HWC2::Error HwcDisplay::SetPowerMode(int32_t mode_in) {
       break;
     case HWC2::PowerMode::On:
       a_args.active = true;
-      a_args.color_adjustment = GetPipe().device->GetColorAdjustmentEnabling();
+      a_args.color_adjustment = IsInHeadlessMode() ?
+          false : GetPipe().device->GetColorAdjustmentEnabling();
       break;
     case HWC2::PowerMode::Doze:
     case HWC2::PowerMode::DozeSuspend:
