@@ -53,15 +53,15 @@ void LibdisplayEdidWrapper::GetSupportedHdrTypes(std::vector<ui::Hdr> &types) {
 }
 
 void LibdisplayEdidWrapper::GetHdrCapabilities(
-    std::vector<ui::Hdr> &types, const float *max_luminance,
-    const float *max_average_luminance, const float *min_luminance) {
+    std::vector<ui::Hdr> &types, float *max_luminance,
+    float *max_average_luminance, float *min_luminance) {
   GetSupportedHdrTypes(types);
 
   const auto *hdr_static_meta = di_info_get_hdr_static_metadata(info_);
-  max_luminance = &hdr_static_meta->desired_content_max_luminance;
-  max_average_luminance = &hdr_static_meta
+  *max_luminance = hdr_static_meta->desired_content_max_luminance;
+  *max_average_luminance = hdr_static_meta
                                ->desired_content_max_frame_avg_luminance;
-  min_luminance = &hdr_static_meta->desired_content_min_luminance;
+  *min_luminance = hdr_static_meta->desired_content_min_luminance;
 }
 
 void LibdisplayEdidWrapper::GetColorModes(std::vector<Colormode> &color_modes) {
@@ -139,6 +139,46 @@ auto LibdisplayEdidWrapper::GetDpi() -> std::pair<int32_t, int32_t> {
 
   return {dtd->horiz_video * kUmPerInch / dtd->horiz_image_mm,
           dtd->vert_video * kUmPerInch / dtd->vert_image_mm};
+}
+
+void LibdisplayEdidWrapper::GetColorGamut(
+        std::array<float2, 3> &primaries, float2 &whitepoint) {
+
+    const struct di_color_primaries *primaries_info;
+    primaries_info = di_info_get_default_color_primaries(info_);
+    if (!primaries_info) {
+        /*
+         * https://www.w3.org/Graphics/Color/sRGB.html
+         * ITU-R BT.709 sRGB
+         */
+        primaries[0].x = 0.640;
+        primaries[0].y = 0.330;
+        primaries[1].x = 0.300;
+        primaries[1].y = 0.600;
+        primaries[2].x = 0.150;
+        primaries[2].y = 0.060;
+
+        whitepoint.x = 0.313;
+        whitepoint.y = 0.329;
+    } else {
+        primaries[0].x = primaries_info->primary[0].x;
+        primaries[0].y = primaries_info->primary[0].y;
+        primaries[1].x = primaries_info->primary[1].x;
+        primaries[1].y = primaries_info->primary[1].y;
+        primaries[2].x = primaries_info->primary[2].x;
+        primaries[2].y = primaries_info->primary[2].y;
+
+        whitepoint.x = primaries_info->default_white.x;
+        whitepoint.y = primaries_info->default_white.y;
+    }
+
+    ALOGI("print ColorGamut:");
+    ALOGI("    red %f %f"  ,primaries[0].x, primaries[0].y);
+    ALOGI("  grean %f %f"  ,primaries[1].x, primaries[1].y);
+    ALOGI("   blue %f %f"  ,primaries[2].x, primaries[2].y);
+    ALOGI("  white %f %f"  ,whitepoint.x, whitepoint.y);
+
+    return;
 }
 
 }  // namespace android

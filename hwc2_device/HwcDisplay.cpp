@@ -131,6 +131,7 @@ std::string HwcDisplay::Dump() {
 HwcDisplay::HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type,
                        DrmHwc *hwc)
     : hwc_(hwc), handle_(handle), type_(type), client_layer_(this, false) {
+  hdr_metadata_ = std::make_shared<hdr_output_metadata>();
   if (type_ == HWC2::DisplayType::Virtual) {
     writeback_layer_ = std::make_unique<HwcLayer>(this, false);
   }
@@ -552,6 +553,12 @@ HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
       modes[0] = HAL_COLOR_MODE_NATIVE;
     return HWC2::Error::None;
   }
+  if (!Properties::EnableHdrDisplay()) {
+    *num_modes = 1;
+    if (modes)
+      modes[0] = HAL_COLOR_MODE_NATIVE;
+    return HWC2::Error::None;
+  }
 
   if (!modes) {
     std::vector<Colormode> temp_modes;
@@ -561,16 +568,19 @@ HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
   }
 
   std::vector<Colormode> temp_modes;
-  std::vector<int32_t> out_modes(modes, modes + *num_modes);
+  std::vector<int32_t> out_modes;
   GetEdid()->GetColorModes(temp_modes);
   if (temp_modes.empty()) {
-    out_modes.emplace_back(HAL_COLOR_MODE_NATIVE);
-    return HWC2::Error::None;
+      out_modes.emplace_back(HAL_COLOR_MODE_NATIVE);
+  } else {
+      for (auto &c : temp_modes) {
+          out_modes.emplace_back(static_cast<int32_t>(c));
+      }
   }
 
-  for (auto &c : temp_modes)
-    out_modes.emplace_back(static_cast<int32_t>(c));
-
+  for (size_t i = 0; i < out_modes.size(); ++i) {
+      modes[i] = out_modes[i];
+  }
   return HWC2::Error::None;
 }
 
@@ -703,22 +713,34 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
   }
 
   std::vector<ui::Hdr> temp_types;
-  std::vector<int32_t> out_types(types, types + *num_types);
+  std::vector<int32_t> out_types;
   GetEdid()->GetHdrCapabilities(temp_types, max_luminance,
                                 max_average_luminance, min_luminance);
+
   for (auto &t : temp_types) {
     switch (t) {
+      case ui::Hdr::DOLBY_VISION:
+        out_types.emplace_back(HAL_HDR_DOLBY_VISION);
+        break;
       case ui::Hdr::HDR10:
         out_types.emplace_back(HAL_HDR_HDR10);
         break;
       case ui::Hdr::HLG:
         out_types.emplace_back(HAL_HDR_HLG);
         break;
+      case ui::Hdr::HDR10_PLUS:
+        out_types.emplace_back(HAL_HDR_HDR10_PLUS);
+        break;
       default:
         // Ignore any other HDR types
         break;
     }
   }
+
+  for (size_t i = 0; i < out_types.size(); ++i) {
+	  types[i] = out_types[i];
+  }
+
   return HWC2::Error::None;
 }
 
@@ -912,7 +934,6 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
    */
   if (mode < HAL_COLOR_MODE_NATIVE || mode > HAL_COLOR_MODE_DISPLAY_BT2020)
     return HWC2::Error::BadParameter;
-
   switch (mode) {
     case HAL_COLOR_MODE_NATIVE:
       hdr_metadata_.reset();
@@ -1147,6 +1168,10 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
 
   auto gamut = ColorGamut::BT2020();
   auto primaries = gamut.getPrimaries();
+  auto whitePoint = gamut.getWhitePoint();
+
+  GetEdid()->GetColorGamut(primaries, whitePoint);
+
   m->display_primaries[0].x = ToU16ColorValue(primaries[0].x);
   m->display_primaries[0].y = ToU16ColorValue(primaries[0].y);
   m->display_primaries[1].x = ToU16ColorValue(primaries[1].x);
@@ -1154,7 +1179,6 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
   m->display_primaries[2].x = ToU16ColorValue(primaries[2].x);
   m->display_primaries[2].y = ToU16ColorValue(primaries[2].y);
 
-  auto whitePoint = gamut.getWhitePoint();
   m->white_point.x = ToU16ColorValue(whitePoint.x);
   m->white_point.y = ToU16ColorValue(whitePoint.y);
 
