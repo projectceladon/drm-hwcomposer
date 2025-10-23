@@ -18,15 +18,15 @@
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 #define LOG_TAG "drmhwc"
+#include "DrmAtomicStateManager.h"
 #include <drm/drm_fourcc.h>
 #include <cmath>
-#include "DrmAtomicStateManager.h"
 
 #include <drm/drm_mode.h>
 #include <sync/sync.h>
 #include <utils/Trace.h>
-#include "utils/intel_blit.h"
 #include <cassert>
+#include "utils/intel_blit.h"
 
 #include "drm/DrmCrtc.h"
 #include "drm/DrmDevice.h"
@@ -132,6 +132,39 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
     }
   }
 
+  if (args.colorspace && connector->GetColorspaceProperty()) {
+    if (!connector->GetColorspaceProperty()
+             .AtomicSet(*pset, connector->GetColorspacePropertyValue(
+                                   *args.colorspace)))
+      return -EINVAL;
+  }
+
+  if (args.content_type && connector->GetContentTypeProperty()) {
+    if (!connector->GetContentTypeProperty().AtomicSet(*pset,
+                                                       *args.content_type))
+      return -EINVAL;
+  }
+
+  if (connector->GetHdrOutputMetadataProperty()) {
+    if (args.hdr_metadata) {
+      auto blob = drm->RegisterUserPropertyBlob(args.hdr_metadata.get(),
+                                                sizeof(hdr_output_metadata));
+      new_frame_state.hdr_metadata_blob = std::move(blob);
+      if (!new_frame_state.hdr_metadata_blob) {
+        ALOGE("Failed to create %s blob",
+              connector->GetHdrOutputMetadataProperty().GetName().c_str());
+        return -EINVAL;
+      }
+
+      if (!connector->GetHdrOutputMetadataProperty()
+               .AtomicSet(*pset, *new_frame_state.hdr_metadata_blob))
+        return -EINVAL;
+    } else {
+      if (!connector->GetHdrOutputMetadataProperty().AtomicSet(*pset, 0))
+        return -EINVAL;
+    }
+  }
+
   if (args.color_matrix && crtc->GetCtmProperty()) {
     auto blob = drm->RegisterUserPropertyBlob(args.color_matrix.get(),
                                               sizeof(drm_color_ctm));
@@ -146,32 +179,53 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       return -EINVAL;
   }
 
-  if (args.colorspace && connector->GetColorspaceProperty()) {
-    if (!connector->GetColorspaceProperty()
-             .AtomicSet(*pset, connector->GetColorspacePropertyValue(
-                                   *args.colorspace)))
-      return -EINVAL;
-  }
+  // HDR pipeline handling (degamma -> CTM -> gamma)
+  // CTM matrix is set above
+  {
+    // Build blobs for degamma
+    if (crtc->GetDeGammaLutProperty()) {
+      if (args.degamma_lut) {
+        auto blob = drm->RegisterUserPropertyBlob(args.degamma_lut->data(),
+                                                  args.degamma_lut->size() *
+                                                      sizeof(drm_color_lut));
+        new_frame_state.degamma_blob = std::move(blob);
+        if (!new_frame_state.degamma_blob) {
+          ALOGE("Failed to create %s blob",
+                crtc->GetDeGammaLutProperty().GetName().c_str());
+          return -EINVAL;
+        }
 
-  if (args.content_type && connector->GetContentTypeProperty()) {
-    if (!connector->GetContentTypeProperty().AtomicSet(*pset,
-                                                       *args.content_type))
-      return -EINVAL;
-  }
-
-  if (args.hdr_metadata && connector->GetHdrOutputMetadataProperty()) {
-    auto blob = drm->RegisterUserPropertyBlob(args.hdr_metadata.get(),
-                                              sizeof(hdr_output_metadata));
-    new_frame_state.hdr_metadata_blob = std::move(blob);
-    if (!new_frame_state.hdr_metadata_blob) {
-      ALOGE("Failed to create %s blob",
-            connector->GetHdrOutputMetadataProperty().GetName().c_str());
-      return -EINVAL;
+        if (!crtc->GetDeGammaLutProperty()
+                 .AtomicSet(*pset, *new_frame_state.degamma_blob))
+          return -EINVAL;
+      } else {
+        if (crtc->GetDeGammaLutProperty() &&
+         !crtc->GetDeGammaLutProperty().AtomicSet(*pset, 0))
+          return -EINVAL;
+      }
     }
+    // Output gamma PQ
+    if (crtc->GetGammaLutProperty()) {
+      if (args.gamma_lut) {
+        auto blob = drm->RegisterUserPropertyBlob(args.gamma_lut->data(),
+                                                  args.gamma_lut->size() *
+                                                      sizeof(drm_color_lut));
+        new_frame_state.gamma_blob = std::move(blob);
+        if (!new_frame_state.gamma_blob) {
+          ALOGE("Failed to create %s blob",
+                crtc->GetGammaLutProperty().GetName().c_str());
+          return -EINVAL;
+        }
 
-    if (!connector->GetHdrOutputMetadataProperty()
-             .AtomicSet(*pset, *new_frame_state.hdr_metadata_blob))
-      return -EINVAL;
+        if (!crtc->GetGammaLutProperty().AtomicSet(*pset,
+                                                   *new_frame_state.gamma_blob))
+          return -EINVAL;
+      } else {
+        if (crtc->GetGammaLutProperty() &&
+         !crtc->GetGammaLutProperty().AtomicSet(*pset, 0))
+          return -EINVAL;
+      }
+    }
   }
 
   auto unused_planes = new_frame_state.used_planes;
@@ -242,6 +296,10 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
 
   if (nonblock) {
     flags |= DRM_MODE_ATOMIC_NONBLOCK;
+  }
+
+  if (args.hdr_enabled) {
+    args.color_adjustment = false;
   }
 
   if (args.color_adjustment == true) {
@@ -705,6 +763,26 @@ auto DrmAtomicStateManager::ApplyPendingLUT(struct drm_color_lut *lut, uint64_t 
 
   drmModeObjectSetProperty(*(pipe_->device->GetFd()), pipe_->crtc->Get()->GetId(), DRM_MODE_OBJECT_CRTC,
                            pipe_->crtc->Get()->GetGammaLutProperty().id(), lut_blob_id);
+  drmModeDestroyPropertyBlob(*(pipe_->device->GetFd()), lut_blob_id);
+  return 0;
+}
+
+auto DrmAtomicStateManager::ApplyPendingDeLUT(struct drm_color_lut *lut, uint64_t lut_size) -> int {
+  uint32_t lut_blob_id = 0;
+  if (pipe_->crtc->Get()->GetDeGammaLutProperty().id() == 0) {
+    ALOGE("GetDeGammaLutProperty().id() == 0");
+    return -EINVAL;
+  }
+
+  drmModeCreatePropertyBlob(
+    *(pipe_->device->GetFd()), lut, sizeof(struct drm_color_lut) * lut_size, &lut_blob_id);
+  if (lut_blob_id == 0) {
+    ALOGE("COLOR_ lut_blob_id == 0");
+    return -EINVAL;
+  }
+
+  drmModeObjectSetProperty(*(pipe_->device->GetFd()), pipe_->crtc->Get()->GetId(), DRM_MODE_OBJECT_CRTC,
+                           pipe_->crtc->Get()->GetDeGammaLutProperty().id(), lut_blob_id);
   drmModeDestroyPropertyBlob(*(pipe_->device->GetFd()), lut_blob_id);
   return 0;
 }

@@ -86,6 +86,7 @@ filegroup {
         "drm/DrmMode.cpp",
         "drm/DrmPlane.cpp",
         "drm/DrmProperty.cpp",
+        "drm/HdrPipeline.cpp",
         "drm/ResourceManager.cpp",
         "drm/UEventListener.cpp",
         "drm/VSyncWorker.cpp",

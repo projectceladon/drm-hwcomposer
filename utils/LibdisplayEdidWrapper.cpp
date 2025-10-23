@@ -45,10 +45,10 @@ void LibdisplayEdidWrapper::GetSupportedHdrTypes(std::vector<ui::Hdr> &types) {
   const auto *colorimetries = di_info_get_supported_signal_colorimetry(info_);
   if (colorimetries->bt2020_cycc || colorimetries->bt2020_ycc ||
       colorimetries->bt2020_rgb) {
-    if (hdr_static_meta->pq)
-      types.emplace_back(ui::Hdr::HDR10);
     if (hdr_static_meta->hlg)
       types.emplace_back(ui::Hdr::HLG);
+    if (hdr_static_meta->pq)
+      types.emplace_back(ui::Hdr::HDR10);
   }
 }
 

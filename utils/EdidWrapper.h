@@ -78,7 +78,6 @@ class LibdisplayEdidWrapper final : public EdidWrapper {
       -> std::unique_ptr<LibdisplayEdidWrapper>;
 
   void GetSupportedHdrTypes(std::vector<ui::Hdr> &types) override;
-
   void GetHdrCapabilities(std::vector<ui::Hdr> &types,
                           float *max_luminance,
                           float *max_average_luminance,

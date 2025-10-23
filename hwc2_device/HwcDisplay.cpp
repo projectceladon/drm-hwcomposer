@@ -30,6 +30,7 @@
 #include "drm/DrmConnector.h"
 #include "drm/DrmDisplayPipeline.h"
 #include "drm/DrmHwc.h"
+#include "drm/HdrPipeline.h"
 #include "utils/log.h"
 #include "utils/properties.h"
 #include <utils/Trace.h>
@@ -750,10 +751,17 @@ AtomicCommitArgs HwcDisplay::CreateModesetCommit(
   ATRACE_CALL();
   AtomicCommitArgs args{};
 
-  args.color_matrix = color_matrix_;
   args.content_type = content_type_;
   args.colorspace = colorspace_;
+
+  args.hdr_enabled = hdr_active_;
+  args.color_matrix = color_matrix_;
   args.hdr_metadata = hdr_metadata_;
+  args.degamma_lut = hdr_degamma_lut_;
+  args.gamma_lut   = hdr_gamma_lut_;
+  if (hdr_active_) {
+    args.color_adjustment = false;
+  }
 
   std::vector<LayerData> composition_layers;
   if (modeset_layer) {
@@ -782,10 +790,16 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     return HWC2::Error::None;
   }
 
-  a_args.color_matrix = color_matrix_;
   a_args.content_type = content_type_;
   a_args.colorspace = colorspace_;
   a_args.hdr_metadata = hdr_metadata_;
+  a_args.hdr_enabled = hdr_active_;
+  a_args.color_matrix = color_matrix_;
+  a_args.degamma_lut = hdr_degamma_lut_;
+  a_args.gamma_lut   = hdr_gamma_lut_;
+  if (hdr_active_) {
+    a_args.color_adjustment = false;
+  }
 
   uint32_t prev_vperiod_ns = 0;
   GetDisplayVsyncPeriod(&prev_vperiod_ns);
@@ -958,13 +972,6 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
       colorspace_ = Colorspace::kDciP3RgbD65;
       break;
     case HAL_COLOR_MODE_DISPLAY_BT2020: {
-      std::vector<ui::Hdr> hdr_types;
-      GetEdid()->GetSupportedHdrTypes(hdr_types);
-      if (!hdr_types.empty()) {
-        auto ret = SetHdrOutputMetadata(hdr_types.front());
-        if (ret != HWC2::Error::None)
-          return ret;
-      }
       colorspace_ = Colorspace::kBt2020Rgb;
       break;
     }
@@ -974,6 +981,30 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
     case HAL_COLOR_MODE_BT2100_HLG:
     default:
       return HWC2::Error::Unsupported;
+  }
+
+  if (mode == HAL_COLOR_MODE_DISPLAY_BT2020) {
+    /*
+     * SetHdrOutputMetadata will setting these params
+     * hdr_metadate_
+     * color_matrix_
+     * hdr_degamma_lut_
+     * hdr_gamma_lut_
+     */
+    std::vector<ui::Hdr> hdr_types;
+    GetEdid()->GetSupportedHdrTypes(hdr_types);
+    if (!hdr_types.empty()) {
+      auto ret = SetHdrOutputMetadata(hdr_types.front());
+      if (ret != HWC2::Error::None)
+        return ret;
+    }
+    hdr_active_ = true;
+  } else if (hdr_active_) {
+    hdr_degamma_lut_.reset();
+    hdr_gamma_lut_.reset();
+    SetColorMatrixToIdentity();
+    hdr_metadata_.reset();
+    hdr_active_ = false;
   }
 
   color_mode_ = mode;
@@ -1170,7 +1201,7 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
   auto primaries = gamut.getPrimaries();
   auto whitePoint = gamut.getWhitePoint();
 
-  GetEdid()->GetColorGamut(primaries, whitePoint);
+  //GetEdid()->GetColorGamut(primaries, whitePoint);
 
   m->display_primaries[0].x = ToU16ColorValue(primaries[0].x);
   m->display_primaries[0].y = ToU16ColorValue(primaries[0].y);
@@ -1182,6 +1213,23 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
   m->white_point.x = ToU16ColorValue(whitePoint.x);
   m->white_point.y = ToU16ColorValue(whitePoint.y);
 
+  // build LUT/CTM
+  uint64_t gsize1 = 256;
+  uint64_t gsize2 = 256;
+  if (pipeline_) {
+      auto [ret1, sz1] =
+          GetPipe().crtc->Get()->GetGammaLutSizeProperty().value();
+      if (ret1 == 0 && sz1) gsize1 = sz1;
+      auto [ret2, sz2] =
+          GetPipe().crtc->Get()->GetDeGammaLutSizeProperty().value();
+      if (ret2 == 0 && sz2) gsize2 = sz2;
+  }
+  hdr_degamma_lut_ = std::make_shared<std::vector<drm_color_lut>>(
+          HdrPipeline::BuildSrgbDegamma(gsize2));
+  hdr_gamma_lut_   = std::make_shared<std::vector<drm_color_lut>>(
+          HdrPipeline::BuildPqGamma(gsize1,
+              hdr_luminance[0], hdr_luminance[1], hdr_luminance[2]));
+  color_matrix_    = HdrPipeline::BuildCtm709To2020();
   return HWC2::Error::None;
 }
 
