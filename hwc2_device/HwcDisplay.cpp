@@ -782,6 +782,45 @@ AtomicCommitArgs HwcDisplay::CreateModesetCommit(
   return args;
 }
 
+auto HwcDisplay::isSingleDeviceHdrLayer() -> std::pair<bool, HwcLayer*> const {
+    uint32_t hdr_layer_count = 0;
+    uint32_t total_layer_count = 0;
+    HwcLayer* hdr_layer = nullptr;
+    for (auto& pair : layers_) {
+      auto& layer = pair.second;
+        total_layer_count++;
+        if (layer.IsHDRLayer()) {
+          hdr_layer_count++;
+          hdr_layer = &layer;
+        } else {
+          // Non-HDR layer found, return false immediately
+          return std::make_pair(false, nullptr);
+        }
+    }
+    return std::make_pair(
+      (hdr_layer_count == 1) && (total_layer_count == 1),
+      hdr_layer
+    );
+  }
+
+void HwcDisplay::resetHdrPipeLineWhenSingleDeviceHDRLayer(
+	AtomicCommitArgs &a_args) {
+  // HDR video layer logic
+  auto only_hdr_layer = isSingleDeviceHdrLayer();
+
+  if (only_hdr_layer.first && only_hdr_layer.second
+    && only_hdr_layer.second->GetValidatedType() == HWC2::Composition::Device) {
+    // Disable all HDR pipeline for direct device scanout
+    a_args.color_matrix = HdrPipeline::BuildCtmIdentity();
+    a_args.degamma_lut.reset();
+    a_args.gamma_lut.reset();
+  } else {
+    // Enable HDR pipeline for client composition
+    // (Assume SetHdrOutputMetadata or similar already set up these)
+    // If not, you can explicitly set them here as needed.
+  }
+}
+
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   ATRACE_CALL();
@@ -860,6 +899,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   if (z_map.empty())
     return HWC2::Error::BadLayer;
 
+  resetHdrPipeLineWhenSingleDeviceHDRLayer(a_args);
   std::vector<LayerData> composition_layers;
 
   /* Import & populate */
@@ -1214,22 +1254,33 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
   m->white_point.y = ToU16ColorValue(whitePoint.y);
 
   // build LUT/CTM
-  uint64_t gsize1 = 256;
-  uint64_t gsize2 = 256;
+  uint64_t gsize_gamma = 256;
+  uint64_t gsize_degamma = 256;
   if (pipeline_) {
       auto [ret1, sz1] =
           GetPipe().crtc->Get()->GetGammaLutSizeProperty().value();
-      if (ret1 == 0 && sz1) gsize1 = sz1;
+      if (ret1 == 0 && sz1) gsize_gamma = sz1;
       auto [ret2, sz2] =
           GetPipe().crtc->Get()->GetDeGammaLutSizeProperty().value();
-      if (ret2 == 0 && sz2) gsize2 = sz2;
+      if (ret2 == 0 && sz2) gsize_degamma = sz2;
   }
-  hdr_degamma_lut_ = std::make_shared<std::vector<drm_color_lut>>(
-          HdrPipeline::BuildSrgbDegamma(gsize2));
-  hdr_gamma_lut_   = std::make_shared<std::vector<drm_color_lut>>(
-          HdrPipeline::BuildPqGamma(gsize1,
-              hdr_luminance[0], hdr_luminance[1], hdr_luminance[2]));
-  color_matrix_    = HdrPipeline::BuildCtm709To2020();
+
+  if (type == ui::Hdr::HDR10) {
+    hdr_degamma_lut_ = std::make_shared<std::vector<drm_color_lut>>(
+        HdrPipeline::BuildSrgbDegamma(gsize_degamma));
+    hdr_gamma_lut_ = std::make_shared<std::vector<drm_color_lut>>(
+        HdrPipeline::BuildPqGamma(gsize_gamma,
+                                  hdr_luminance[0],
+                                  hdr_luminance[1],
+                                  hdr_luminance[2]
+                                ));
+    color_matrix_ = HdrPipeline::BuildCtm709To2020();
+  } else if (type == ui::Hdr::HLG) {
+    hdr_degamma_lut_.reset();
+    hdr_gamma_lut_.reset();
+    SetColorMatrixToIdentity();
+  }
+
   return HWC2::Error::None;
 }
 

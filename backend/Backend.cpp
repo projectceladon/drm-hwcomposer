@@ -131,7 +131,8 @@ bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
          !layer->IsLayerUsableAsDevice() || display->CtmByGpu() ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&
           display->GetHwc()->GetResMan().ForcedScalingWithGpu()) ||
-         (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev());
+         (!display->IsInHeadlessMode() && display->GetPipe().device->IsIvshmDev()) ||
+         (!display->isSingleDeviceHdrLayer().first && layer->IsHDRLayer()); // only single hdrlayer will use device
 }
 
 bool Backend::IsVideoLayer(HwcLayer *layer) {

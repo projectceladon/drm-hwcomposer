@@ -30,6 +30,7 @@
 namespace android {
 
 #define DRM_FORMAT_NV12_INTEL fourcc_code('9', '9', '9', '6')
+#define DRM_FORMAT_P010_INTEL fourcc_code('P', '0', '0', '9')
 class DrmFbImporter;
 class DrmPlane;
 class ResourceManager;
