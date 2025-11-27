@@ -155,7 +155,8 @@ class HwcLayer {
   void PopulateLayerData();
   void ClearSlots();
   bool IsVideoLayer();
-  bool IsHDRLayer();
+  bool IsHdrVideoLayer();
+  bool IsHdrLayer();
   bool IsLayerUsableAsDevice() const {
     return !fb_import_failed_ && active_slot_id_.has_value() &&
            slots_.count(*active_slot_id_) > 0;

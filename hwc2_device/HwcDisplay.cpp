@@ -782,14 +782,14 @@ AtomicCommitArgs HwcDisplay::CreateModesetCommit(
   return args;
 }
 
-auto HwcDisplay::isSingleDeviceHdrLayer() -> std::pair<bool, HwcLayer*> const {
+auto HwcDisplay::HasSingleHdrVideoLayer() -> std::pair<bool, HwcLayer*> const {
     uint32_t hdr_layer_count = 0;
     uint32_t total_layer_count = 0;
     HwcLayer* hdr_layer = nullptr;
     for (auto& pair : layers_) {
       auto& layer = pair.second;
         total_layer_count++;
-        if (layer.IsHDRLayer()) {
+        if (layer.IsHdrVideoLayer()) {
           hdr_layer_count++;
           hdr_layer = &layer;
         } else {
@@ -803,13 +803,28 @@ auto HwcDisplay::isSingleDeviceHdrLayer() -> std::pair<bool, HwcLayer*> const {
     );
   }
 
-void HwcDisplay::resetHdrPipeLineWhenSingleDeviceHDRLayer(
-	AtomicCommitArgs &a_args) {
-  // HDR video layer logic
-  auto only_hdr_layer = isSingleDeviceHdrLayer();
+auto HwcDisplay::HasHdrLayer() -> bool {
+  for (auto& pair : layers_) {
+    auto& layer = pair.second;
+    if (layer.IsHdrLayer()) {
+      return true;
+    }
+  }
+  return false;
+}
 
-  if (only_hdr_layer.first && only_hdr_layer.second
-    && only_hdr_layer.second->GetValidatedType() == HWC2::Composition::Device) {
+/*
+ * reset HDR color pipeline when there is single video layer
+ * The kernel driver will handle HDR video YUV10 pq gamma output
+ *
+ * a_args: args that build commit pipeline
+ */
+void HwcDisplay::TryResetHdrPipeline(
+	AtomicCommitArgs &a_args) {
+  auto [only_hdr_layer, hdr_layer] = HasSingleHdrVideoLayer();
+
+  if (only_hdr_layer && hdr_layer
+    && hdr_layer->GetValidatedType() == HWC2::Composition::Device) {
     // Disable all HDR pipeline for direct device scanout
     a_args.color_matrix = HdrPipeline::BuildCtmIdentity();
     a_args.degamma_lut.reset();
@@ -899,7 +914,7 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   if (z_map.empty())
     return HWC2::Error::BadLayer;
 
-  resetHdrPipeLineWhenSingleDeviceHDRLayer(a_args);
+  TryResetHdrPipeline(a_args);
   std::vector<LayerData> composition_layers;
 
   /* Import & populate */
