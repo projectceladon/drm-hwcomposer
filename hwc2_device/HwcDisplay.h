@@ -252,8 +252,9 @@ class HwcDisplay {
 
   bool NeedsClientLayerUpdate() const;
 
-  auto isSingleDeviceHdrLayer() -> std::pair<bool, HwcLayer*> const;
-  void resetHdrPipeLineWhenSingleDeviceHDRLayer(AtomicCommitArgs &a_args);
+  auto HasSingleHdrVideoLayer() -> std::pair<bool, HwcLayer*> const;
+  auto HasHdrLayer() -> bool;
+  void TryResetHdrPipeline(AtomicCommitArgs &a_args);
 
  private:
   AtomicCommitArgs CreateModesetCommit(

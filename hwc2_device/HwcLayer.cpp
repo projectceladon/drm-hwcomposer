@@ -112,10 +112,14 @@ bool HwcLayer::IsVideoLayer() {
       slots_[*active_slot_id_].bi.usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;
 }
 
-bool HwcLayer::IsHDRLayer() {
+bool HwcLayer::IsHdrVideoLayer() {
   return active_slot_id_.has_value() &&
       (slots_[*active_slot_id_].bi.format == DRM_FORMAT_P010_INTEL ||
        slots_[*active_slot_id_].bi.format == DRM_FORMAT_P010);
+}
+
+bool HwcLayer::IsHdrLayer() {
+  return color_space_ == BufferColorSpace::kItuRec2020;
 }
 
 void HwcLayer::ImportFb() {
