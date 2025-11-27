@@ -102,6 +102,7 @@ filegroup {
         "hwc2_device/hwc2_device.cpp",
 
         "utils/LibdisplayEdidWrapper.cpp",
+        "utils/H3CdisplayEdidWrapper.cpp",
         "utils/fd.cpp",
         "utils/properties.cpp",
         "utils/intel_blit.cpp",
