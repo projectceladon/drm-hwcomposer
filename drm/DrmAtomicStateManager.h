@@ -38,13 +38,17 @@ struct AtomicCommitArgs {
   std::optional<DrmMode> display_mode;
   std::optional<bool> active;
   std::shared_ptr<DrmKmsPlan> composition;
-  std::shared_ptr<drm_color_ctm> color_matrix;
   std::optional<Colorspace> colorspace;
   std::optional<int32_t> content_type;
   std::shared_ptr<hdr_output_metadata> hdr_metadata;
   bool color_adjustment = false;
   std::shared_ptr<DrmFbIdHandle> writeback_fb;
   SharedFd writeback_release_fence;
+
+  bool hdr_enabled = false;
+  std::shared_ptr<std::vector<drm_color_lut>> degamma_lut;
+  std::shared_ptr<std::vector<drm_color_lut>> gamma_lut;
+  std::shared_ptr<drm_color_ctm> color_matrix;
 
   /* out */
   SharedFd out_fence;
@@ -81,6 +85,8 @@ class DrmAtomicStateManager {
                                     uint32_t contrast_c,
                                     uint32_t brightness_c) ->int;
   auto ApplyPendingLUT(struct drm_color_lut *lut,  uint64_t lut_size) -> int;
+  auto ApplyPendingDeLUT(struct drm_color_lut *lut,  uint64_t lut_size) -> int;
+
   void StopThread() {
     {
       const std::unique_lock lock(mutex_);
@@ -105,7 +111,8 @@ class DrmAtomicStateManager {
     DrmModeUserPropertyBlobUnique mode_blob;
     DrmModeUserPropertyBlobUnique ctm_blob;
     DrmModeUserPropertyBlobUnique hdr_metadata_blob;
-
+    DrmModeUserPropertyBlobUnique degamma_blob;
+    DrmModeUserPropertyBlobUnique gamma_blob;
     int release_fence_pt_index{};
 
     /* To avoid setting the inactive state twice, which will fail the commit */

@@ -25,6 +25,7 @@
 
 #include "DrmDevice.h"
 #include "DrmVirtgpu.h"
+#include "utils/properties.h"
 namespace android {
 
 static int GetCrtcProperty(const DrmDevice &dev, const DrmCrtc &crtc,
@@ -61,7 +62,8 @@ auto DrmCrtc::CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
     return {};
   }
 
-  if (dev.GetColorAdjustmentEnabling()) {
+  if (dev.GetColorAdjustmentEnabling() ||
+    Properties::EnableHdrDisplay()) {
     ret = GetCrtcProperty(dev, *c, "CTM", &c->ctm_property_);
     if (ret != 0) {
       ALOGV("Missing optional CTM property");
@@ -77,6 +79,16 @@ auto DrmCrtc::CreateInstance(DrmDevice &dev, uint32_t crtc_id, uint32_t index)
     if (ret != 0) {
       ALOGE("Failed to get GAMMA_LUT_SIZE property");
       return {};
+    }
+
+    ret = GetCrtcProperty(dev, *c, "DEGAMMA_LUT", &c->de_gamma_lut_property_);
+    if (ret != 0) {
+      ALOGE("Failed to get DEGAMMA_LUT property");
+    }
+
+    ret = GetCrtcProperty(dev, *c, "DEGAMMA_LUT_SIZE", &c->de_gamma_lut_size_property_);
+    if (ret != 0) {
+      ALOGE("Failed to get DEGAMMA_LUT_SIZE property");
     }
   }
 

@@ -16,6 +16,7 @@
 
 #define LOG_TAG "drmhwc"
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 #include <linux/dma-buf.h>
 #include "HwcLayer.h"
 
@@ -109,6 +110,16 @@ void HwcLayer::SetLayerProperties(const LayerProperties& layer_properties) {
 bool HwcLayer::IsVideoLayer() {
   return active_slot_id_.has_value() &&
       slots_[*active_slot_id_].bi.usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;
+}
+
+bool HwcLayer::IsHdrVideoLayer() {
+  return active_slot_id_.has_value() &&
+      (slots_[*active_slot_id_].bi.format == DRM_FORMAT_P010_INTEL ||
+       slots_[*active_slot_id_].bi.format == DRM_FORMAT_P010);
+}
+
+bool HwcLayer::IsHdrLayer() {
+  return color_space_ == BufferColorSpace::kItuRec2020;
 }
 
 void HwcLayer::ImportFb() {

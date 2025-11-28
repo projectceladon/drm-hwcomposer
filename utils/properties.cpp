@@ -41,3 +41,7 @@ auto Properties::ScaleWithGpu() -> bool {
 auto Properties::EnableVirtualDisplay() -> bool {
   return (property_get_bool("vendor.hwc.drm.enable_virtual_display", 0) != 0);
 }
+
+auto Properties::EnableHdrDisplay() -> bool {
+  return (property_get_bool("vendor.hwc.drm.enable_hdr_display", 0) != 0);
+}

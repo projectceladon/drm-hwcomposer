@@ -76,7 +76,13 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   auto &GetGammaLutSizeProperty() const {
     return gamma_lut_size_property_;
   }
+  auto &GetDeGammaLutProperty() const {
+    return de_gamma_lut_property_;
+  }
 
+  auto &GetDeGammaLutSizeProperty() const {
+    return de_gamma_lut_size_property_;
+  }
   bool GetAllowP2P() const {
     return allow_p2p_;
   }
@@ -91,6 +97,8 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmProperty ctm_property_;
   DrmProperty gamma_lut_property_;
   DrmProperty gamma_lut_size_property_;
+  DrmProperty de_gamma_lut_property_;
+  DrmProperty de_gamma_lut_size_property_;
   DrmProperty active_property_;
   DrmProperty mode_property_;
   DrmProperty out_fence_ptr_property_;

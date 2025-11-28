@@ -127,6 +127,16 @@ std::tuple<int, size_t> Backend::GetClientLayers(
 }
 
 bool Backend::IsClientLayer(HwcDisplay *display, HwcLayer *layer) {
+  // if display has hdr layer
+  if (display->HasHdrLayer()) {
+    auto [has_single_hdr_video, hdr_layer] = display->HasSingleHdrVideoLayer();
+    // if display have single hdr layer, try to set layer to device mode
+    // else set all layers to client
+    if (!(has_single_hdr_video && layer == hdr_layer)) {
+      return true;
+    }
+    //only single hdr video layer passthrough
+  }
   return !HardwareSupportsLayerType(layer->GetSfType()) ||
          !layer->IsLayerUsableAsDevice() || display->CtmByGpu() ||
          (layer->GetLayerData().pi.RequireScalingOrPhasing() &&

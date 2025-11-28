@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include <ui/GraphicTypes.h>
+#include <ui/ColorSpace.h>
 
 #include "compositor/DisplayInfo.h"
 #include "drm/DrmUnique.h"
@@ -41,9 +42,9 @@ class EdidWrapper {
     types.clear();
   };
   virtual void GetHdrCapabilities(std::vector<ui::Hdr> &types,
-                                  const float * /*max_luminance*/,
-                                  const float * /*max_average_luminance*/,
-                                  const float * /*min_luminance*/) {
+                                  float * /*max_luminance*/,
+                                  float * /*max_average_luminance*/,
+                                  float * /*min_luminance*/) {
     GetSupportedHdrTypes(types);
   };
   virtual void GetColorModes(std::vector<Colormode> &color_modes) {
@@ -59,6 +60,10 @@ class EdidWrapper {
   virtual auto GetBoundsMm() -> std::pair<int32_t, int32_t> {
     return {-1, -1};
   }
+
+  virtual void GetColorGamut(
+    std::array<float2, 3> &primaries, float2 &whitepoint) {
+  }
 };
 
 #if HAS_LIBDISPLAY_INFO
@@ -73,11 +78,10 @@ class LibdisplayEdidWrapper final : public EdidWrapper {
       -> std::unique_ptr<LibdisplayEdidWrapper>;
 
   void GetSupportedHdrTypes(std::vector<ui::Hdr> &types) override;
-
   void GetHdrCapabilities(std::vector<ui::Hdr> &types,
-                          const float *max_luminance,
-                          const float *max_average_luminance,
-                          const float *min_luminance) override;
+                          float *max_luminance,
+                          float *max_average_luminance,
+                          float *min_luminance) override;
 
   void GetColorModes(std::vector<Colormode> &color_modes) override;
 
@@ -85,6 +89,9 @@ class LibdisplayEdidWrapper final : public EdidWrapper {
   auto GetDpiY() -> int override;
 
   auto GetBoundsMm() -> std::pair<int32_t, int32_t> override;
+
+  void GetColorGamut(
+    std::array<float2, 3> &primaries, float2 &whitepoint) override;
 
  private:
   LibdisplayEdidWrapper(di_info *info) : info_(std::move(info)) {

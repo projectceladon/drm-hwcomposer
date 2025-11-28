@@ -252,6 +252,11 @@ class HwcDisplay {
 
   bool NeedsClientLayerUpdate() const;
 
+  auto HasSingleHdrVideoLayer() -> std::pair<bool, HwcLayer*> const;
+  auto HasHdrLayer() -> bool;
+  void TryResetHdrPipeline(AtomicCommitArgs &a_args);
+  void ResetHdrPipelineInDisplay();
+
  private:
   AtomicCommitArgs CreateModesetCommit(
       const HwcDisplayConfig *config,
@@ -282,6 +287,9 @@ class HwcDisplay {
   uint16_t virtual_disp_height_{};
   int32_t color_mode_{};
   std::shared_ptr<drm_color_ctm> color_matrix_;
+  std::shared_ptr<std::vector<drm_color_lut>> hdr_degamma_lut_;
+  std::shared_ptr<std::vector<drm_color_lut>> hdr_gamma_lut_;
+  bool hdr_active_{};
   android_color_transform_t color_transform_hint_{};
   int32_t content_type_{};
   Colorspace colorspace_{};
@@ -300,6 +308,7 @@ class HwcDisplay {
 
   HWC2::Error SetActiveConfigInternal(uint32_t config, int64_t change_time);
   HWC2::Error SetHdrOutputMetadata(ui::Hdr hdrType);
+  
   auto GetEdid() -> EdidWrapperUnique & {
     return GetPipe().connector->Get()->GetParsedEdid();
   }
