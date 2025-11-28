@@ -415,7 +415,6 @@ auto HwcDisplay::PresentStagedComposition(
 
 void HwcDisplay::SetPipeline(std::shared_ptr<DrmDisplayPipeline> pipeline) {
   Deinit();
-
   pipeline_ = std::move(pipeline);
 
   if (pipeline_ != nullptr || handle_ == kPrimaryDisplay) {
@@ -442,6 +441,7 @@ void HwcDisplay::Deinit() {
       flatcon_->StopThread();
       flatcon_.reset();
     }
+    ResetHdrPipelineInDisplay();
   }
 
   if (vsync_worker_) {
@@ -996,6 +996,14 @@ HWC2::Error HwcDisplay::SetActiveConfig(hwc2_config_t config) {
   return SetActiveConfigInternal(config, ResourceManager::GetTimeMonotonicNs());
 }
 
+void HwcDisplay::ResetHdrPipelineInDisplay() {
+  hdr_metadata_.reset();
+  hdr_degamma_lut_.reset();
+  hdr_gamma_lut_.reset();
+  SetColorMatrixToIdentity();
+  hdr_active_ = false;
+}
+
 HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
   ATRACE_CALL();
   /* Maps to the Colorspace DRM connector property:
@@ -1055,11 +1063,7 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
     }
     hdr_active_ = true;
   } else if (hdr_active_) {
-    hdr_degamma_lut_.reset();
-    hdr_gamma_lut_.reset();
-    SetColorMatrixToIdentity();
-    hdr_metadata_.reset();
-    hdr_active_ = false;
+    ResetHdrPipelineInDisplay();
   }
 
   color_mode_ = mode;

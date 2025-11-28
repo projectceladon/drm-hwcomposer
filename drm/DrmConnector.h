@@ -44,6 +44,7 @@ class DrmConnector : public PipelineBindable<DrmConnector> {
   DrmConnector &operator=(const DrmProperty &) = delete;
 
   int UpdateEdidProperty();
+  void UpdateEdidWrapper();
   auto GetEdidBlob() -> DrmModePropertyBlobUnique;
   auto GetParsedEdid() -> EdidWrapperUnique & {
     return edid_wrapper_;

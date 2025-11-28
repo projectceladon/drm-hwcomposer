@@ -82,6 +82,16 @@ auto DrmConnector::CreateInstance(DrmDevice &dev, uint32_t connector_id,
   return c;
 }
 
+void DrmConnector::UpdateEdidWrapper() {
+  UpdateEdidProperty();
+#if HAS_LIBDISPLAY_INFO
+  auto edid = LibdisplayEdidWrapper::Create(GetEdidBlob());
+  edid_wrapper_ = edid ? std::move(edid) : std::make_unique<EdidWrapper>();
+#else
+  edid_wrapper_ = std::make_unique<EdidWrapper>();
+#endif
+}
+
 auto DrmConnector::Init()-> bool {
   if (!GetConnectorProperty("Content Protection", &hdcp_id_property_)) {
     ALOGE("%s GetHDCPConnectorProperty check failed!", __FUNCTION__);
@@ -95,13 +105,7 @@ auto DrmConnector::Init()-> bool {
     return false;
   }
 
-  UpdateEdidProperty();
-#if HAS_LIBDISPLAY_INFO
-  auto edid = LibdisplayEdidWrapper::Create(GetEdidBlob());
-  edid_wrapper_ = edid ? std::move(edid) : std::make_unique<EdidWrapper>();
-#else
-  edid_wrapper_ = std::make_unique<EdidWrapper>();
-#endif
+  UpdateEdidWrapper();
 
   if (IsWriteback() &&
       (!GetConnectorProperty("WRITEBACK_PIXEL_FORMATS",

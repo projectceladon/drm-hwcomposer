@@ -250,6 +250,7 @@ void ResourceManager::UpdateFrontendDisplays() {
 
   for (auto *conn : ordered_connectors) {
     conn->UpdateModes();
+    conn->UpdateEdidWrapper();
     auto connected = conn->IsConnected();
     auto attached = attached_pipelines_.count(conn) != 0;
 
