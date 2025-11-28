@@ -255,6 +255,7 @@ class HwcDisplay {
   auto HasSingleHdrVideoLayer() -> std::pair<bool, HwcLayer*> const;
   auto HasHdrLayer() -> bool;
   void TryResetHdrPipeline(AtomicCommitArgs &a_args);
+  void ResetHdrPipelineInDisplay();
 
  private:
   AtomicCommitArgs CreateModesetCommit(
