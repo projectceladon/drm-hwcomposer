@@ -1462,22 +1462,60 @@ ndk::ScopedAStatus ComposerClient::setIdleTimerEnabled(int64_t /*display_id*/,
 #if __ANDROID_API__ >= 34
 
 ndk::ScopedAStatus ComposerClient::getOverlaySupport(
-    OverlayProperties* /*out_overlay_properties*/) {
+    OverlayProperties* out_overlay_properties) {
   ATRACE_CALL();
-  return ToBinderStatus(hwc3::Error::kUnsupported);
+  // Fill SupportedBufferCombinations
+  OverlayProperties::SupportedBufferCombinations combo;
+  // Pixel formats supported
+  combo.pixelFormats = {
+    common::PixelFormat::RGBA_8888,
+    common::PixelFormat::RGBX_8888,
+    common::PixelFormat::RGBA_1010102,   // RGB10
+    common::PixelFormat::YCBCR_P010,     // YUV_P10
+    common::PixelFormat::YCBCR_420_888,  // NV12
+    // ... add more if needed
+  };
+  // Standards supported
+  combo.standards = {
+    common::Dataspace::STANDARD_BT709,
+    common::Dataspace::STANDARD_BT2020
+  };
+  // Transfers supported
+  combo.transfers = {
+    common::Dataspace::TRANSFER_SRGB,
+    common::Dataspace::TRANSFER_ST2084
+  };
+  // Ranges supported
+  combo.ranges = {
+    common::Dataspace::RANGE_FULL,
+    common::Dataspace::RANGE_LIMITED
+  };
+
+  out_overlay_properties->combinations.clear();
+  out_overlay_properties->combinations.push_back(combo);
+
+  // Support mixed color spaces (can overlay BT709 and BT2020 at the same time)
+  out_overlay_properties->supportMixedColorSpaces = false;
+
+  // No LUT support
+  out_overlay_properties->lutProperties = std::nullopt;
+
+  return ToBinderStatus(hwc3::Error::kNone);
 }
 
 ndk::ScopedAStatus ComposerClient::getHdrConversionCapabilities(
-    std::vector<common::HdrConversionCapability>* /*out_capabilities*/) {
+    std::vector<common::HdrConversionCapability>* out_capabilities) {
   ATRACE_CALL();
-  return ToBinderStatus(hwc3::Error::kUnsupported);
+  // Only SDR and HDR10 are supported, no conversion between HDR formats.
+  out_capabilities->clear();
+  return ToBinderStatus(hwc3::Error::kNone);
 }
 
 ndk::ScopedAStatus ComposerClient::setHdrConversionStrategy(
     const common::HdrConversionStrategy& /*conversion_strategy*/,
     common::Hdr* /*out_hdr*/) {
   ATRACE_CALL();
-  return ToBinderStatus(hwc3::Error::kUnsupported);
+  return ToBinderStatus(hwc3::Error::kNone);
 }
 
 ndk::ScopedAStatus ComposerClient::setRefreshRateChangedCallbackDebugEnabled(
