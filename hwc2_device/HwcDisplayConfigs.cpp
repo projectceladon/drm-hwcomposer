@@ -25,7 +25,13 @@
 #include "utils/log.h"
 #include "utils/properties.h"
 
-#ifdef HEADLESS_RESOLUTION_2560_1600
+#if  defined(HEADLESS_RESOLUTION_2560_1440)
+constexpr uint32_t kHeadlessModeDisplayWidthMm = 330;
+constexpr uint32_t kHeadlessModeDisplayHeightMm = 185;
+constexpr uint32_t kHeadlessModeDisplayWidthPx = 2560;
+constexpr uint32_t kHeadlessModeDisplayHeightPx = 1440;
+constexpr uint32_t kHeadlessModeDisplayVRefresh = 60;
+#elif defined(HEADLESS_RESOLUTION_2560_1600)
 constexpr uint32_t kHeadlessModeDisplayWidthMm = 173;
 constexpr uint32_t kHeadlessModeDisplayHeightMm = 108;
 constexpr uint32_t kHeadlessModeDisplayWidthPx = 2560;
