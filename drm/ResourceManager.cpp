@@ -216,9 +216,11 @@ void ResourceManager::HwcServiceThread() {
   StartHwcInfoService func = (StartHwcInfoService)dlsym(handle, "StartHwcInfoService");
   if (!func) {
     ALOGE("dlsym(StartHwcInfoService) fail ");
+    dlclose(handle);
     return;
   }
   func((DrmHwcTwo*)frontend_interface_);
+  dlclose(handle);
 }
 
 void ResourceManager::DeInit() {

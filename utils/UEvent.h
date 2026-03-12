@@ -72,7 +72,7 @@ class UEvent {
     }
 
     ssize_t ret = 0;
-    ret = read(*fd_, &buffer, sizeof(buffer));
+    ret = read(*fd_, &buffer, sizeof(buffer) - 1);
     if (ret == 0)
       return {};
 
@@ -81,6 +81,7 @@ class UEvent {
       return {};
     }
 
+    buffer[ret] = '\0';
     for (int i = 0; i < ret - 1; i++) {
       if (buffer[i] == '\0') {
         buffer[i] = '\n';
