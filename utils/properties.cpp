@@ -16,6 +16,31 @@
 
 #include "properties.h"
 
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
+
+namespace {
+
+auto GetUintProperty(const char *key, uint32_t default_value) -> uint32_t {
+  char buf[PROPERTY_VALUE_MAX] = {};
+  if (property_get(key, buf, "") <= 0) {
+    return default_value;
+  }
+
+  char *end = nullptr;
+  errno = 0;
+  const auto value = std::strtoul(buf, &end, 10);
+  if (end == buf || *end != '\0' || errno != 0 ||
+      value > std::numeric_limits<uint32_t>::max()) {
+    return default_value;
+  }
+
+  return static_cast<uint32_t>(value);
+}
+
+}  // namespace
+
 /**
  * @brief Determine if the "Present Not Reliable" property is enabled.
  *
@@ -40,6 +65,14 @@ auto Properties::ScaleWithGpu() -> bool {
 
 auto Properties::EnableVirtualDisplay() -> bool {
   return (property_get_bool("vendor.hwc.drm.enable_virtual_display", 0) != 0);
+}
+
+auto Properties::GetVirtualDisplayWidth() -> uint32_t {
+  return GetUintProperty("vendor.hwc.drm.virtual_display.width", 0);
+}
+
+auto Properties::GetVirtualDisplayHeight() -> uint32_t {
+  return GetUintProperty("vendor.hwc.drm.virtual_display.height", 0);
 }
 
 auto Properties::EnableHdrDisplay() -> bool {

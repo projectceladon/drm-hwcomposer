@@ -139,6 +139,15 @@ HWC2::Error DrmHwc::CreateVirtualDisplay(
     uint32_t width, uint32_t height,
     int32_t *format,  // NOLINT(readability-non-const-parameter)
     hwc2_display_t *display) {
+  const auto width_override = Properties::GetVirtualDisplayWidth();
+  const auto height_override = Properties::GetVirtualDisplayHeight();
+  if (width_override > 0) {
+    width = width_override;
+  }
+  if (height_override > 0) {
+    height = height_override;
+  }
+
   ALOGI("Creating virtual display %dx%d format %d", width, height, *format);
 
   auto virtual_pipeline = resource_manager_.GetVirtualDisplayPipeline();

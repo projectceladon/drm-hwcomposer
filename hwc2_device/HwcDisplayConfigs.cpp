@@ -51,6 +51,21 @@ constexpr uint32_t kHzInKHz = 1000;
 
 namespace android {
 
+namespace {
+
+auto ScaleDisplaySizeMm(uint32_t pixels, uint32_t reference_pixels,
+                        uint32_t reference_mm) -> uint32_t {
+  if (reference_pixels == 0) {
+    return reference_mm;
+  }
+
+  return static_cast<uint32_t>((static_cast<uint64_t>(pixels) * reference_mm +
+                                (reference_pixels / 2U)) /
+                               reference_pixels);
+}
+
+}  // namespace
+
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 uint32_t HwcDisplayConfigs::last_config_id = 1;
 
@@ -68,8 +83,25 @@ void HwcDisplayConfigs::GenFakeMode(uint16_t width, uint16_t height) {
 
   if (width == 0 || height == 0) {
     strcpy(headless_drm_mode_info.name, "HEADLESS-MODE");
-    headless_drm_mode_info.hdisplay = kHeadlessModeDisplayWidthPx;
-    headless_drm_mode_info.vdisplay = kHeadlessModeDisplayHeightPx;
+    if (Properties::GetVirtualDisplayWidth() > 0) {
+      headless_drm_mode_info.hdisplay = Properties::GetVirtualDisplayWidth();
+    } else {
+      headless_drm_mode_info.hdisplay = kHeadlessModeDisplayWidthPx;
+    }
+    if (Properties::GetVirtualDisplayHeight() > 0) {
+      headless_drm_mode_info.vdisplay = Properties::GetVirtualDisplayHeight();
+    } else {
+      headless_drm_mode_info.vdisplay = kHeadlessModeDisplayHeightPx;
+    }
+    mm_width = ScaleDisplaySizeMm(headless_drm_mode_info.hdisplay, kHeadlessModeDisplayWidthPx,
+                                  kHeadlessModeDisplayWidthMm);
+    mm_height = ScaleDisplaySizeMm(headless_drm_mode_info.vdisplay, kHeadlessModeDisplayHeightPx,
+                                   kHeadlessModeDisplayHeightMm);
+  } else {
+    mm_width = ScaleDisplaySizeMm(width, kHeadlessModeDisplayWidthPx,
+                                  kHeadlessModeDisplayWidthMm);
+    mm_height = ScaleDisplaySizeMm(height, kHeadlessModeDisplayHeightPx,
+                                   kHeadlessModeDisplayHeightMm);
   }
 
   /* We need a valid mode to pass the kernel validation */
@@ -97,8 +129,6 @@ void HwcDisplayConfigs::GenFakeMode(uint16_t width, uint16_t height) {
       .mode = DrmMode(&headless_drm_mode_info),
   };
 
-  mm_width = kHeadlessModeDisplayWidthMm;
-  mm_height = kHeadlessModeDisplayHeightMm;
 }
 
 // NOLINTNEXTLINE (readability-function-cognitive-complexity): Fixme

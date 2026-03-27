@@ -81,5 +81,7 @@ class Properties {
   static auto UseOverlayPlanes() -> bool;
   static auto ScaleWithGpu() -> bool;
   static auto EnableVirtualDisplay() -> bool;
+  static auto GetVirtualDisplayWidth() -> uint32_t;
+  static auto GetVirtualDisplayHeight() -> uint32_t;
   static auto EnableHdrDisplay() -> bool;
 };
