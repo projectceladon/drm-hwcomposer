@@ -83,5 +83,6 @@ class Properties {
   static auto EnableVirtualDisplay() -> bool;
   static auto GetVirtualDisplayWidth() -> uint32_t;
   static auto GetVirtualDisplayHeight() -> uint32_t;
+  static auto GetHeadlessVRefresh() -> uint32_t;
   static auto EnableHdrDisplay() -> bool;
 };

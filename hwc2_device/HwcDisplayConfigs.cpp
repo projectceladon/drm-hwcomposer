@@ -93,6 +93,9 @@ void HwcDisplayConfigs::GenFakeMode(uint16_t width, uint16_t height) {
     } else {
       headless_drm_mode_info.vdisplay = kHeadlessModeDisplayHeightPx;
     }
+    if (Properties::GetHeadlessVRefresh() > 0) {
+      headless_drm_mode_info.vrefresh = Properties::GetHeadlessVRefresh();
+    }
     mm_width = ScaleDisplaySizeMm(headless_drm_mode_info.hdisplay, kHeadlessModeDisplayWidthPx,
                                   kHeadlessModeDisplayWidthMm);
     mm_height = ScaleDisplaySizeMm(headless_drm_mode_info.vdisplay, kHeadlessModeDisplayHeightPx,

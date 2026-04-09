@@ -75,6 +75,10 @@ auto Properties::GetVirtualDisplayHeight() -> uint32_t {
   return GetUintProperty("vendor.hwc.drm.virtual_display.height", 0);
 }
 
+auto Properties::GetHeadlessVRefresh() -> uint32_t {
+  return GetUintProperty("vendor.hwc.drm.headless.vrefresh", 0);
+}
+
 auto Properties::EnableHdrDisplay() -> bool {
   return (property_get_bool("vendor.hwc.drm.enable_hdr_display", 0) != 0);
 }
