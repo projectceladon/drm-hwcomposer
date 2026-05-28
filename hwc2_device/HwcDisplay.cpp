@@ -114,9 +114,9 @@ std::string HwcDisplay::DumpDelta(HwcDisplay::Stats delta) {
 }
 
 std::string HwcDisplay::Dump() {
-  auto connector_name = IsInHeadlessMode()
-                            ? std::string("NULL-DISPLAY")
-                            : GetPipe().connector->Get()->GetName();
+  const auto &connector_name = IsInHeadlessMode()
+                                   ? std::string("NULL-DISPLAY")
+                                   : GetPipe().connector->Get()->GetName();
 
   std::stringstream ss;
   ss << "- Display on: " << connector_name << "\n"
@@ -1225,6 +1225,10 @@ static uint64_t ToU16ColorValue(float in) {
 }
 
 HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
+  if (IsInHeadlessMode() || !pipeline_) {
+    return HWC2::Error::Unsupported;
+  }
+
   hdr_metadata_ = std::make_shared<hdr_output_metadata>();
   hdr_metadata_->metadata_type = 0;
   auto *m = &hdr_metadata_->hdmi_metadata_type1;
@@ -1275,14 +1279,12 @@ HWC2::Error HwcDisplay::SetHdrOutputMetadata(ui::Hdr type) {
   // build LUT/CTM
   uint64_t gsize_gamma = 256;
   uint64_t gsize_degamma = 256;
-  if (pipeline_) {
-      auto [ret1, sz1] =
-          GetPipe().crtc->Get()->GetGammaLutSizeProperty().value();
-      if (ret1 == 0 && sz1) gsize_gamma = sz1;
-      auto [ret2, sz2] =
-          GetPipe().crtc->Get()->GetDeGammaLutSizeProperty().value();
-      if (ret2 == 0 && sz2) gsize_degamma = sz2;
-  }
+  auto [ret1, sz1] =
+    GetPipe().crtc->Get()->GetGammaLutSizeProperty().value();
+  if (ret1 == 0 && sz1) gsize_gamma = sz1;
+  auto [ret2, sz2] =
+    GetPipe().crtc->Get()->GetDeGammaLutSizeProperty().value();
+  if (ret2 == 0 && sz2) gsize_degamma = sz2;
 
   if (type == ui::Hdr::HDR10) {
     hdr_degamma_lut_ = std::make_shared<std::vector<drm_color_lut>>(

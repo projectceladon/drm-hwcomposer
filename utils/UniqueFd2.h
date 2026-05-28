@@ -97,9 +97,19 @@ class UniqueFd2 {
     return *this;
   }
 
-  /* Disable copy semantics */
-  UniqueFd2(const UniqueFd2 &) = default;
-  auto operator=(const UniqueFd2 &) = delete;
+  /* Allow copy semantics by duplicating the fd */
+  UniqueFd2(const UniqueFd2 &rhs) {
+    fd_ = rhs.fd_ != kEmptyFd ? dup(rhs.fd_) : kEmptyFd;
+  }
+
+  auto operator=(const UniqueFd2 &rhs) -> UniqueFd2 & {
+    if (this == &rhs) {
+      return *this;
+    }
+
+    Set(rhs.fd_ != kEmptyFd ? dup(rhs.fd_) : kEmptyFd);
+    return *this;
+  }
 
  private:
   void Set(int new_fd) {

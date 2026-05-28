@@ -32,6 +32,8 @@ class VSyncWorker {
   using VsyncTimestampCallback = std::function<void(int64_t /*timestamp*/,
                                                     uint32_t /*period*/)>;
 
+    VSyncWorker(const VSyncWorker &) = delete;
+    auto operator=(const VSyncWorker &) -> VSyncWorker & = delete;
   ~VSyncWorker();
 
   auto static CreateInstance(std::shared_ptr<DrmDisplayPipeline> &pipe)

@@ -36,6 +36,7 @@ class EdidWrapper {
  public:
   EdidWrapper() = default;
   EdidWrapper(const EdidWrapper &) = delete;
+  auto operator=(const EdidWrapper &) -> EdidWrapper & = delete;
   virtual ~EdidWrapper() = default;
 
   virtual void GetSupportedHdrTypes(std::vector<ui::Hdr> &types) {
@@ -71,6 +72,12 @@ class EdidWrapper {
 class LibdisplayEdidWrapper final : public EdidWrapper {
  public:
   LibdisplayEdidWrapper() = delete;
+  LibdisplayEdidWrapper(const LibdisplayEdidWrapper &) = delete;
+  auto operator=(const LibdisplayEdidWrapper &)
+      -> LibdisplayEdidWrapper & = delete;
+  LibdisplayEdidWrapper(LibdisplayEdidWrapper &&) = delete;
+  auto operator=(LibdisplayEdidWrapper &&)
+      -> LibdisplayEdidWrapper & = delete;
   ~LibdisplayEdidWrapper() override {
     di_info_destroy(info_);
   }

@@ -37,6 +37,7 @@ class DrmCrtc : public PipelineBindable<DrmCrtc> {
   DrmCrtc() = delete;
   DrmCrtc(const DrmCrtc &) = delete;
   DrmCrtc &operator=(const DrmCrtc &) = delete;
+  ~DrmCrtc() = default;
 
   auto GetId() const {
     return crtc_->crtc_id;

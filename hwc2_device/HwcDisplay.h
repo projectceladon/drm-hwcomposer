@@ -57,6 +57,7 @@ class HwcDisplay {
 
   HwcDisplay(hwc2_display_t handle, HWC2::DisplayType type, DrmHwc *hwc);
   HwcDisplay(const HwcDisplay &) = delete;
+  auto operator=(const HwcDisplay &) -> HwcDisplay & = delete;
   ~HwcDisplay();
 
   void SetColorTransformMatrix(

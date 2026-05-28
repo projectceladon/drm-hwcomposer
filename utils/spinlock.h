@@ -43,6 +43,9 @@ class ScopedSpinLock {
     locked_ = true;
   }
 
+  ScopedSpinLock(const ScopedSpinLock &) = delete;
+  auto operator=(const ScopedSpinLock &) -> ScopedSpinLock & = delete;
+
   ~ScopedSpinLock() {
     if (locked_) {
       lock_.unlock();
@@ -62,6 +65,9 @@ class ScopedSpinLocks {
     lock1_.lock();
     lock2_.lock();
   }
+
+  ScopedSpinLocks(const ScopedSpinLocks &) = delete;
+  auto operator=(const ScopedSpinLocks &) -> ScopedSpinLocks & = delete;
 
   ~ScopedSpinLocks() {
     lock1_.unlock();

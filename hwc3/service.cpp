@@ -19,6 +19,7 @@
 
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
+#include <exception>
 #include <sched.h>
 
 #include "Composer.h"
@@ -30,6 +31,9 @@ int main(int /*argc*/, char* argv[]) {
   (void)argv;
   ALOGI("hwc3-drm starting up");
 
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  try {
+#endif
   // same as SF main thread
   struct sched_param param = {0};
   param.sched_priority = 2;
@@ -61,4 +65,13 @@ int main(int /*argc*/, char* argv[]) {
 
   ABinderProcess_joinThreadPool();
   return EXIT_FAILURE;  // should not reach
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  } catch (const std::exception &e) {
+    ALOGE("Unhandled std::exception in hwc3 service: %s", e.what());
+    return -EINVAL;
+  } catch (...) {
+    ALOGE("Unhandled non-standard exception in hwc3 service");
+    return -EINVAL;
+  }
+#endif
 }

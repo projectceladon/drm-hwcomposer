@@ -18,7 +18,9 @@
 
 #include "DrmHwc.h"
 
+#include <chrono>
 #include <cinttypes>
+#include <thread>
 
 #include "backend/Backend.h"
 #include "utils/log.h"
@@ -59,8 +61,8 @@ void DrmHwc::FinalizeDisplayBinding() {
    */
   auto &mutex = GetResMan().GetMainLock();
   mutex.unlock();
-  const int time_for_sf_to_dispose_display_us = 200000;
-  usleep(time_for_sf_to_dispose_display_us);
+  constexpr auto kTimeForSfToDisposeDisplay = std::chrono::microseconds(200000);
+  std::this_thread::sleep_for(kTimeForSfToDisposeDisplay);
   mutex.lock();
   for (auto handle : displays_for_removal_list_) {
     displays_.erase(handle);
@@ -178,8 +180,8 @@ HWC2::Error DrmHwc::DestroyVirtualDisplay(hwc2_display_t display) {
    */
   auto &mutex = GetResMan().GetMainLock();
   mutex.unlock();
-  const int time_for_sf_to_dispose_display_us = 200000;
-  usleep(time_for_sf_to_dispose_display_us);
+  constexpr auto kTimeForSfToDisposeDisplay = std::chrono::microseconds(200000);
+  std::this_thread::sleep_for(kTimeForSfToDisposeDisplay);
   mutex.lock();
 
   displays_.erase(display);

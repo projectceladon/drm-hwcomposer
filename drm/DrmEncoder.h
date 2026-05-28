@@ -34,6 +34,7 @@ class DrmEncoder : public PipelineBindable<DrmEncoder> {
 
   DrmEncoder(const DrmEncoder &) = delete;
   DrmEncoder &operator=(const DrmEncoder &) = delete;
+  ~DrmEncoder() = default;
 
   auto GetId() const {
     return enc_->encoder_id;

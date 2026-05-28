@@ -196,7 +196,7 @@ auto DrmProperty::GetEnumMask(uint64_t &mask) -> bool {
   mask = 0;
 
   for (const auto &it : enums_) {
-    mask |= (1 << it.value);
+    mask |= (uint64_t{1} << it.value);
   }
 
   return true;

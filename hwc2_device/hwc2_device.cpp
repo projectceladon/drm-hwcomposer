@@ -342,7 +342,8 @@ static int32_t SetClientTarget(hwc2_device_t *device, hwc2_display_t display,
   auto &client_layer = idisplay->GetClientLayer();
   auto h2l = GetHwc2DeviceLayer(client_layer);
   if (!h2l) {
-    client_layer.SetFrontendPrivateData(std::make_shared<Hwc2DeviceLayer>());
+    h2l = std::make_shared<Hwc2DeviceLayer>();
+    client_layer.SetFrontendPrivateData(h2l);
   }
 
   if (target == nullptr) {
@@ -384,8 +385,8 @@ static int32_t SetOutputBuffer(hwc2_device_t *device, hwc2_display_t display,
 
   auto h2l = GetHwc2DeviceLayer(*writeback_layer);
   if (!h2l) {
-    writeback_layer->SetFrontendPrivateData(
-        std::make_shared<Hwc2DeviceLayer>());
+    h2l = std::make_shared<Hwc2DeviceLayer>();
+    writeback_layer->SetFrontendPrivateData(h2l);
   }
 
   auto [lp, not_a_swapchain] = h2l->HandleNextBuffer(buffer, release_fence);

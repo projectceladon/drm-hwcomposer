@@ -19,6 +19,7 @@
 
 #include "ComposerClient.h"
 
+#include <exception>
 #include <cinttypes>
 #include <cmath>
 #include <memory>
@@ -353,6 +354,11 @@ std::optional<LayerTransform> AidlToLayerTransform(
 
 class Hwc3BufferHandle : public PrimeFdsSharedBase {
  public:
+  Hwc3BufferHandle(const Hwc3BufferHandle &) = delete;
+  auto operator=(const Hwc3BufferHandle &) -> Hwc3BufferHandle & = delete;
+  Hwc3BufferHandle(Hwc3BufferHandle &&) = delete;
+  auto operator=(Hwc3BufferHandle &&) -> Hwc3BufferHandle & = delete;
+
   static auto Create(buffer_handle_t handle)
       -> std::shared_ptr<Hwc3BufferHandle> {
     auto hwc3 = std::shared_ptr<Hwc3BufferHandle>(new Hwc3BufferHandle());
@@ -471,14 +477,24 @@ void ComposerClient::Init() {
   hwc_ = std::make_unique<DrmHwcThree>();
 }
 
-ComposerClient::~ComposerClient() {
+ComposerClient::~ComposerClient() noexcept {
   DEBUG_FUNC();
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  try {
+#endif
   if (hwc_) {
     const std::unique_lock lock(hwc_->GetResMan().GetMainLock());
     hwc_->DeinitDisplays();
     hwc_.reset();
   }
   LOG(DEBUG) << "removed composer client";
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  } catch (const std::exception &e) {
+    ALOGE("Unhandled std::exception in ComposerClient dtor: %s", e.what());
+  } catch (...) {
+    ALOGE("Unhandled non-standard exception in ComposerClient dtor");
+  }
+#endif
 }
 
 ndk::ScopedAStatus ComposerClient::createLayer(int64_t display_id,

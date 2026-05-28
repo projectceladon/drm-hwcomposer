@@ -129,11 +129,25 @@ auto BufferInfoMapperMetadata::GetBoInfo(buffer_handle_t handle)
     return {};
   }
 
-  for (uint32_t i = 0; i < layouts.size(); i++) {
+  if (layouts.empty() || layouts.data() == nullptr) {
+    ALOGE("Plane Layouts metadata is empty");
+    return {};
+  }
+
+  const uint32_t plane_count =
+      layouts.size() < kBufferMaxPlanes ? static_cast<uint32_t>(layouts.size())
+                                        : static_cast<uint32_t>(kBufferMaxPlanes);
+  if (layouts.size() > kBufferMaxPlanes) {
+    ALOGW("Plane Layouts count %zu exceeds max %d, truncating",
+          layouts.size(), kBufferMaxPlanes);
+  }
+
+  for (uint32_t i = 0; i < plane_count; i++) {
     bi.modifiers[i] = bi.modifiers[0];
-    bi.pitches[i] = layouts[i].strideInBytes;
-    bi.offsets[i] = layouts[i].offsetInBytes;
-    bi.sizes[i] = layouts[i].totalSizeInBytes;
+    const auto &layout = layouts[i];
+    bi.pitches[i] = layout.strideInBytes;
+    bi.offsets[i] = layout.offsetInBytes;
+    bi.sizes[i] = layout.totalSizeInBytes;
   }
 
   err = GetFds(handle, &bi);

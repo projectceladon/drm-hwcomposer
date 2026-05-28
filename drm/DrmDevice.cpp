@@ -410,7 +410,10 @@ done:
     struct drm_mode_destroy_dumb destroy = {
         .handle = create.handle,
     };
-    drmIoctl(*fd_, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy);
+    ret = drmIoctl(*fd_, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy);
+    if (ret != 0) {
+      ALOGE("Failed to DRM_IOCTL_MODE_DESTROY_DUMB %d", errno);
+    }
   }
 
   return result;

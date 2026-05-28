@@ -47,7 +47,7 @@ class PipelineBindable {
       -> std::shared_ptr<BindingOwner<O>>;
 
  private:
-  DrmDisplayPipeline *bound_pipeline_;
+    DrmDisplayPipeline *bound_pipeline_ = nullptr;
   std::weak_ptr<BindingOwner<O>> owner_object_;
 };
 
@@ -55,6 +55,8 @@ template <class B>
 class BindingOwner {
  public:
   explicit BindingOwner(B *pb) : bindable_(pb){};
+  BindingOwner(const BindingOwner &) = delete;
+  auto operator=(const BindingOwner &) -> BindingOwner & = delete;
   ~BindingOwner() {
     bindable_->bound_pipeline_ = nullptr;
   }
@@ -74,6 +76,10 @@ using UsablePlanes = std::pair<
 struct DrmDisplayPipeline {
   static auto CreatePipeline(DrmConnector &connector)
       -> std::unique_ptr<DrmDisplayPipeline>;
+
+  DrmDisplayPipeline() = default;
+  DrmDisplayPipeline(const DrmDisplayPipeline &) = delete;
+  auto operator=(const DrmDisplayPipeline &) -> DrmDisplayPipeline & = delete;
 
   auto GetUsablePlanes() -> UsablePlanes;
 

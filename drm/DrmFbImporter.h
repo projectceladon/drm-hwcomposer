@@ -59,14 +59,14 @@ class DrmFbIdHandle {
   std::array<GemHandle, kBufferMaxPlanes> gem_handles_{};
   std::array<GemHandle, kBufferMaxPlanes> shadow_handles_{};
   std::array<int, kBufferMaxPlanes> shadow_fds_{};
-  bool use_shadow_buffers_;
+  bool use_shadow_buffers_ = false;
   std::shared_ptr<IntelBlitter> blitter_;
 };
 
 class DrmFbImporter {
  public:
   explicit DrmFbImporter(DrmDevice &drm) : drm_(&drm){};
-  ~DrmFbImporter() = default;
+  ~DrmFbImporter() {}
   DrmFbImporter(const DrmFbImporter &) = delete;
   DrmFbImporter(DrmFbImporter &&) = delete;
   auto operator=(const DrmFbImporter &) = delete;

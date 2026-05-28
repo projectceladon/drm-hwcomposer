@@ -18,6 +18,7 @@
 
 #include "UEventListener.h"
 
+#include <chrono>
 #include <thread>
 
 #include "utils/log.h"
@@ -55,10 +56,10 @@ void UEventListener::ThreadFn(const std::shared_ptr<UEventListener> &uel) {
     auto hotplug_event = uevent_str->find("HOTPLUG=1") != std::string::npos;
 
     if (drm_event && hotplug_event) {
-      constexpr useconds_t kDelayAfterUeventUs = 200000;
+      constexpr auto kDelayAfterUevent = std::chrono::microseconds(200000);
       /* We need some delay to ensure DrmConnector::UpdateModes() will query
        * correct modes list, otherwise at least RPI4 board may report 0 modes */
-      usleep(kDelayAfterUeventUs);
+      std::this_thread::sleep_for(kDelayAfterUevent);
       hotplug_handler_();
     }
   }
