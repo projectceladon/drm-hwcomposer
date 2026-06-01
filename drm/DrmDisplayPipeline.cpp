@@ -142,14 +142,26 @@ auto DrmDisplayPipeline::AtomicDisablePipeline() -> int {
     return -EINVAL;
   }
 
+  /* Mandatory properties — must succeed */
   if (!connector->Get()->GetCrtcIdProperty().AtomicSet(*pset, 0) ||
-      !crtc->Get()->GetActiveProperty().AtomicSet(*pset,  0)||
-      !crtc->Get()->GetModeProperty().AtomicSet(*pset, 0)||
-      !crtc->Get()->GetCtmProperty().AtomicSet(*pset, 0)||
-      !crtc->Get()->GetGammaLutProperty().AtomicSet(*pset, 0)||
+      !crtc->Get()->GetActiveProperty().AtomicSet(*pset, 0) ||
+      !crtc->Get()->GetModeProperty().AtomicSet(*pset, 0)) {
+    ALOGE("Failed to atomic disable mandatory connector/crtc properties");
+    return -EINVAL;
+  }
+
+  /* Optional color properties — skip gracefully if not supported */
+  if (crtc->Get()->GetCtmProperty() &&
+      !crtc->Get()->GetCtmProperty().AtomicSet(*pset, 0)) {
+    ALOGW("AtomicDisablePipeline: failed to clear CTM property, ignoring");
+  }
+  if (crtc->Get()->GetGammaLutProperty() &&
+      !crtc->Get()->GetGammaLutProperty().AtomicSet(*pset, 0)) {
+    ALOGW("AtomicDisablePipeline: failed to clear GammaLut property, ignoring");
+  }
+  if (crtc->Get()->GetGammaLutSizeProperty() &&
       !crtc->Get()->GetGammaLutSizeProperty().AtomicSet(*pset, 0)) {
-        ALOGE("Failed to atomic disable connector & crtc property set");
-        return -EINVAL;
+    ALOGW("AtomicDisablePipeline: failed to clear GammaLutSize property, ignoring");
   }
 
   int err = drmModeAtomicCommit(*(device->GetFd()), pset.get(), DRM_MODE_ATOMIC_ALLOW_MODESET, device);
