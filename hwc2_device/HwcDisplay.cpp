@@ -788,8 +788,11 @@ auto HwcDisplay::HasSingleHdrVideoLayer() -> std::pair<bool, HwcLayer*> const {
     HwcLayer* hdr_layer = nullptr;
     for (auto& pair : layers_) {
       auto& layer = pair.second;
+      if (layer.GetSfType() == HWC2::Composition::Invalid)
+        continue;
+
         total_layer_count++;
-        if (layer.IsHdrVideoLayer()) {
+        if (layer.IsHdrLayer()) {
           hdr_layer_count++;
           hdr_layer = &layer;
         } else {
