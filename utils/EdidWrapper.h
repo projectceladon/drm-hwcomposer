@@ -37,7 +37,8 @@ class EdidWrapper {
   EdidWrapper() = default;
   EdidWrapper(const EdidWrapper &) = delete;
   auto operator=(const EdidWrapper &) -> EdidWrapper & = delete;
-  virtual ~EdidWrapper() = default;
+  virtual ~EdidWrapper() {
+  }
 
   virtual void GetSupportedHdrTypes(std::vector<ui::Hdr> &types) {
     types.clear();

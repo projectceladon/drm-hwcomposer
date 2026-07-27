@@ -39,7 +39,7 @@ class DrmHwcThree;
 class ComposerClient : public BnComposerClient {
  public:
   ComposerClient();
-    ~ComposerClient() noexcept override;
+  ~ComposerClient() noexcept override;
 
   void Init();
   std::string Dump();

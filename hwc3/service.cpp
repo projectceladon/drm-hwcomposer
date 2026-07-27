@@ -31,7 +31,8 @@ int main(int /*argc*/, char* argv[]) {
   (void)argv;
   ALOGI("hwc3-drm starting up");
 
-#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || \
+    defined(__COVERITY__)
   try {
 #endif
   // same as SF main thread
@@ -65,7 +66,8 @@ int main(int /*argc*/, char* argv[]) {
 
   ABinderProcess_joinThreadPool();
   return EXIT_FAILURE;  // should not reach
-#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || \
+    defined(__COVERITY__)
   } catch (const std::exception &e) {
     ALOGE("Unhandled std::exception in hwc3 service: %s", e.what());
     return -EINVAL;

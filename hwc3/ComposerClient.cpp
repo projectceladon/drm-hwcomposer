@@ -479,7 +479,8 @@ void ComposerClient::Init() {
 
 ComposerClient::~ComposerClient() noexcept {
   DEBUG_FUNC();
-#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || \
+    defined(__COVERITY__)
   try {
 #endif
   if (hwc_) {
@@ -488,7 +489,8 @@ ComposerClient::~ComposerClient() noexcept {
     hwc_.reset();
   }
   LOG(DEBUG) << "removed composer client";
-#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || \
+    defined(__COVERITY__)
   } catch (const std::exception &e) {
     ALOGE("Unhandled std::exception in ComposerClient dtor: %s", e.what());
   } catch (...) {

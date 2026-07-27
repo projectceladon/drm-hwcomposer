@@ -40,7 +40,8 @@ class DrmPlane : public PipelineBindable<DrmPlane> {
  public:
   DrmPlane(const DrmPlane &) = delete;
   DrmPlane &operator=(const DrmPlane &) = delete;
-  ~DrmPlane() = default;
+  ~DrmPlane() {
+  }
 
   static auto CreateInstance(DrmDevice &dev, uint32_t plane_id)
       -> std::unique_ptr<DrmPlane>;
