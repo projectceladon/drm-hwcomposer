@@ -27,10 +27,18 @@ namespace android {
 class DrmConnector;
 
 struct HwcDisplayConfig {
+  enum class OutputType : uint32_t {
+    kInvalid,
+    kSystem,
+    kSdr,
+    kHdr10,
+  };
+
   uint32_t id{};
   uint32_t group_id{};
   DrmMode mode{};
   bool disabled{};
+  OutputType output_type{OutputType::kInvalid};
 
   bool IsInterlaced() const {
     return (mode.GetRawMode().flags & DRM_MODE_FLAG_INTERLACE) != 0;

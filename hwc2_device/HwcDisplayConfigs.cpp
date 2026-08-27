@@ -18,8 +18,10 @@
 
 #include "HwcDisplayConfigs.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <vector>
 
 #include "drm/DrmConnector.h"
 #include "utils/log.h"
@@ -52,6 +54,19 @@ constexpr uint32_t kHzInKHz = 1000;
 namespace android {
 
 namespace {
+
+bool HasSupportedHdrOutput(DrmConnector &connector) {
+  auto &edid = connector.GetParsedEdid();
+  if (!edid) {
+    return false;
+  }
+
+  std::vector<ui::Hdr> hdr_types;
+  edid->GetSupportedHdrTypes(hdr_types);
+  return std::any_of(hdr_types.begin(), hdr_types.end(), [](const auto type) {
+    return type == ui::Hdr::HDR10 || type == ui::Hdr::HLG;
+  });
+}
 
 auto ScaleDisplaySizeMm(uint32_t pixels, uint32_t reference_pixels,
                         uint32_t reference_mm) -> uint32_t {
@@ -130,6 +145,7 @@ void HwcDisplayConfigs::GenFakeMode(uint16_t width, uint16_t height) {
       .id = active_config_id,
       .group_id = 1,
       .mode = DrmMode(&headless_drm_mode_info),
+      .output_type = HwcDisplayConfig::OutputType::kSystem,
   };
 
 }
@@ -163,47 +179,61 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
   uint32_t last_group_id = 1;
   const bool use_config_groups = Properties::UseConfigGroups();
 
-  /* Group modes */
-  for (const auto &mode : connector.GetModes()) {
-    /* Find group for the new mode or create new group */
-    uint32_t group_found = 0;
-    if (use_config_groups) {
-      for (auto &hwc_config : hwc_configs) {
-        if (mode.GetRawMode().hdisplay ==
-                hwc_config.second.mode.GetRawMode().hdisplay &&
-            mode.GetRawMode().vdisplay ==
-                hwc_config.second.mode.GetRawMode().vdisplay) {
-          group_found = hwc_config.second.group_id;
+  const bool enable_hdr = Properties::EnableHdrDisplay() &&
+                          connector.GetHdrOutputMetadataProperty() &&
+                          connector.GetColorspaceProperty() &&
+                          HasSupportedHdrOutput(connector);
+  const auto output_types = enable_hdr
+                                ? std::vector<HwcDisplayConfig::OutputType>{
+                                      HwcDisplayConfig::OutputType::kSystem,
+                                      HwcDisplayConfig::OutputType::kSdr}
+                                : std::vector<HwcDisplayConfig::OutputType>{
+                                      HwcDisplayConfig::OutputType::kSdr};
+
+  /* Generate a configuration for each mode and supported output type. */
+  for (const auto output_type : output_types) {
+    for (const auto &mode : connector.GetModes()) {
+      /* Find group for the new mode or create new group. */
+      uint32_t group_found = 0;
+      if (use_config_groups) {
+        for (auto &hwc_config : hwc_configs) {
+          if (hwc_config.second.output_type == output_type &&
+              mode.GetRawMode().hdisplay ==
+                  hwc_config.second.mode.GetRawMode().hdisplay &&
+              mode.GetRawMode().vdisplay ==
+                  hwc_config.second.mode.GetRawMode().vdisplay) {
+            group_found = hwc_config.second.group_id;
+          }
         }
       }
-    }
-    if (group_found == 0) {
-      group_found = last_group_id++;
-    }
+      if (group_found == 0) {
+        group_found = last_group_id++;
+      }
 
-    bool disabled = false;
-    if ((mode.GetRawMode().flags & DRM_MODE_FLAG_3D_MASK) != 0) {
-      ALOGI("Disabling display mode %s (Modes with 3D flag aren't supported)",
-            mode.GetName().c_str());
-      disabled = true;
+      bool disabled = false;
+      if ((mode.GetRawMode().flags & DRM_MODE_FLAG_3D_MASK) != 0) {
+        ALOGI("Disabling display mode %s (Modes with 3D flag aren't supported)",
+              mode.GetName().c_str());
+        disabled = true;
+      }
+
+      hwc_configs[last_config_id] = {
+          .id = last_config_id,
+          .group_id = group_found,
+          .mode = mode,
+          .disabled = disabled,
+          .output_type = output_type,
+      };
+
+      /* Check if the mode is preferred. */
+      if ((mode.GetRawMode().type & DRM_MODE_TYPE_PREFERRED) != 0 &&
+          preferred_config_id == 0) {
+        preferred_config_id = last_config_id;
+        preferred_config_group_id = group_found;
+      }
+
+      last_config_id++;
     }
-
-    /* Add config */
-    hwc_configs[last_config_id] = {
-        .id = last_config_id,
-        .group_id = group_found,
-        .mode = mode,
-        .disabled = disabled,
-    };
-
-    /* Chwck if the mode is preferred */
-    if ((mode.GetRawMode().type & DRM_MODE_TYPE_PREFERRED) != 0 &&
-        preferred_config_id == 0) {
-      preferred_config_id = last_config_id;
-      preferred_config_group_id = group_found;
-    }
-
-    last_config_id++;
   }
 
   /* We must have preferred mode. Set first mode as preferred
@@ -266,7 +296,9 @@ HWC2::Error HwcDisplayConfigs::Update(DrmConnector &connector) {
   constexpr float kMinFpsDelta = 1.0;  // FPS
   for (uint32_t m1 = first_config_id; m1 < last_config_id; m1++) {
     for (uint32_t m2 = first_config_id; m2 < last_config_id; m2++) {
-      if (m1 != m2 && hwc_configs[m1].group_id == hwc_configs[m2].group_id &&
+      if (m1 != m2 &&
+          hwc_configs[m1].output_type == hwc_configs[m2].output_type &&
+          hwc_configs[m1].group_id == hwc_configs[m2].group_id &&
           !hwc_configs[m1].disabled && !hwc_configs[m2].disabled &&
           fabsf(hwc_configs[m1].mode.GetVRefresh() -
                 hwc_configs[m2].mode.GetVRefresh()) < kMinFpsDelta) {

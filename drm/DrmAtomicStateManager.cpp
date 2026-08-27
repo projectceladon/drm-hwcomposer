@@ -20,7 +20,9 @@
 #define LOG_TAG "drmhwc"
 #include "DrmAtomicStateManager.h"
 #include <drm/drm_fourcc.h>
+#include <algorithm>
 #include <cmath>
+#include <tuple>
 
 #include <drm/drm_mode.h>
 #include <sync/sync.h>
@@ -163,6 +165,24 @@ auto DrmAtomicStateManager::CommitFrame(AtomicCommitArgs &args) -> int {
       if (!connector->GetHdrOutputMetadataProperty().AtomicSet(*pset, 0))
         return -EINVAL;
     }
+  }
+
+  if (args.min_bpc && connector->GetMinBpcProperty()) {
+    int err;
+    uint64_t range_min = 0;
+    uint64_t range_max = 0;
+    std::tie(err, range_min) = connector->GetMinBpcProperty().RangeMin();
+    if (err)
+      return err;
+    std::tie(err, range_max) = connector->GetMinBpcProperty().RangeMax();
+    if (err)
+      return err;
+
+    const int32_t min_bpc = std::min(
+        std::max(*args.min_bpc, static_cast<int32_t>(range_min)),
+        static_cast<int32_t>(range_max));
+    if (!connector->GetMinBpcProperty().AtomicSet(*pset, min_bpc))
+      return -EINVAL;
   }
 
   if (args.color_matrix && crtc->GetCtmProperty()) {

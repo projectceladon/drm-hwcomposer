@@ -49,6 +49,32 @@ constexpr std::array<float, 16> kIdentityMatrix = {
     0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F,
 };
 
+std::optional<ui::Hdr> SelectHdrOutputType(
+    const std::vector<ui::Hdr> &supported_types) {
+  // HDR10 is the most broadly supported output format. Prefer it over HLG,
+  // and ignore EDID HDR formats that this pipeline cannot program.
+  bool supports_hlg = false;
+  for (const auto type : supported_types) {
+    if (type == ui::Hdr::HDR10) {
+      return ui::Hdr::HDR10;
+    }
+    if (type == ui::Hdr::HLG) {
+      supports_hlg = true;
+    }
+  }
+
+  if (supports_hlg) {
+    return ui::Hdr::HLG;
+  }
+  return std::nullopt;
+}
+
+bool SupportsHdrType(const std::vector<ui::Hdr> &supported_types,
+                     ui::Hdr requested_type) {
+  return std::find(supported_types.begin(), supported_types.end(),
+                   requested_type) != supported_types.end();
+}
+
 uint64_t To3132FixPt(float in) {
   constexpr uint64_t kSignMask = (1ULL << 63);
   constexpr uint64_t kValueMask = ~(1ULL << 63);
@@ -194,6 +220,66 @@ auto HwcDisplay::GetLastRequestedConfig() const -> const HwcDisplayConfig * {
   return GetConfig(staged_mode_config_id_.value_or(configs_.active_config_id));
 }
 
+HWC2::Error HwcDisplay::SetOutputType(
+    HwcDisplayConfig::OutputType output_type) {
+  if (!CanUseHdrOutput()) {
+    ResetHdrPipelineInDisplay();
+    min_bpc_ = 6;
+    colorspace_ = Colorspace::kDefault;
+    return HWC2::Error::None;
+  }
+
+  switch (output_type) {
+    case HwcDisplayConfig::OutputType::kHdr10: {
+      std::vector<ui::Hdr> hdr_types;
+      GetEdid()->GetSupportedHdrTypes(hdr_types);
+      if (!SupportsHdrType(hdr_types, ui::Hdr::HDR10)) {
+        return HWC2::Error::Unsupported;
+      }
+      auto ret = SetHdrOutputMetadata(ui::Hdr::HDR10);
+      if (ret != HWC2::Error::None)
+        return ret;
+      min_bpc_ = 8;
+      colorspace_ = Colorspace::kBt2020Rgb;
+      break;
+    }
+    case HwcDisplayConfig::OutputType::kSystem: {
+      std::vector<ui::Hdr> hdr_types;
+      GetEdid()->GetSupportedHdrTypes(hdr_types);
+      if (const auto selected_type = SelectHdrOutputType(hdr_types)) {
+        auto ret = SetHdrOutputMetadata(*selected_type);
+        if (ret != HWC2::Error::None)
+          return ret;
+        min_bpc_ = 8;
+        colorspace_ = Colorspace::kBt2020Rgb;
+        break;
+      }
+      [[fallthrough]];
+    }
+    case HwcDisplayConfig::OutputType::kInvalid:
+      [[fallthrough]];
+    case HwcDisplayConfig::OutputType::kSdr:
+    default:
+      ResetHdrPipelineInDisplay();
+      min_bpc_ = 6;
+      colorspace_ = Colorspace::kDefault;
+      break;
+  }
+
+  return HWC2::Error::None;
+}
+
+bool HwcDisplay::CanUseHdrOutput() const {
+  if (!Properties::EnableHdrDisplay() || IsInHeadlessMode() || !pipeline_ ||
+      !pipeline_->connector || !pipeline_->connector->Get()) {
+    return false;
+  }
+
+  const auto &connector = pipeline_->connector->Get();
+  return connector->GetHdrOutputMetadataProperty() &&
+         connector->GetColorspaceProperty();
+}
+
 HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
   ATRACE_CALL();
   const HwcDisplayConfig *new_config = GetConfig(config);
@@ -238,6 +324,28 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
   }
 
   ALOGV("Create modeset commit.");
+  const auto previous_colorspace = colorspace_;
+  const auto previous_min_bpc = min_bpc_;
+  const auto previous_hdr_metadata = hdr_metadata_;
+  const auto previous_degamma_lut = hdr_degamma_lut_;
+  const auto previous_gamma_lut = hdr_gamma_lut_;
+  const auto previous_color_matrix = color_matrix_;
+  const auto previous_hdr_active = hdr_active_;
+  const auto restore_output_state = [&]() {
+    colorspace_ = previous_colorspace;
+    min_bpc_ = previous_min_bpc;
+    hdr_metadata_ = previous_hdr_metadata;
+    hdr_degamma_lut_ = previous_degamma_lut;
+    hdr_gamma_lut_ = previous_gamma_lut;
+    color_matrix_ = previous_color_matrix;
+    hdr_active_ = previous_hdr_active;
+  };
+  const auto output_type_error = SetOutputType(new_config->output_type);
+  if (output_type_error != HWC2::Error::None) {
+    restore_output_state();
+    return ConfigError::kBadConfig;
+  }
+
   // Create atomic commit args for a blocking modeset. There's no need to do a
   // separate test commit, since the commit does a test anyways.
   AtomicCommitArgs commit_args = CreateModesetCommit(new_config,
@@ -246,6 +354,7 @@ HwcDisplay::ConfigError HwcDisplay::SetConfig(hwc2_config_t config) {
   int ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(commit_args);
 
   if (ret) {
+    restore_output_state();
     ALOGE("Blocking config failed: %d", ret);
     return HwcDisplay::ConfigError::kBadConfig;
   }
@@ -554,6 +663,7 @@ HWC2::Error HwcDisplay::GetColorModes(uint32_t *num_modes, int32_t *modes) {
       modes[0] = HAL_COLOR_MODE_NATIVE;
     return HWC2::Error::None;
   }
+
   if (!Properties::EnableHdrDisplay()) {
     *num_modes = 1;
     if (modes)
@@ -700,7 +810,7 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
                                            float *max_average_luminance,
                                            float *min_luminance) {
   ATRACE_CALL();
-  if (IsInHeadlessMode()) {
+  if (!CanUseHdrOutput()) {
     *num_types = 0;
     return HWC2::Error::None;
   }
@@ -709,7 +819,10 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
     std::vector<ui::Hdr> temp_types;
     float lums[3] = {0.F};
     GetEdid()->GetHdrCapabilities(temp_types, &lums[0], &lums[1], &lums[2]);
-    *num_types = temp_types.size();
+    *num_types = static_cast<uint32_t>(std::count_if(
+        temp_types.begin(), temp_types.end(), [](const auto type) {
+          return type == ui::Hdr::HDR10 || type == ui::Hdr::HLG;
+        }));
     return HWC2::Error::None;
   }
 
@@ -718,28 +831,29 @@ HWC2::Error HwcDisplay::GetHdrCapabilities(uint32_t *num_types, int32_t *types,
   GetEdid()->GetHdrCapabilities(temp_types, max_luminance,
                                 max_average_luminance, min_luminance);
 
-  for (auto &t : temp_types) {
+  for (const auto type : temp_types) {
+    // SetHdrOutputMetadata currently supports only HDR10 and HLG.
+    if (type != ui::Hdr::HDR10 && type != ui::Hdr::HLG) {
+      continue;
+    }
+
+    const auto t = type;
     switch (t) {
-      case ui::Hdr::DOLBY_VISION:
-        out_types.emplace_back(HAL_HDR_DOLBY_VISION);
-        break;
       case ui::Hdr::HDR10:
         out_types.emplace_back(HAL_HDR_HDR10);
         break;
       case ui::Hdr::HLG:
         out_types.emplace_back(HAL_HDR_HLG);
         break;
-      case ui::Hdr::HDR10_PLUS:
-        out_types.emplace_back(HAL_HDR_HDR10_PLUS);
-        break;
       default:
-        // Ignore any other HDR types
         break;
     }
   }
 
-  for (size_t i = 0; i < out_types.size(); ++i) {
-	  types[i] = out_types[i];
+  const uint32_t max_types = *num_types;
+  *num_types = static_cast<uint32_t>(out_types.size());
+  for (size_t i = 0; i < std::min<size_t>(max_types, out_types.size()); ++i) {
+    types[i] = out_types[i];
   }
 
   return HWC2::Error::None;
@@ -753,6 +867,7 @@ AtomicCommitArgs HwcDisplay::CreateModesetCommit(
 
   args.content_type = content_type_;
   args.colorspace = colorspace_;
+  args.min_bpc = min_bpc_;
 
   args.hdr_enabled = hdr_active_;
   args.color_matrix = color_matrix_;
@@ -847,9 +962,20 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
     return HWC2::Error::None;
   }
 
+  const auto previous_active_config_id = configs_.active_config_id;
+  const auto previous_colorspace = colorspace_;
+  const auto previous_min_bpc = min_bpc_;
+  const auto previous_hdr_metadata = hdr_metadata_;
+  const auto previous_degamma_lut = hdr_degamma_lut_;
+  const auto previous_gamma_lut = hdr_gamma_lut_;
+  const auto previous_color_matrix = color_matrix_;
+  const auto previous_hdr_active = hdr_active_;
+  bool staged_config_applied = false;
+
   a_args.content_type = content_type_;
   a_args.colorspace = colorspace_;
   a_args.hdr_metadata = hdr_metadata_;
+  a_args.min_bpc = min_bpc_;
   a_args.hdr_enabled = hdr_active_;
   a_args.color_matrix = color_matrix_;
   a_args.degamma_lut = hdr_degamma_lut_;
@@ -870,7 +996,23 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
       return HWC2::Error::BadConfig;
     }
 
+    const auto output_type_error = SetOutputType(staged_config->output_type);
+    if (output_type_error != HWC2::Error::None) {
+      colorspace_ = previous_colorspace;
+      min_bpc_ = previous_min_bpc;
+      hdr_metadata_ = previous_hdr_metadata;
+      hdr_degamma_lut_ = previous_degamma_lut;
+      hdr_gamma_lut_ = previous_gamma_lut;
+      color_matrix_ = previous_color_matrix;
+      hdr_active_ = previous_hdr_active;
+      return output_type_error;
+    }
+    a_args.colorspace = colorspace_;
+    a_args.hdr_metadata = hdr_metadata_;
+    a_args.min_bpc = min_bpc_;
+
     configs_.active_config_id = staged_mode_config_id_.value();
+    staged_config_applied = true;
     a_args.display_mode = staged_config->mode;
     GetPipe().connector->Get()->SetActiveMode(staged_config->mode);
     if (!a_args.test_only) {
@@ -960,6 +1102,19 @@ HWC2::Error HwcDisplay::CreateComposition(AtomicCommitArgs &a_args) {
   auto ret = GetPipe().atomic_state_manager->ExecuteAtomicCommit(a_args);
 
   if (ret) {
+    if (staged_config_applied) {
+      configs_.active_config_id = previous_active_config_id;
+      colorspace_ = previous_colorspace;
+      min_bpc_ = previous_min_bpc;
+      hdr_metadata_ = previous_hdr_metadata;
+      hdr_degamma_lut_ = previous_degamma_lut;
+      hdr_gamma_lut_ = previous_gamma_lut;
+      color_matrix_ = previous_color_matrix;
+      hdr_active_ = previous_hdr_active;
+      if (const auto *previous_config = GetCurrentConfig()) {
+        GetPipe().connector->Get()->SetActiveMode(previous_config->mode);
+      }
+    }
     ALOGE_IF(!a_args.test_only, "Failed to apply the frame composition ret=%d", ret);
     return HWC2::Error::BadParameter;
   }
@@ -1038,7 +1193,6 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
       colorspace_ = Colorspace::kDciP3RgbD65;
       break;
     case HAL_COLOR_MODE_DISPLAY_BT2020: {
-      colorspace_ = Colorspace::kBt2020Rgb;
       break;
     }
     case HAL_COLOR_MODE_ADOBE_RGB:
@@ -1057,13 +1211,20 @@ HWC2::Error HwcDisplay::SetColorMode(int32_t mode) {
      * hdr_degamma_lut_
      * hdr_gamma_lut_
      */
+    if (!CanUseHdrOutput()) {
+      return HWC2::Error::Unsupported;
+    }
+
     std::vector<ui::Hdr> hdr_types;
     GetEdid()->GetSupportedHdrTypes(hdr_types);
-    if (!hdr_types.empty()) {
-      auto ret = SetHdrOutputMetadata(hdr_types.front());
-      if (ret != HWC2::Error::None)
-        return ret;
-    }
+    const auto selected_type = SelectHdrOutputType(hdr_types);
+    if (!selected_type)
+      return HWC2::Error::Unsupported;
+
+    auto ret = SetHdrOutputMetadata(*selected_type);
+    if (ret != HWC2::Error::None)
+      return ret;
+    colorspace_ = Colorspace::kBt2020Rgb;
     hdr_active_ = true;
   } else if (hdr_active_) {
     ResetHdrPipelineInDisplay();

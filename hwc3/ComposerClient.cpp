@@ -280,6 +280,11 @@ DisplayConfiguration HwcDisplayConfigToAidlConfiguration(
        .configGroup = static_cast<int32_t>(config.group_id),
        .vsyncPeriod = config.mode.GetVSyncPeriodNs()};
 
+#if __ANDROID_API__ >= 36
+  aidl_configuration.hdrOutputType = static_cast<OutputType>(
+      static_cast<uint32_t>(config.output_type));
+#endif
+
   if (width > 0) {
     static const float kMmPerInch = 25.4;
     float dpi_x = float(config.mode.GetRawMode().hdisplay) * kMmPerInch /
